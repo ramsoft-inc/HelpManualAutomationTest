@@ -15,7 +15,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        headless: false,
+        headless: true,
         viewport: { width: 1920, height: 1080 },
         actionTimeout: 5 * 1000,
       },

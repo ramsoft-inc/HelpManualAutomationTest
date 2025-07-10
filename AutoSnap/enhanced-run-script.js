@@ -194,7 +194,7 @@ const MODE_DESCRIPTIONS = {
     }
     
     const browser = await chromium.launch({
-        headless: false,
+        headless: True,
         channel: 'chrome',
         args: [
             "--disable-notifications",
