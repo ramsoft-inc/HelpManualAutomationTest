@@ -13,10 +13,8 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
         const args = [];
         if (changedFiles) {
             args.push('--changed-files', changedFiles);
-        } else {
-            args.push(scenarioType);
         }
-        // Run the Python script with scenarioType or changedFiles as an argument
+        // Run the Python script with only supported arguments
         const pythonProcess = spawn('python', ['browser_automation_instructions.py', ...args], {
             stdio: ['pipe', 'pipe', 'pipe']
         });

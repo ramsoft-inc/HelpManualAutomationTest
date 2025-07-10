@@ -39,6 +39,11 @@ jobs:
         run: pip install -r requirements.txt
         working-directory: ./AutoSnap
 
+      - name: Install Node.js dependencies for Tracewright
+        run: |
+          cd AutoSnap/tracewrightt
+          npm install
+
       - name: Get PR changes
         id: prdiff
         run: |
@@ -46,18 +51,16 @@ jobs:
           git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.sha }} > changed_files.txt
           cat changed_files.txt
 
-      - name: Decide screenshot mode
-        id: mode
+      - name: Detect scenario type (new_feature or ui_change)
+        id: detect_mode
         run: |
-          if grep -E 'docs/.*\\.md' changed_files.txt | grep -q 'PLACEHOLDER_FOR_SCREENSHOT'; then
+          if grep -E 'docs/.*\.md' changed_files.txt | xargs grep -iq 'placeholder for a screenshot'; then
             echo "mode=new_feature" >> $GITHUB_OUTPUT
-          elif grep -E 'src/|frontend/|AutoSnap/tracewrightt/src/|i18n/' changed_files.txt; then
-            echo "mode=ui_change" >> $GITHUB_OUTPUT
           else
-            echo "mode=default" >> $GITHUB_OUTPUT
+            echo "mode=ui_change" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Enhanced Screenshot Script
+      - name: Run enhanced screenshot script
         run: |
-          node enhanced-run-script.js --mode ${{ steps.mode.outputs.mode }}
+          node enhanced-run-script.js --mode ${{ steps.detect_mode.outputs.mode }}
         working-directory: ./AutoSnap 

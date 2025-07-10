@@ -74,7 +74,12 @@ const MODE_DESCRIPTIONS = {
     // Step 2: Generate instructions (with fallback if Python fails)
     let generatedInstructions;
     try {
-        generatedInstructions = await generateInstructions(SCENARIO_TYPE, changedFiles);
+        // Only pass --changed-files if changedFiles is set
+        if (changedFiles) {
+            generatedInstructions = await generateInstructions(SCENARIO_TYPE, changedFiles);
+        } else {
+            generatedInstructions = await generateInstructions(SCENARIO_TYPE, null);
+        }
         console.log('📋 Generated Instructions:');
         console.log(generatedInstructions);
         console.log('\n' + '='.repeat(80) + '\n');
