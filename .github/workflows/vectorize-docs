@@ -1,0 +1,20 @@
+name: Vectorize Documentation
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  call-vectorize-workflow:
+    uses: ramsoft-inc/Document-Generator/.github/workflows/vectorize-docs-reusable.yml@main
+    with:
+      docs_path: 'docs/'
+    secrets:
+      AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
+      AZURE_SEARCH_KEY: ${{ secrets.AZURE_SEARCH_KEY }}
+      AZURE_SEARCH_INDEX_NAME: ${{ secrets.AZURE_SEARCH_INDEX_NAME }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      ENDPOINT_URL: ${{ secrets.ENDPOINT_URL }} 

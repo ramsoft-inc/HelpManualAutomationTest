@@ -1,0 +1,50 @@
+.tilesContainer {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 0 200px; /* Adjust the padding value here */
+  margin: 40px 0;
+}
+
+.tile {
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #ddd; /* Add a border for visual separation */
+  transition: transform 0.2s, box-shadow 0.2s; /* Add transition for hover effects */
+}
+
+.icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 1.5rem;
+  margin: 10px 0;
+}
+
+.summary {
+  font-size: 1rem;
+}
+
+.tileLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.tileLink:hover {
+  text-decoration: none;
+}
+
+.tileLink:hover .tile {
+  transform: scale(1.05); /* Slightly scale up the tile */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a shadow */
+}
+
+.tileLink .tile .title,
+.tileLink .tile .summary,
+.tileLink .tile .icon {
+  text-decoration: none;
+}

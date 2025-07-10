@@ -1,0 +1,9 @@
+{
+  "label": "OmegaAI Link",
+  "position": 12,
+  "link": {
+    "type": "generated-index",
+    "description": "OmegaAI's Cloud Enabled Secure DICOM Gateway"
+  }
+}
+

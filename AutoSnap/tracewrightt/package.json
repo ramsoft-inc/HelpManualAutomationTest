@@ -1,0 +1,67 @@
+{
+  "name": "@withmantle/tracewright",
+  "version": "0.1.0",
+  "main": "dist/esm/index.js",
+  "typings": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "playwright",
+    "agent",
+    "ai",
+    "llm",
+    "node",
+    "browser",
+    "automation",
+    "scraper",
+    "code-generation",
+    "testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TenKeyLabs/tracewright.git"
+  },
+  "scripts": {
+    "test": "vitest",
+    "build": "rimraf dist && rollup -c --bundleConfigAsCjs",
+    "bump": "changeset version && npm install",
+    "release": "npm run build && changeset publish"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.1",
+    "chalk": "^5.4.1",
+    "openai": "^5.0.1"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.29.4",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^28.0.3",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@types/node": "^22.15.29",
+    "dotenv": "^16.4.7",
+    "eslint": "^9.28.0",
+    "eslint-config-prettier": "^10.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.4.1",
+    "rollup": "^4.41.1",
+    "rollup-plugin-clear": "^2.0.7",
+    "rollup-plugin-copy": "^3.5.0",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.1.4"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">= 1.50.0"
+  },
+  "engine": {
+    "node": ">= 18.0.0"
+  }
+}

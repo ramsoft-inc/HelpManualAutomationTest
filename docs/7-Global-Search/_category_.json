@@ -1,0 +1,9 @@
+{
+  "label": "Global Search",
+  "position": 8,
+  "link": {
+    "type": "generated-index",
+    "description": "OmegaAI's All in One Search"
+  }
+}
+

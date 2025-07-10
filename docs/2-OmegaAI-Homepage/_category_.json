@@ -1,0 +1,8 @@
+{
+  "label": "OmegaAI Homepage",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Home for all users"
+  }
+}

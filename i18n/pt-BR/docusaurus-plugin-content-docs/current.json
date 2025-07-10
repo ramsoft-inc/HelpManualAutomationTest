@@ -1,0 +1,114 @@
+{
+  "version.label": {
+    "message": "Próxima",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.Introduction": {
+    "message": "Introdução",
+    "description": "The label for category Introduction in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Getting Started": {
+    "message": "Primeiros Passos",
+    "description": "The label for category Getting Started in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Getting Started.link.generated-index.description": {
+    "message": "Tudo o que você precisa para começar a usar o OmegaAI",
+    "description": "The generated-index page description for category Getting Started in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.OmegaAI Homepage": {
+    "message": "Página Inicial do OmegaAI",
+    "description": "The label for category OmegaAI Homepage in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.OmegaAI Homepage.link.generated-index.description": {
+    "message": "Página inicial para todos os usuários",
+    "description": "The generated-index page description for category OmegaAI Homepage in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Worklist": {
+    "message": "Lista de Trabalho",
+    "description": "The label for category Worklist in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Worklist.link.generated-index.description": {
+    "message": "Lista de Trabalho Universal do OmegaAI",
+    "description": "The generated-index page description for category Worklist in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Scheduler": {
+    "message": "Agendador",
+    "description": "The label for category Scheduler in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Scheduler.link.generated-index.description": {
+    "message": "Agendador de Consultas",
+    "description": "The generated-index page description for category Scheduler in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Document Viewer": {
+    "message": "Visualizador de Documentos",
+    "description": "The label for category Document Viewer in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Document Viewer.link.generated-index.description": {
+    "message": "Gerenciador de Relatórios e Documentos do OmegaAI",
+    "description": "The generated-index page description for category Document Viewer in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Image Viewer": {
+    "message": "Visualizador de Imagens",
+    "description": "The label for category Image Viewer in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Image Viewer.link.generated-index.description": {
+    "message": "Visualizador de Imagens do OmegaAI",
+    "description": "The generated-index page description for category Image Viewer in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Global Search": {
+    "message": "Busca Global",
+    "description": "The label for category Global Search in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Global Search.link.generated-index.description": {
+    "message": "Busca Tudo em Um do OmegaAI",
+    "description": "The generated-index page description for category Global Search in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Communication and Organization Tools": {
+    "message": "Ferramentas de Comunicação e Organização",
+    "description": "The label for category Communication and Organization Tools in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Communication and Organization Tools.link.generated-index.description": {
+    "message": "Ferramentas de Comunicação e Organização do OmegaAI",
+    "description": "The generated-index page description for category Communication and Organization Tools in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Root Business Analytics and Reporting": {
+    "message": "Análise de Negócios e Relatórios Avançados",
+    "description": "The label for category Root Business Analytics and Reporting in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Root Business Analytics and Reporting.link.generated-index.description": {
+    "message": "Análise de Negócios e Relatórios Sem Código do OmegaAI",
+    "description": "The generated-index page description for category Root Business Analytics and Reporting in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Workflow Automation": {
+    "message": "Automação de Fluxo de Trabalho",
+    "description": "The label for category Workflow Automation in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Workflow Automation.link.generated-index.description": {
+    "message": "Módulo de Automação de Fluxo de Trabalho do OmegaAI",
+    "description": "The generated-index page description for category Workflow Automation in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.OmegaAI Link": {
+    "message": "OmegaAI Link",
+    "description": "The label for category OmegaAI Link in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.OmegaAI Link.link.generated-index.description": {
+    "message": "Gateway DICOM Seguro e Habilitado para Nuvem do OmegaAI",
+    "description": "The generated-index page description for category OmegaAI Link in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Advanced Topics": {
+    "message": "Tópicos Avançados",
+    "description": "The label for category Advanced Topics in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Advanced Topics.link.generated-index.description": {
+    "message": "Tópicos Avançados para Usuários Avançados do OmegaAI",
+    "description": "The generated-index page description for category Advanced Topics in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Blume Patient Portal": {
+    "message": "Portal do Paciente Blume",
+    "description": "The label for category Blume Patient Portal in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Blume Patient Portal.link.generated-index.description": {
+    "message": "Portal do Paciente Blume",
+    "description": "The generated-index page description for category Blume Patient Portal in sidebar tutorialSidebar"
+  }
+}

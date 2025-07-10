@@ -1,0 +1,31 @@
+{
+  "name": "tracewright-gemini",
+  "version": "1.0.0",
+  "description": "Tracewright implementation with Google Gemini API integration",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node example.js",
+    "run": "node run-script.js",
+    "run-enhanced": "node enhanced-run-script.js",
+    "generate-instructions": "python browser_automation_instructions.py",
+    "setup-python": "pip install -r requirements.txt",
+    "test": "npx playwright test"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "playwright": "^1.53.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.1",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.9.4",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "sharp": "^0.33.4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.3.3"
+  }
+}

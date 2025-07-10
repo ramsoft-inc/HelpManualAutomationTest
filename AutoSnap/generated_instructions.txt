@@ -1,0 +1,37 @@
+
+    1. Locate the **worklist table** ("tabla de lista de trabajo") displayed in the center of the screen showing patient records. Find any patient record row in the table and click on the **patient name link** ("nombre del paciente") to open the **wheel interface** ("rueda de herramientas").
+
+2. On the **wheel interface** ("rueda de herramientas"), locate the **"Image Viewer" button** ("Visor de Imágenes"), which is represented as a monitor icon, and click on it to open the OmegaAI Image Viewer.
+
+3. In the OmegaAI Image Viewer toolbar, locate the **"More Options" menu** ("Más opciones"), represented as a 3-dots menu icon ("icono de tres puntos") in the upper right corner of the toolbar, and click on it.
+
+4. Take a screenshot of the **"More Options" menu** ("Menú Más opciones") in its expanded state and save it with the name "mo1.png".
+
+5. In the expanded **"More Options" menu** ("Menú Más opciones"), locate and click the **"Toggles" option** ("Interruptores").
+
+6. Take a screenshot of the **"Toggles" submenu** ("Submenú de interruptores") showing the options **Overlay** ("Superposición"), **Scout Lines** ("Líneas de exploración"), **Unified Stack** ("Pila unificada"), and **Calibrated Ruler** ("Regla calibrada"). Save the screenshot with the name "mo2.png".
+
+7. In the **"Toggles" submenu** ("Submenú de interruptores"), locate the **"Overlay" toggle** ("Interruptor de superposición") and enable it if it is not already enabled.
+
+8. Take a screenshot of the **image viewport** ("vista de imagen") with the overlay enabled, ensuring the overlay details are visible on the image. Save the screenshot with the name "mo3.png".
+
+9. Return to the **"More Options" menu** ("Menú Más opciones") and locate the **"Link Series" option** ("Vincular series"). Click on it to expand the submenu.
+
+10. Take a screenshot of the **"Link Series" submenu** ("Submenú de vincular series") showing the options **Unlink** ("Desvincular"), **Manual Link** ("Vinculación manual"), and **Plane Link** ("Vinculación por plano"). Save the screenshot with the name "mo4.png".
+
+11. Return to the **"More Options" menu** ("Menú Más opciones") and locate the **"Download" option** ("Descargar"). Click on it to expand the submenu.
+
+12. Take a screenshot of the **"Download" submenu** ("Submenú de descargar") showing the options **Download Image** ("Descargar imagen") and **Download Study** ("Descargar estudio"). Save the screenshot with the name "mo5.png".
+
+13. Return to the **"More Options" menu** ("Menú Más opciones") and locate the **"Settings" option** ("Configuración"). Click on it.
+
+14. Take a screenshot of the **"Settings" menu** ("Menú de configuración"), ensuring all the categories, such as **Hanging Protocols** ("Protocolos de colgado"), **Customizing Overlay** ("Personalización de superposición"), **Customizing Toolbar** ("Personalización de la barra de herramientas"), **Customizing Wheel** ("Personalización de la rueda"), **DICOM Header Tags** ("Etiquetas de encabezado DICOM"), and others, are clearly visible. Save the screenshot with the name "mo6-1.png".
+
+15. Return to the **"More Options" menu** ("Menú Más opciones") and locate the **"Fullscreen Mode" button** ("Modo de pantalla completa"). Click on it to enable fullscreen mode.
+
+16. Take a screenshot of the **image viewer in fullscreen mode** ("visor de imágenes en modo de pantalla completa"). Save the screenshot with the name "mo8.png".
+
+17. Exit fullscreen mode by clicking the **"Fullscreen Mode" button** ("Modo de pantalla completa") again.
+
+18. Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
+    

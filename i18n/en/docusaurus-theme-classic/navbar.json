@@ -1,0 +1,30 @@
+{
+  "title": {
+    "message": "Home",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "OAI Logo",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.User Guide": {
+    "message": "User Guide",
+    "description": "Navbar item with label User Guide"
+  },
+  "item.label.News": {
+    "message": "News",
+    "description": "Navbar item with label News"
+  },
+  "item.label.Resources": {
+    "message": "Resources",
+    "description": "Navbar item with label Resources"
+  },
+  "item.label.OmegaAI": {
+    "message": "OmegaAI",
+    "description": "Navbar item with label OmegaAI"
+  },
+  "item.label.Blume Patient Portal": {
+    "message": "Blume Patient Portal",
+    "description": "Navbar item with label Blume Patient Portal"
+  }
+}

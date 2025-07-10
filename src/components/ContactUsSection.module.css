@@ -1,0 +1,15 @@
+.contactUsContainer {
+  margin: 40px 0;
+  text-align: center;
+}
+
+.contactUsContent {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.getInTouch {
+  margin-top: 20px;
+}

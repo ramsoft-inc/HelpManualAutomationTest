@@ -1,0 +1,82 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #063e53;
+  --ifm-color-primary-dark: #05384b;
+  --ifm-color-primary-darker: #053547;
+  --ifm-color-primary-darkest: #042b3a;
+  --ifm-color-primary-light: #07445b;
+  --ifm-color-primary-lighter: #07475f;
+  --ifm-color-primary-lightest: #08516c;
+}
+
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #42a5f5;
+  --ifm-color-primary-dark: #2497f3;
+  --ifm-color-primary-darker: #1690f3;
+  --ifm-color-primary-darkest: #0b77cf;
+  --ifm-color-primary-light: #60b3f7;
+  --ifm-color-primary-lighter: #6ebaf7;
+  --ifm-color-primary-lightest: #9bcffa;
+}
+
+/* Light mode footer background color */
+.footer {
+  background-color: #063E53;
+}
+
+/* Dark mode footer background color */
+html[data-theme='dark'] .footer {
+  background-color: #1D1D1F;
+}
+
+/* Light mode header background color */
+.navbar {
+  background-color: #063E53;
+}
+
+/* Dark mode header background color */
+html[data-theme='dark'] .navbar {
+  background-color: #1D1D1F;
+}
+
+/* Light mode header text color */
+.navbar__link, .navbar__item {
+  color: white;
+}
+
+/* Light mode header text color for active items (e.g., Home) */
+.navbar__link--active {
+  color: white;
+}
+
+/* Header link hover color */
+.navbar__link:hover, .navbar__item:hover {
+  color: #0277C1; /* Use a distinct color for hover, e.g., gold */
+}
+/* Footer logo styling */
+.footer__logo {
+  display: block;
+  margin: 20px auto 0 auto;
+}
+/* Light mode header title (Home) color */
+.navbar__title {
+  color: white !important;
+}
+/* Dark mode toggle icon color in light mode */
+.navbar__toggle {
+  color: white !important;
+}
+/* Image Class to Be 50% Width with shadow */
+img[src*='#small-image'] {
+  width: 50%;          /* Adjusted width to 50% */
+  height: auto;        /* Maintains aspect ratio */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); /* Optional box-shadow for subtle depth */
+}
