@@ -1,94 +1,63 @@
-name: Enhanced Run Script on PR Merge
+name: Enhanced Screenshot Automation
 
 on:
   pull_request:
     types: [closed]
-    branches:
-      - main
-      - master
 
 jobs:
-  run-enhanced-script:
-    # Only run if the PR was merged (not just closed)
+  screenshots:
     if: github.event.pull_request.merged == true
-    
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        mode: [default, ui_change, new_feature]
-    
+
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: Setup Node.js
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: |
-          npm ci
-          cd AutoSnap/tracewrightt
-          npm ci
-          cd ../..
-          
-      - name: Install Playwright browsers
-        run: |
-          npx playwright install --with-deps chromium
-          
-      - name: Set up Python (for instruction generation)
-        uses: actions/setup-python@v4
+          node-version: 20
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          
+          python-version: '3.10'
+
+      - name: Install Node.js dependencies
+        run: npm ci
+        working-directory: ./AutoSnap
+
       - name: Install Python dependencies
+        run: pip install -r requirements.txt
+        working-directory: ./AutoSnap
+
+      - name: Get PR changes
+        id: prdiff
         run: |
-          python -m pip install --upgrade pip
-          pip install openai requests
-          
-      - name: Set up environment variables
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.sha }} > changed_files.txt
+          cat changed_files.txt
+
+      - name: Decide screenshot mode
+        id: mode
         run: |
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
-          
-      - name: Create screenshots directory
+          if grep -E 'docs/.*\\.md' changed_files.txt | grep -q 'PLACEHOLDER_FOR_SCREENSHOT'; then
+            echo "mode=new_feature" >> $GITHUB_OUTPUT
+          elif grep -E 'src/|frontend/|AutoSnap/tracewrightt/src/|i18n/' changed_files.txt; then
+            echo "mode=ui_change" >> $GITHUB_OUTPUT
+          else
+            echo "mode=default" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Enhanced Screenshot Script
         run: |
-          mkdir -p AutoSnap/screenshots
-          
-      - name: Run enhanced script
-        run: |
-          cd AutoSnap
-          echo "Running enhanced script in mode: ${{ matrix.mode }}"
-          node enhanced-run-script.js --mode ${{ matrix.mode }}
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        timeout-minutes: 30
-        continue-on-error: true
-          
-      - name: Upload screenshots
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: enhanced-run-screenshots-${{ matrix.mode }}
-          path: AutoSnap/screenshots/
-          retention-days: 30
-          
-      - name: Upload logs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: enhanced-run-logs-${{ matrix.mode }}
-          path: |
-            AutoSnap/*.log
-            AutoSnap/tracewrightt/*.log
-          retention-days: 30
-          
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "❌ Enhanced run script failed for mode: ${{ matrix.mode }}"
-          echo "Check the logs and screenshots artifacts for more details." 
+          node enhanced-run-script.js --mode ${{ steps.mode.outputs.mode }}
+        working-directory: ./AutoSnap 
