@@ -19,6 +19,7 @@ import logging
 from langchain_openai import AzureChatOpenAI
 from datetime import datetime  # Local import to avoid polluting global namespace if not used elsewhere
 import sys
+import argparse
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -158,88 +159,42 @@ Wheel interface pops up when you click on one of the worklist records just find 
 ---
 """
 
-def generate_browser_instructions(scenario_type="default"):
-    """Generate browser automation instructions based on the scenario type."""
+def generate_browser_instructions(scenario_type="default", changed_files=None):
+    """Generate browser automation instructions based on the scenario type and changed files."""
     img_filename = "screenshot.png"  # Placeholder, replace with actual logic if needed
-    
-    # Use proper path resolution like the JavaScript file
     import os
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
-    file_path_spanish = os.path.join(current_dir, 'spanish', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
-    
-    content = ""  # Initialize content
+    from datetime import datetime
+    content = ""
     spanish_content = ""
+
+    # If changed_files is provided, read all files and concatenate their contents
+    if changed_files:
+        for file_path in changed_files:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    content += f"\n---\n# {file_path}\n" + file.read()
+            except Exception as e:
+                print(f"Could not read {file_path}: {e}")
+    else:
+        # Fallback to old logic if no changed files provided
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_dir, 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
+        file_path_spanish = os.path.join(current_dir, 'spanish', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+        except Exception as e:
+            print(f"Error: {e}")
+        try:
+            if os.path.exists(file_path_spanish):
+                with open(file_path_spanish, 'r', encoding='utf-8') as file:
+                    spanish_content = file.read()
+        except Exception as e:
+            print(f"Error: {e}")
 
     # Initialize LLM here as it's needed for document instruction generation
     llm = AzureChatOpenAI(azure_deployment="gpt-4.1", openai_api_version="2024-02-15-preview")
-
-    # Read English document content for all scenarios
-    try:
-        # Check file modification time
-        if os.path.exists(file_path):
-            stat = os.stat(file_path)
-            mod_time = datetime.fromtimestamp(stat.st_mtime)
-            print(f"English file last modified: {mod_time}")
-            
-        # Open the file in read mode ('r') with UTF-8 encoding (common for text files)
-        with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()  # Read the entire content of the file
-            print(f"Successfully read English file: {len(content)} characters")
-    except FileNotFoundError:
-        print(f"Error: The file '{file_path}' was not found.")
-        # Try alternative paths using proper path resolution
-        alternative_paths = [
-            os.path.join(current_dir, 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md'),
-            os.path.join(os.getcwd(), 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md'),
-            os.path.join(current_dir, '..', 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
-        ]
-        for alt_path in alternative_paths:
-            if os.path.exists(alt_path):
-                print(f"Found file at: {alt_path}")
-                try:
-                    with open(alt_path, 'r', encoding='utf-8') as file:
-                        content = file.read()
-                        print(f"Successfully read from alternative path: {len(content)} characters")
-                        break
-                except Exception as e:
-                    print(f"Error reading from {alt_path}: {e}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    # Read Spanish document content for translated_images and default scenarios
-    if scenario_type in ["translated_images", "default"]:
-        try:
-            # Check file modification time
-            if os.path.exists(file_path_spanish):
-                stat = os.stat(file_path_spanish)
-                mod_time = datetime.fromtimestamp(stat.st_mtime)
-                print(f"Spanish file last modified: {mod_time}")
-                
-            # Open the file in read mode ('r') with UTF-8 encoding (common for text files)
-            with open(file_path_spanish, 'r', encoding='utf-8') as file:
-                spanish_content = file.read()  # Read the entire content of the file
-                print(f"Successfully read Spanish file: {len(spanish_content)} characters")
-        except FileNotFoundError:
-            print(f"Error: The file '{file_path_spanish}' was not found.")
-            # Try alternative paths using proper path resolution
-            alternative_paths = [
-                os.path.join(current_dir, 'spanish', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md'),
-                os.path.join(os.getcwd(), 'spanish', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md'),
-                os.path.join(current_dir, '..', 'spanish', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
-            ]
-            for alt_path in alternative_paths:
-                if os.path.exists(alt_path):
-                    print(f"Found file at: {alt_path}")
-                    try:
-                        with open(alt_path, 'r', encoding='utf-8') as file:
-                            spanish_content = file.read()
-                            print(f"Successfully read from alternative path: {len(spanish_content)} characters")
-                            break
-                    except Exception as e:
-                        print(f"Error reading from {alt_path}: {e}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
 
     # Generate instructions from document content based on scenario
     document_instructions = "Default: No document content was processed or an error occurred during instruction generation."
@@ -363,25 +318,25 @@ Also, you are already at the Spanish website homepage, logged in — continue fr
 
 def main():
     """Main function to execute the instruction generation process."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--changed-files', type=str, help='Path to file containing list of changed files')
+    args = parser.parse_args()
+    changed_files = []
+    if args.changed_files:
+        with open(args.changed_files, 'r') as f:
+            changed_files = [line.strip() for line in f if line.strip()]
     try:
         scenario_type = "default"
-        if len(sys.argv) > 1:
+        import sys
+        if len(sys.argv) > 1 and not args.changed_files:
             scenario_type = sys.argv[1]
-        instructions = generate_browser_instructions(scenario_type)
-        
-        # print("\n" + "="*80)
-        # print("GENERATED BROWSER AUTOMATION INSTRUCTIONS:")
-        # print("="*80)
-        # print(instructions)
-        # print("="*80)
-        
-        # Optionally save instructions to a file
+        instructions = generate_browser_instructions(scenario_type, changed_files)
         output_file = "generated_instructions.txt"
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(instructions)
         print(f"\nInstructions saved to: {output_file}")
-        
     except Exception as e:
+        import logging
         logging.error(f"Error in main execution: {e}")
         print(f"Failed to generate instructions: {e}")
 

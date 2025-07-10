@@ -27,21 +27,32 @@ import { generateInstructions, checkPythonDependencies } from './preprocess_inst
 // Obsolete helper functions (`removeOverlays`, `clickDocumentViewerIcon`) have been removed
 // since the application no longer shows blocking overlays or special viewer buttons.
 
-// Get scenario type from command line arguments or use default
+// Accept --changed-files argument
+const args = process.argv.slice(2);
+let changedFiles = null;
+let modeArg = null;
+for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--changed-files' && args[i + 1]) {
+        changedFiles = args[i + 1];
+        i++;
+    } else if ((args[i] === '--mode' || args[i] === '-m') && args[i + 1]) {
+        modeArg = args[i + 1];
+        i++;
+    }
+}
+
 const getScenarioType = () => {
-    const args = process.argv.slice(2);
+    if (modeArg) return modeArg;
     const modeIndex = args.findIndex(arg => arg === '--mode' || arg === '-m');
-    
     if (modeIndex !== -1 && args[modeIndex + 1]) {
         const mode = args[modeIndex + 1];
-        if (['ui_change', 'new_feature', 'default'].includes(mode)) {
+        if (["ui_change", "new_feature", "default"].includes(mode)) {
             return mode;
         } else {
             console.warn(`⚠️  Invalid mode: ${mode}. Using default mode.`);
         }
     }
-    
-    return "default"; // Default mode
+    return "default";
 };
 
 const SCENARIO_TYPE = getScenarioType();
@@ -63,7 +74,7 @@ const MODE_DESCRIPTIONS = {
     // Step 2: Generate instructions (with fallback if Python fails)
     let generatedInstructions;
     try {
-        generatedInstructions = await generateInstructions(SCENARIO_TYPE);
+        generatedInstructions = await generateInstructions(SCENARIO_TYPE, changedFiles);
         console.log('📋 Generated Instructions:');
         console.log(generatedInstructions);
         console.log('\n' + '='.repeat(80) + '\n');

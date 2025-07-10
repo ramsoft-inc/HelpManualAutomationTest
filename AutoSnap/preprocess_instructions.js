@@ -5,12 +5,19 @@ import path from 'path';
 /**
  * Run the Python instruction generation script and return the generated instructions
  */
-async function generateInstructions(scenarioType = "default") {
+async function generateInstructions(scenarioType = "default", changedFiles = null) {
     console.log(`🔄 Generating browser automation instructions for mode: ${scenarioType}...`);
     
     return new Promise((resolve, reject) => {
-        // Run the Python script with scenarioType as an argument
-        const pythonProcess = spawn('python', ['browser_automation_instructions.py', scenarioType], {
+        // Build the argument list
+        const args = [];
+        if (changedFiles) {
+            args.push('--changed-files', changedFiles);
+        } else {
+            args.push(scenarioType);
+        }
+        // Run the Python script with scenarioType or changedFiles as an argument
+        const pythonProcess = spawn('python', ['browser_automation_instructions.py', ...args], {
             stdio: ['pipe', 'pipe', 'pipe']
         });
         

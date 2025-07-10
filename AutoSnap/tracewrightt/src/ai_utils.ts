@@ -787,10 +787,32 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
   }
 
   /**
-   * Finds markdown context lines for a given image file.
+   * Finds markdown context lines for a given image file, optionally searching only specified files (PR-diff aware).
+   * @param imageFileName The image filename to search for (e.g., 'access.png')
+   * @param linesBefore Number of lines before the match to include as context
+   * @param filePaths Optional array of markdown file paths to restrict the search (PR-diff aware)
    */
-  private findMarkdownContextLines(imageFileName: string, linesBefore = 10): string | null {
+  private findMarkdownContextLines(imageFileName: string, linesBefore = 10, filePaths?: string[]): string | null {
     try {
+      // If filePaths are provided, only search those files
+      if (filePaths && filePaths.length > 0) {
+        for (const filePath of filePaths) {
+          if (!fs.existsSync(filePath)) continue;
+          const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes(imageFileName)) {
+              const collected: string[] = [];
+              for (let j = i - 1; j >= 0 && collected.length < linesBefore; j--) {
+                const ln = lines[j].trimEnd();
+                if (ln.trim() === '') break;
+                collected.unshift(ln);
+              }
+              return collected.join('\n');
+            }
+          }
+        }
+        return null;
+      }
       const preferredMd = path.join(process.cwd(), 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md');
       if (fs.existsSync(preferredMd)) {
         const lines = fs.readFileSync(preferredMd, 'utf-8').split('\n');
