@@ -51,16 +51,32 @@ jobs:
           git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.sha }} > changed_files.txt
           cat changed_files.txt
 
+      - name: Check for docs markdown changes
+        id: check_docs
+        run: |
+          if grep -E '^docs/.*\.md$' changed_files.txt; then
+            echo "docs_changed=true" >> $GITHUB_OUTPUT
+            # Filter only docs markdown files
+            grep -E '^docs/.*\.md$' changed_files.txt > docs_changed_files.txt
+            echo "Changed docs files:"
+            cat docs_changed_files.txt
+          else
+            echo "docs_changed=false" >> $GITHUB_OUTPUT
+            echo "No docs markdown files changed, skipping workflow"
+          fi
+
       - name: Detect scenario type (new_feature or ui_change)
         id: detect_mode
+        if: steps.check_docs.outputs.docs_changed == 'true'
         run: |
-          if grep -E 'docs/.*\.md' changed_files.txt | xargs grep -iq 'placeholder for a screenshot'; then
+          if grep -E 'docs/.*\.md' docs_changed_files.txt | xargs grep -iq 'placeholder for a screenshot'; then
             echo "mode=new_feature" >> $GITHUB_OUTPUT
           else
             echo "mode=ui_change" >> $GITHUB_OUTPUT
           fi
 
       - name: Run enhanced screenshot script
+        if: steps.check_docs.outputs.docs_changed == 'true'
         run: |
-          node enhanced-run-script.js --mode ${{ steps.detect_mode.outputs.mode }}
+          node enhanced-run-script.js --mode ${{ steps.detect_mode.outputs.mode }} --changed-files docs_changed_files.txt
         working-directory: ./AutoSnap 

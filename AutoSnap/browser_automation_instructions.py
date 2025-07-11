@@ -168,14 +168,19 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     spanish_content = ""
 
     # If changed_files is provided, read all files and concatenate their contents
-    if changed_files:
+    if changed_files and len(changed_files) > 0:
+        print(f"Processing {len(changed_files)} changed files...")
         for file_path in changed_files:
             try:
+                print(f"  Reading: {file_path}")
                 with open(file_path, 'r', encoding='utf-8') as file:
-                    content += f"\n---\n# {file_path}\n" + file.read()
+                    file_content = file.read()
+                    content += f"\n---\n# {file_path}\n{file_content}"
+                    print(f"    Successfully read {len(file_content)} characters")
             except Exception as e:
-                print(f"Could not read {file_path}: {e}")
+                print(f"    Could not read {file_path}: {e}")
     else:
+        print("No changed files provided, using fallback logic")
         # Fallback to old logic if no changed files provided
         current_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(current_dir, 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
@@ -322,14 +327,26 @@ def main():
     parser.add_argument('--changed-files', type=str, help='Path to file containing list of changed files')
     args = parser.parse_args()
     changed_files = []
+    
     if args.changed_files:
-        with open(args.changed_files, 'r') as f:
-            changed_files = [line.strip() for line in f if line.strip()]
+        print(f"Reading changed files from: {args.changed_files}")
+        try:
+            with open(args.changed_files, 'r') as f:
+                changed_files = [line.strip() for line in f if line.strip()]
+            print(f"Found {len(changed_files)} changed files:")
+            for file_path in changed_files:
+                print(f"  - {file_path}")
+        except Exception as e:
+            print(f"Error reading changed files: {e}")
+            changed_files = []
+    
     try:
         scenario_type = "default"
         import sys
         if len(sys.argv) > 1 and not args.changed_files:
             scenario_type = sys.argv[1]
+        
+        print(f"Generating instructions for scenario: {scenario_type}")
         instructions = generate_browser_instructions(scenario_type, changed_files)
         output_file = "generated_instructions.txt"
         with open(output_file, 'w', encoding='utf-8') as f:

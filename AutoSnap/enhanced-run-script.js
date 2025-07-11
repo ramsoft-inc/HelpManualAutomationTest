@@ -41,6 +41,19 @@ for (let i = 0; i < args.length; i++) {
     }
 }
 
+// Log the changed files for debugging
+if (changedFiles) {
+    console.log(`📁 Changed files file: ${changedFiles}`);
+    try {
+        const fs = await import('node:fs');
+        const changedFilesContent = fs.readFileSync(changedFiles, 'utf8');
+        console.log('📄 Changed files content:');
+        console.log(changedFilesContent);
+    } catch (error) {
+        console.log(`⚠️  Could not read changed files: ${error.message}`);
+    }
+}
+
 const getScenarioType = () => {
     if (modeArg) return modeArg;
     const modeIndex = args.findIndex(arg => arg === '--mode' || arg === '-m');
@@ -194,7 +207,7 @@ const MODE_DESCRIPTIONS = {
     }
     
     const browser = await chromium.launch({
-        headless: True,
+        headless: true,
         channel: 'chrome',
         args: [
             "--disable-notifications",

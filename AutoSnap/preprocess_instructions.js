@@ -12,6 +12,7 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
         // Build the argument list
         const args = [];
         if (changedFiles) {
+            console.log(`📁 Passing changed files: ${changedFiles}`);
             args.push('--changed-files', changedFiles);
         }
         // Run the Python script with only supported arguments
