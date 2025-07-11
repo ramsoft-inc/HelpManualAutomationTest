@@ -167,45 +167,25 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     content = ""
     spanish_content = ""
 
-    # If changed_files is provided, read all files and concatenate their contents
-    if changed_files and len(changed_files) > 0:
-        print(f"Processing {len(changed_files)} changed files...")
-        
-        # Separate MD and MDX files for logging
-        md_files = [f for f in changed_files if f.endswith('.md')]
-        mdx_files = [f for f in changed_files if f.endswith('.mdx')]
-        
-        print(f"  MD files: {len(md_files)}")
-        print(f"  MDX files: {len(mdx_files)}")
-        
-        for file_path in changed_files:
-            try:
-                file_type = "MDX" if file_path.endswith('.mdx') else "MD"
-                print(f"  Reading {file_type}: {file_path}")
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    file_content = file.read()
-                    content += f"\n---\n# {file_path} ({file_type})\n{file_content}"
-                    print(f"    Successfully read {len(file_content)} characters")
-            except Exception as e:
-                print(f"    Could not read {file_path}: {e}")
-    else:
-        print("No changed files provided, using fallback logic")
-        # Fallback to old logic if no changed files provided
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(current_dir, 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
-        file_path_spanish = os.path.join(current_dir, 'spanish', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md')
+    print(f"Processing {len(changed_files)} changed files...")
+    
+    # Separate MD and MDX files for logging
+    md_files = [f for f in changed_files if f.endswith('.md')]
+    mdx_files = [f for f in changed_files if f.endswith('.mdx')]
+    
+    print(f"  MD files: {len(md_files)}")
+    print(f"  MDX files: {len(mdx_files)}")
+    
+    for file_path in changed_files:
         try:
-            if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    content = file.read()
+            file_type = "MDX" if file_path.endswith('.mdx') else "MD"
+            print(f"  Reading {file_type}: {file_path}")
+            with open(file_path, 'r', encoding='utf-8') as file:
+                file_content = file.read()
+                content += f"\n---\n# {file_path} ({file_type})\n{file_content}"
+                print(f"    Successfully read {len(file_content)} characters")
         except Exception as e:
-            print(f"Error: {e}")
-        try:
-            if os.path.exists(file_path_spanish):
-                with open(file_path_spanish, 'r', encoding='utf-8') as file:
-                    spanish_content = file.read()
-        except Exception as e:
-            print(f"Error: {e}")
+            print(f"    Could not read {file_path}: {e}")
 
     # Initialize LLM here as it's needed for document instruction generation
     llm = AzureChatOpenAI(azure_deployment="gpt-4.1", openai_api_version="2024-02-15-preview")
