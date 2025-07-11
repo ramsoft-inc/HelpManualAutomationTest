@@ -104,7 +104,9 @@ Here's a structured layout for the **Calibration Tool** section in the Help Manu
 This feature links multiple series of images together. It offers two
 options:
 
-![mo4](./img/mo4.png)
+{/*
+  placeholder for a screenshot
+*/}
 
 - **Unlink**: Click to unlink the series.
 
