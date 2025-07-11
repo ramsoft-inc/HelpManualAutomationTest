@@ -319,35 +319,46 @@ def main():
     
     if args.changed_files:
         print(f"Reading changed files from: {args.changed_files}")
-        try:
-            with open(args.changed_files, 'r') as f:
-                changed_files = [line.strip() for line in f if line.strip()]
-            print(f"Found {len(changed_files)} changed files:")
-            
-            # Categorize files
-            docs_md_files = [f for f in changed_files if f.endswith('.md') and f.startswith('docs/')]
-            docs_mdx_files = [f for f in changed_files if f.endswith('.mdx') and f.startswith('docs/')]
-            other_files = [f for f in changed_files if not (f.endswith('.md') or f.endswith('.mdx')) or not f.startswith('docs/')]
-            
-            print(f"  Docs MD files ({len(docs_md_files)}):")
-            for file_path in docs_md_files:
-                print(f"    - {file_path}")
-            
-            print(f"  Docs MDX files ({len(docs_mdx_files)}):")
-            for file_path in docs_mdx_files:
-                print(f"    - {file_path}")
-            
-            print(f"  Other files ({len(other_files)}):")
-            for file_path in other_files:
-                print(f"    - {file_path}")
-            
-            # Use only docs markdown files for processing
-            changed_files = docs_md_files + docs_mdx_files
-            print(f"Processing {len(changed_files)} docs files (MD + MDX)")
-            
-        except Exception as e:
-            print(f"Error reading changed files: {e}")
-            changed_files = []
+        
+        # Check if the argument is a single .md or .mdx file
+        if args.changed_files.endswith('.md') or args.changed_files.endswith('.mdx'):
+            if os.path.exists(args.changed_files):
+                changed_files = [args.changed_files]
+                print(f"Single file provided: {args.changed_files}")
+            else:
+                print(f"File not found: {args.changed_files}")
+                changed_files = []
+        else:
+            # Treat as a file containing a list of files
+            try:
+                with open(args.changed_files, 'r') as f:
+                    changed_files = [line.strip() for line in f if line.strip()]
+                print(f"Found {len(changed_files)} changed files:")
+                
+                # Categorize files
+                docs_md_files = [f for f in changed_files if f.endswith('.md') and ('docs/' in f)]
+                docs_mdx_files = [f for f in changed_files if f.endswith('.mdx') and ('docs/' in f)]
+                other_files = [f for f in changed_files if not (f.endswith('.md') or f.endswith('.mdx')) or not ('docs/' in f)]
+                
+                print(f"  Docs MD files ({len(docs_md_files)}):")
+                for file_path in docs_md_files:
+                    print(f"    - {file_path}")
+                
+                print(f"  Docs MDX files ({len(docs_mdx_files)}):")
+                for file_path in docs_mdx_files:
+                    print(f"    - {file_path}")
+                
+                print(f"  Other files ({len(other_files)}):")
+                for file_path in other_files:
+                    print(f"    - {file_path}")
+                
+                # Use only docs markdown files for processing
+                changed_files = docs_md_files + docs_mdx_files
+                print(f"Processing {len(changed_files)} docs files (MD + MDX)")
+                
+            except Exception as e:
+                print(f"Error reading changed files: {e}")
+                changed_files = []
     
     try:
         scenario_type = "default"
