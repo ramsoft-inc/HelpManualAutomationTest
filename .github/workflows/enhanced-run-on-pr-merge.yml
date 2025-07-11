@@ -54,7 +54,7 @@ jobs:
         id: check_docs
         run: |
           echo "=== Checking for docs changes ==="
-          grep -E '^docs/.*\.(md|mdx)$' changed_files.txt > AutoSnap/docs_changed_files.txt || true
+          grep -E '^docs/.*\.(md|mdx)$' changed_files.txt | xargs -I{} realpath {} > AutoSnap/docs_changed_files.txt || true
           if [ -s AutoSnap/docs_changed_files.txt ]; then
             echo "docs_changed=true" >> $GITHUB_OUTPUT
             echo "Docs markdown or mdx files found:"
@@ -74,8 +74,10 @@ jobs:
             echo "mode=ui_change" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run enhanced screenshot script
+      - name: Run enhanced screenshot script for each file
         if: steps.check_docs.outputs.docs_changed == 'true'
         run: |
-          node enhanced-run-script.js --mode ${{ steps.detect_mode.outputs.mode }} --changed-files docs_changed_files.txt
+          while IFS= read -r file; do
+            node enhanced-run-script.js --mode ${{ steps.detect_mode.outputs.mode }} --changed-files "$file"
+          done < docs_changed_files.txt
         working-directory: ./AutoSnap 
