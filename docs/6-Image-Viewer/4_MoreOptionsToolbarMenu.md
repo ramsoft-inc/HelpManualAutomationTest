@@ -200,4 +200,11 @@ Allows you to open the current image in a separate window.
   placeholder for a screenshot
 */}
 
+**Fullscreen Mode (Toggle Button)**
 
+Allows you to view the image in full screen mode. Clicking the button
+again will exit full screen mode.
+
+{/*
+  placeholder for a screenshot
+*/}
