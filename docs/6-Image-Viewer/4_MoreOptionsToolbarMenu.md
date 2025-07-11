@@ -191,7 +191,6 @@ seen below).
 {/*
   placeholder for a screenshot
 */}
-
 **Popout in Window**
 
 Allows you to open the current image in a separate window.
