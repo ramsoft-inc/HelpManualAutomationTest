@@ -54,11 +54,11 @@ jobs:
         id: check_docs
         run: |
           echo "=== Checking for docs changes ==="
-          grep -E '^docs/.*\.(md|mdx)$' changed_files.txt > docs_changed_files.txt || true
-          if [ -s docs_changed_files.txt ]; then
+          grep -E '^docs/.*\.(md|mdx)$' changed_files.txt > AutoSnap/docs_changed_files.txt || true
+          if [ -s AutoSnap/docs_changed_files.txt ]; then
             echo "docs_changed=true" >> $GITHUB_OUTPUT
             echo "Docs markdown or mdx files found:"
-            cat docs_changed_files.txt
+            cat AutoSnap/docs_changed_files.txt
           else
             echo "docs_changed=false" >> $GITHUB_OUTPUT
             echo "No docs markdown or mdx files changed, skipping workflow"
@@ -68,7 +68,7 @@ jobs:
         id: detect_mode
         if: steps.check_docs.outputs.docs_changed == 'true'
         run: |
-          if grep -E 'placeholder for a screenshot' docs_changed_files.txt -iq; then
+          if grep -E 'placeholder for a screenshot' AutoSnap/docs_changed_files.txt -iq; then
             echo "mode=new_feature" >> $GITHUB_OUTPUT
           else
             echo "mode=ui_change" >> $GITHUB_OUTPUT
