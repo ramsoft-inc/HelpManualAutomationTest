@@ -54,7 +54,7 @@ jobs:
         id: check_docs
         run: |
           echo "=== Checking for docs changes ==="
-          grep -E '^docs/.*\.(md|mdx)$' changed_files.txt || true > docs_changed_files.txt
+          grep -E '^docs/.*\.(md|mdx)$' changed_files.txt > docs_changed_files.txt || true
           if [ -s docs_changed_files.txt ]; then
             echo "docs_changed=true" >> $GITHUB_OUTPUT
             echo "Docs markdown or mdx files found:"
