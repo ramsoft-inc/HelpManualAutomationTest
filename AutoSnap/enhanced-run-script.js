@@ -47,8 +47,28 @@ if (changedFiles) {
     try {
         const fs = await import('node:fs');
         const changedFilesContent = fs.readFileSync(changedFiles, 'utf8');
+        const fileList = changedFilesContent.split('\n').filter(line => line.trim());
+        
         console.log('📄 Changed files content:');
         console.log(changedFilesContent);
+        
+        console.log('\n=== File Analysis ===');
+        console.log(`Total files: ${fileList.length}`);
+        
+        // Categorize files
+        const docsMdFiles = fileList.filter(file => file.match(/^docs\/.*\.md$/));
+        const docsMdxFiles = fileList.filter(file => file.match(/^docs\/.*\.mdx$/));
+        const otherFiles = fileList.filter(file => !file.match(/^docs\/.*\.(md|mdx)$/));
+        
+        console.log(`Docs MD files: ${docsMdFiles.length}`);
+        docsMdFiles.forEach(file => console.log(`  - ${file}`));
+        
+        console.log(`Docs MDX files: ${docsMdxFiles.length}`);
+        docsMdxFiles.forEach(file => console.log(`  - ${file}`));
+        
+        console.log(`Other files: ${otherFiles.length}`);
+        otherFiles.forEach(file => console.log(`  - ${file}`));
+        
     } catch (error) {
         console.log(`⚠️  Could not read changed files: ${error.message}`);
     }
@@ -130,6 +150,16 @@ const MODE_DESCRIPTIONS = {
         };
         
         generatedInstructions = fallbackInstructions[SCENARIO_TYPE] || fallbackInstructions["default"];
+    }
+
+    // === EARLY EXIT IF NO DOCUMENT WAS PROCESSED ===
+    const NO_DOC_MSG = "Default: No document content was processed or an error occurred during instruction generation.";
+    if (
+      generatedInstructions.trim() === NO_DOC_MSG ||
+      generatedInstructions.trim().startsWith("Default: No document content was processed")
+    ) {
+      console.log("❌ No document was processed. Skipping browser automation and post steps.");
+      process.exit(0);
     }
     
     // Step 3: Initialize browser and tracewright

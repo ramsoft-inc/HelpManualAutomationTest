@@ -170,12 +170,21 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     # If changed_files is provided, read all files and concatenate their contents
     if changed_files and len(changed_files) > 0:
         print(f"Processing {len(changed_files)} changed files...")
+        
+        # Separate MD and MDX files for logging
+        md_files = [f for f in changed_files if f.endswith('.md')]
+        mdx_files = [f for f in changed_files if f.endswith('.mdx')]
+        
+        print(f"  MD files: {len(md_files)}")
+        print(f"  MDX files: {len(mdx_files)}")
+        
         for file_path in changed_files:
             try:
-                print(f"  Reading: {file_path}")
+                file_type = "MDX" if file_path.endswith('.mdx') else "MD"
+                print(f"  Reading {file_type}: {file_path}")
                 with open(file_path, 'r', encoding='utf-8') as file:
                     file_content = file.read()
-                    content += f"\n---\n# {file_path}\n{file_content}"
+                    content += f"\n---\n# {file_path} ({file_type})\n{file_content}"
                     print(f"    Successfully read {len(file_content)} characters")
             except Exception as e:
                 print(f"    Could not read {file_path}: {e}")
@@ -334,8 +343,28 @@ def main():
             with open(args.changed_files, 'r') as f:
                 changed_files = [line.strip() for line in f if line.strip()]
             print(f"Found {len(changed_files)} changed files:")
-            for file_path in changed_files:
-                print(f"  - {file_path}")
+            
+            # Categorize files
+            docs_md_files = [f for f in changed_files if f.endswith('.md') and f.startswith('docs/')]
+            docs_mdx_files = [f for f in changed_files if f.endswith('.mdx') and f.startswith('docs/')]
+            other_files = [f for f in changed_files if not (f.endswith('.md') or f.endswith('.mdx')) or not f.startswith('docs/')]
+            
+            print(f"  Docs MD files ({len(docs_md_files)}):")
+            for file_path in docs_md_files:
+                print(f"    - {file_path}")
+            
+            print(f"  Docs MDX files ({len(docs_mdx_files)}):")
+            for file_path in docs_mdx_files:
+                print(f"    - {file_path}")
+            
+            print(f"  Other files ({len(other_files)}):")
+            for file_path in other_files:
+                print(f"    - {file_path}")
+            
+            # Use only docs markdown files for processing
+            changed_files = docs_md_files + docs_mdx_files
+            print(f"Processing {len(changed_files)} docs files (MD + MDX)")
+            
         except Exception as e:
             print(f"Error reading changed files: {e}")
             changed_files = []
