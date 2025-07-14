@@ -68,7 +68,7 @@ jobs:
         id: detect_mode
         if: steps.check_docs.outputs.docs_changed == 'true'
         run: |
-          if grep -E 'placeholder for a screenshot' AutoSnap/docs_changed_files.txt -iq; then
+          if grep -E 'placeholder' AutoSnap/docs_changed_files.txt -iq; then
             echo "mode=new_feature" >> $GITHUB_OUTPUT
           else
             echo "mode=ui_change" >> $GITHUB_OUTPUT
