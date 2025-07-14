@@ -96,11 +96,9 @@ def get_prompt_for_new_feature( doc_content):
     Generates a prompt for filling a screenshot placeholder for a new document or feature.
     """
     return f"""
-A new document section or feature has been added, and there is a placeholder for a screenshot that needs to be filled with .
+The goal is to take a screenshots of the website to replace the placeholder.
 
-You are to write instructions that help navigate through the website to reach the exact position needed to take the new screenshot for this feature or document section.
-
-The documentation already contains image paths, so that tells you which screenshot you need to take and what each image represents. To understand what the image shows, look at both the image filename and the text/content around it.
+You are to write instructions that help navigate through the website to reach the exact position where there are placeholders to take screenshots to place it in the placeholders.
 
 Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
 - This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
@@ -111,6 +109,10 @@ These instructions will be used in the browser automation tool Tracewright, so t
 
 The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
 
+# The above code is providing instructions for documenting elements to interact with in Python code.
+# It suggests including the English name of the element and describing its appearance or position if
+# it helps identify it faster. This is helpful for matching HTML tags and understanding the purpose of
+# each element in the code.
 When describing the elements to interact with:
 - Include the English name of the element (it helps match HTML tags).
 - Describe the appearance or position of the element if it helps identify it faster.
@@ -123,12 +125,11 @@ When describing the elements to interact with:
 - Every step must indicate a specific browser action.
 - Each instruction must describe **a single, actionable browser operation**.
 - Use **imperative voice** (e.g., "find", "click", "enter").
-- **CRITICAL: For every element you interact with, you MUST include BOTH the English name of the element in the instruction.**
+- **CRITICAL: For every element you interact with, you MUST include the name of the element in the instruction.**
 - Be **explicit** about:
   - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
   - **Visual characteristics** (e.g., button color, icons, shapes)
   - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
-- If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
 - Conserve the order of instruction to match the documentation.
 - Everything you output should be just an instruction and nothing else — no headings or summaries.
 - The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
@@ -139,12 +140,11 @@ When describing the elements to interact with:
 - IF there is a command to popout window then ignore it do not add it to the instructions.
 - Take screenshots if there are placeholders for it and name them accordingly.
 - If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
-
 ---
 Example output:
 1.look for the worklist table displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
 2.locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click on it
-3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
+
 
 but the wheel has the document viewer button, image viewer button, study history, billing, etc.
 ---
