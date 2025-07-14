@@ -68,11 +68,24 @@ jobs:
         id: detect_mode
         if: steps.check_docs.outputs.docs_changed == 'true'
         run: |
-          if grep -E 'placeholder' AutoSnap/docs_changed_files.txt -iq; then
-            echo "mode=new_feature" >> $GITHUB_OUTPUT
-          else
-            echo "mode=ui_change" >> $GITHUB_OUTPUT
-          fi
+          echo "=== Checking for placeholder text in changed files ==="
+          while IFS= read -r file; do
+            echo "📄 Checking file: $file"
+            echo "--- File content ---"
+            cat "$file"
+            echo "--- End of file content ---"
+            echo ""
+            if grep -n 'placeholder' "$file"; then
+              echo "✅ Found 'placeholder' in $file"
+              echo "mode=new_feature" >> $GITHUB_OUTPUT
+              echo "📋 Detected mode: new_feature (found placeholder in changed files)"
+              exit 0
+            else
+              echo "❌ No 'placeholder' found in $file"
+            fi
+          done < AutoSnap/docs_changed_files.txt
+          echo "mode=ui_change" >> $GITHUB_OUTPUT
+          echo "📋 Detected mode: ui_change (no placeholder found in changed files)"
 
       - name: Run enhanced screenshot script for each file
         if: steps.check_docs.outputs.docs_changed == 'true'
