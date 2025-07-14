@@ -140,6 +140,8 @@ When describing the elements to interact with:
 - IF there is a command to popout window then ignore it do not add it to the instructions.
 - Take screenshots if there are placeholders for it and name them accordingly.
 - If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
+- Ignore image Paths that are in the documentation. Do not add them or use them to make instructions just straight ignore them.
+- Finish the instructions at the last placeholder because that is the objective, doing anything after is of no point.
 ---
 Example output:
 1.look for the worklist table displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
@@ -192,7 +194,7 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
 
     # Generate instructions from document content based on scenario
     document_instructions = "Default: No document content was processed or an error occurred during instruction generation."
-    
+    print("this is the scenario type", scenario_type)
     if content and content.strip():  # Check if content is not empty or just whitespace
         # Select the appropriate prompt based on scenario type
         if scenario_type == "ui_change":
