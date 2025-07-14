@@ -282,8 +282,8 @@ const MODE_DESCRIPTIONS = {
         
         // Wait for page to fully load and settle
         console.log('⏳ Waiting for page to load and settle...');
-        await page.waitForLoadState('networkidle', { timeout: 6000000 });
-        await page.waitForLoadState('domcontentloaded', { timeout: 6000000 });
+        // await page.waitForLoadState('networkidle', { timeout: 6000000 });
+        // await page.waitForLoadState('domcontentloaded', { timeout: 6000000 });
         
         // Additional wait to ensure all dynamic content is loaded
         await page.waitForTimeout(2000);
