@@ -52,6 +52,7 @@ below features:
 
 - **Overlay:** Allows you to overlay different image layers.
 
+
 <!-- placeholder for a screenshot -->
 - **Scout Lines:** Enables you to view scout lines on the image.
 
