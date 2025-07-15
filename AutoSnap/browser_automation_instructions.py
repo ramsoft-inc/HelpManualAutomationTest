@@ -199,7 +199,7 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
         # Select the appropriate prompt based on scenario type
         if scenario_type == "ui_change":
             # UI change: replace each image, no Spanish document needed
-            instruction_generation_prompt = get_prompt_for_ui_change(content)
+            instruction_generation_prompt = get_prompt_for_new_feature(content)
         elif scenario_type == "new_feature":
             # New feature: find placeholders, only English document needed
             instruction_generation_prompt = get_prompt_for_new_feature(content)
