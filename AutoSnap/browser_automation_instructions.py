@@ -95,6 +95,7 @@ def get_prompt_for_new_feature( doc_content):
     """
     Generates a prompt for filling a screenshot placeholder for a new document or feature.
     """
+    print("have used the get_prompt_for_new_feature function")
     return f"""
 The goal is to take a screenshots of the website to replace the placeholder.
 
@@ -107,12 +108,10 @@ Your job is to write all steps needed to reach the screen **and ensure the corre
 
 These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
 
-The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+The only goal is to capture screenshots to place at the placeholders — so do not include any steps that aren't necessary for that.
 
 # The above code is providing instructions for documenting elements to interact with in Python code.
-# It suggests including the English name of the element and describing its appearance or position if
-# it helps identify it faster. This is helpful for matching HTML tags and understanding the purpose of
-# each element in the code.
+# It suggests including the name of the element and describing its appearance or position if it helps identify it faster. This is helpful for matching HTML tags and understanding the purpose of each element in the code.
 When describing the elements to interact with:
 - Include the English name of the element (it helps match HTML tags).
 - Describe the appearance or position of the element if it helps identify it faster.
@@ -132,7 +131,7 @@ When describing the elements to interact with:
   - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
 - Conserve the order of instruction to match the documentation.
 - Everything you output should be just an instruction and nothing else — no headings or summaries.
-- The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+- The goal is to take screenshots to place at the placeholders; if some action from the documentation is not required for these screenshots, then ignore it.
 - If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
 - For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
 - You are already at the website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
