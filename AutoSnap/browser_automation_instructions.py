@@ -95,10 +95,13 @@ def get_prompt_for_new_feature( doc_content):
     """
     Generates a prompt for filling a screenshot placeholder for a new document or feature.
     """
+                      
+    doc_content = doc_content.replace("![", "").replace("](", "").replace(")", "")
+
+    print(doc_content)
     print("have used the get_prompt_for_new_feature function")
     return f"""
 The goal is to take a screenshots of the website to replace the placeholder.
-
 You are to write instructions that help navigate through the website to reach the exact position where there are placeholders to take screenshots to place it in the placeholders.
 
 Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
