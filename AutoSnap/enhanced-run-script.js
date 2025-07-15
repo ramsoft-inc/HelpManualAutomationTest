@@ -118,50 +118,18 @@ const MODE_DESCRIPTIONS = {
         console.log('\n' + '='.repeat(80) + '\n');
     } catch (error) {
         console.error('⚠️  Instruction generation failed, using fallback instructions:', error.message);
-        
-        // Mode-specific fallback instructions
-        const fallbackInstructions = {
-            "ui_change": `
-                - find the Pin place holder and enter the pin 145948
-                - find the continue button and click on it
-                - find any record in the worklist with a patient name and click on it
-                - wait for any loading overlays or spinners to disappear completely
-                - find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-                - take screenshots of any visible UI elements that need updating
-                Done
-            `,
-            "new_feature": `
-                - find the Pin place holder and enter the pin 145948
-                - find the continue button and click on it
-                - find any record in the worklist with a patient name and click on it
-                - wait for any loading overlays or spinners to disappear completely
-                - navigate to the new feature area
-                - take screenshots of the new feature elements
-                Done
-            `,
-            "default": `
-                - find the Pin place holder and enter the pin 145948
-                - find the continue button and click on it
-                - find any record in the worklist with a patient name and click on it
-                - wait for any loading overlays or spinners to disappear completely
-                - find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-                Done
-            `
-        };
-        
-        generatedInstructions = fallbackInstructions[SCENARIO_TYPE] || fallbackInstructions["default"];
+        console.log('🔍 Browser will remain open for debugging. Close manually when done.');
     }
 
-    // === EARLY EXIT IF NO DOCUMENT WAS PROCESSED ===
-    const NO_DOC_MSG = "Default: No document content was processed or an error occurred during instruction generation.";
-    if (
-      generatedInstructions.trim() === NO_DOC_MSG ||
-      generatedInstructions.trim().startsWith("Default: No document content was processed")
-    ) {
-      console.log("❌ No document was processed. Skipping browser automation and post steps.");
-      process.exit(0);
-    }
-    
+// === EARLY EXIT IF NO DOCUMENT WAS PROCESSED ===
+const NO_DOC_MSG = "Default: No document content was processed or an error occurred during instruction generation.";
+if (
+  generatedInstructions.trim() === NO_DOC_MSG ||
+  generatedInstructions.trim().startsWith("Default: No document content was processed")
+) {
+  console.log("❌ No document was processed. Skipping browser automation and post steps.");
+  process.exit(0);
+}
     // Step 3: Initialize browser and tracewright
     console.log('🌐 Launching browser...');
     
