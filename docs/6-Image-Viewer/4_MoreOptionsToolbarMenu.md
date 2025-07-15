@@ -52,8 +52,7 @@ below features:
 
 - **Overlay:** Allows you to overlay different image layers.
 
-![mo3](./img/mo3.png)
-
+<!-- placeholder for a screenshot -->
 - **Scout Lines:** Enables you to view scout lines on the image.
 
 - **Unified Stack:** Merges multiple series into a single stack for easy

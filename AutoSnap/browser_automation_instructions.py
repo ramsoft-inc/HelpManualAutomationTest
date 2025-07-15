@@ -183,11 +183,9 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     for file_path in changed_files:
         try:
             file_type = "MDX" if file_path.endswith('.mdx') else "MD"
-            print(f"  Reading {file_type}: {file_path}")
             with open(file_path, 'r', encoding='utf-8') as file:
                 file_content = file.read()
                 content += f"\n---\n# {file_path} ({file_type})\n{file_content}"
-                print(f"    Successfully read {len(file_content)} characters")
         except Exception as e:
             print(f"    Could not read {file_path}: {e}")
 
@@ -196,7 +194,6 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
 
     # Generate instructions from document content based on scenario
     document_instructions = "Default: No document content was processed or an error occurred during instruction generation."
-    print("this is the scenario type", scenario_type)
     if content and content.strip():  # Check if content is not empty or just whitespace
         # Select the appropriate prompt based on scenario type
         if scenario_type == "ui_change":
@@ -315,93 +312,50 @@ Also, you are already at the Spanish website homepage, logged in — continue fr
     return task
 
 def main():
-    """Main function to execute the instruction generation process."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--changed-files', type=str, help='Path to file containing list of changed files')
+    """Main function to process command line arguments and generate instructions."""
+    parser = argparse.ArgumentParser(description='Generate browser automation instructions')
+    parser.add_argument('--changed-files', help='Path to file containing list of changed files, or a single file path')
     args = parser.parse_args()
-    changed_files = []
-    
-    if args.changed_files:
-        print(f"=== PROCESSING CHANGED FILES ===")
-        print(f"Input argument: {args.changed_files}")
-        print(f"Argument type: {'Single file' if (args.changed_files.endswith('.md') or args.changed_files.endswith('.mdx')) else 'List file'}")
-        
-        # Check if the argument is a single .md or .mdx file
-        if args.changed_files.endswith('.md') or args.changed_files.endswith('.mdx'):
-            print(f"Detected single markdown file: {args.changed_files}")
-            if os.path.exists(args.changed_files):
-                changed_files = [args.changed_files]
-                print(f"✅ Single file found and added to processing list")
-                print(f"File path: {args.changed_files}")
-                print(f"File exists: True")
-            else:
-                print(f"❌ Single file not found: {args.changed_files}")
-                print(f"Current working directory: {os.getcwd()}")
-                changed_files = []
-        else:
-            print(f"Detected list file, reading contents...")
-            # Treat as a file containing a list of files
-            try:
-                with open(args.changed_files, 'r') as f:
-                    changed_files = [line.strip() for line in f if line.strip()]
-                print(f"✅ Successfully read list file")
-                print(f"Found {len(changed_files)} total entries in list file")
-                
-                # Categorize files
-                docs_md_files = [f for f in changed_files if f.endswith('.md') and ('docs/' in f)]
-                docs_mdx_files = [f for f in changed_files if f.endswith('.mdx') and ('docs/' in f)]
-                other_files = [f for f in changed_files if not (f.endswith('.md') or f.endswith('.mdx')) or not ('docs/' in f)]
-                
-                print(f"=== FILE CATEGORIZATION ===")
-                print(f"Docs MD files ({len(docs_md_files)}):")
-                for file_path in docs_md_files:
-                    print(f"    - {file_path}")
-                
-                print(f"Docs MDX files ({len(docs_mdx_files)}):")
-                for file_path in docs_mdx_files:
-                    print(f"    - {file_path}")
-                
-                print(f"Other files ({len(other_files)}):")
-                for file_path in other_files:
-                    print(f"    - {file_path}")
-                
-                # Use only docs markdown files for processing
-                changed_files = docs_md_files + docs_mdx_files
-                print(f"=== FINAL PROCESSING LIST ===")
-                print(f"Total docs files to process: {len(changed_files)} (MD + MDX)")
-                
-            except Exception as e:
-                print(f"❌ Error reading list file: {e}")
-                print(f"File path: {args.changed_files}")
-                print(f"Current working directory: {os.getcwd()}")
-                changed_files = []
     
     try:
+        changed_files = []
+        
+        if args.changed_files:
+            # Check if it's a single markdown file or a list file
+            if args.changed_files.endswith('.md') or args.changed_files.endswith('.mdx'):
+                # Single markdown file
+                if os.path.exists(args.changed_files):
+                    changed_files = [args.changed_files]
+                else:
+                    pass
+            else:
+                # List file containing paths
+                try:
+                    with open(args.changed_files, 'r', encoding='utf-8') as f:
+                        file_list = [line.strip() for line in f if line.strip()]
+                    
+                    # Filter to only docs markdown files
+                    docs_md_files = [f for f in file_list if f.startswith('docs/') and f.endswith('.md')]
+                    docs_mdx_files = [f for f in file_list if f.startswith('docs/') and f.endswith('.mdx')]
+                    other_files = [f for f in file_list if not (f.startswith('docs/') and (f.endswith('.md') or f.endswith('.mdx')))]
+                    
+                    # Combine docs files for processing
+                    changed_files = docs_md_files + docs_mdx_files
+                    
+                except Exception as e:
+                    pass
+
+        # Default scenario type
         scenario_type = "default"
         import sys
         if len(sys.argv) > 1 and not args.changed_files:
             scenario_type = sys.argv[1]
         
-        print(f"=== CALLING INSTRUCTION GENERATION ===")
-        print(f"Scenario type: {scenario_type}")
-        print(f"Changed files to pass to function: {len(changed_files)} files")
-        for i, file_path in enumerate(changed_files):
-            print(f"  {i+1}. {file_path}")
-        
-        print(f"Calling generate_browser_instructions with:")
-        print(f"  - scenario_type: {scenario_type}")
-        print(f"  - changed_files: {changed_files}")
-        
         instructions = generate_browser_instructions(scenario_type, changed_files)
-        
-        print(f"=== INSTRUCTION GENERATION COMPLETE ===")
-        print(f"Instructions length: {len(instructions)} characters")
-        print(f"Instructions preview (first 200 chars): {instructions[:200]}...")
         
         output_file = "generated_instructions.txt"
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(instructions)
-        print(f"\nInstructions saved to: {output_file}")
     except Exception as e:
         import logging
         logging.error(f"Error in main execution: {e}")
