@@ -24,72 +24,72 @@ import argparse
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_prompt_for_ui_change(doc_content):
-    """
-    Generates a prompt for replacing a screenshot due to a UI element change.
-    """
-    return f"""
-The goal is to take a new screenshots of the website to replace the outdated image because the UI element has changed (selector, appearance, or structure).
+# def get_prompt_for_ui_change(doc_content):
+#     """
+#     Generates a prompt for replacing a screenshot due to a UI element change.
+#     """
+#     return f"""
+# The goal is to take a new screenshots of the website to replace the outdated image because the UI element has changed (selector, appearance, or structure).
 
-You are to write instructions that help navigate through the website to reach the exact position needed to take the new screenshot.
+# You are to write instructions that help navigate through the website to reach the exact position needed to take the new screenshot.
 
-The documentation already contains image paths, so that tells you which screenshot you need to take and what each image represents. To understand what the image shows, look at both the image filename and the text/content around it.
+# The documentation already contains image paths, so that tells you which screenshot you need to take and what each image represents. To understand what the image shows, look at both the image filename and the text/content around it.
 
-Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
-- This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
-- If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
-- Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
+# Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
+# - This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
+# - If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
+# - Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
 
-These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+# These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
 
-The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+# The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
 
-When describing the elements to interact with:
-- Include the English name of the element (it helps match HTML tags).
-- Describe the appearance or position of the element if it helps identify it faster.
+# When describing the elements to interact with:
+# - Include the English name of the element (it helps match HTML tags).
+# - Describe the appearance or position of the element if it helps identify it faster.
 
----
+# ---
 
-## Instruction Format Guidelines
+# ## Instruction Format Guidelines
 
-- Use a number to define each step starts with 1.
-- Every step must indicate a specific browser action.
-- Each instruction must describe **a single, actionable browser operation**.
-- Use **imperative voice** (e.g., "find", "click", "enter").
-- **CRITICAL: For every element you interact with, you MUST include the name of the element in the instruction.**
-- Be **explicit** about:
-  - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
-  - **Visual characteristics** (e.g., button color, icons, shapes)
-  - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
-- If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
-- Conserve the order of instruction to match the documentation.
-- Everything you output should be just an instruction and nothing else — no headings or summaries.
-- The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
-- If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
-- For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
-- You are already at the website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
-- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
-- IF there is a command to popout window then ignore it do not add it to the instructions.
-- Take screenshots if there are placeholders for it and name them accordingly.
-- If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
----
-Example output:
-1.look for the worklist table displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
-2.locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click on it
-3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
+# - Use a number to define each step starts with 1.
+# - Every step must indicate a specific browser action.
+# - Each instruction must describe **a single, actionable browser operation**.
+# - Use **imperative voice** (e.g., "find", "click", "enter").
+# - **CRITICAL: For every element you interact with, you MUST include the name of the element in the instruction.**
+# - Be **explicit** about:
+#   - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
+#   - **Visual characteristics** (e.g., button color, icons, shapes)
+#   - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
+# - If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
+# - Conserve the order of instruction to match the documentation.
+# - Everything you output should be just an instruction and nothing else — no headings or summaries.
+# - The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+# - If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
+# - For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
+# - You are already at the website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
+# - Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+# - IF there is a command to popout window then ignore it do not add it to the instructions.
+# - Take screenshots if there are placeholders for it and name them accordingly.
+# - If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
+# ---
+# Example output:
+# 1.look for the worklist table displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
+# 2.locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click on it
+# 3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
 
-but the wheel has the document viewer button, image viewer button, study history, billing, etc.
----
-## Document to Process
+# but the wheel has the document viewer button, image viewer button, study history, billing, etc.
+# ---
+# ## Document to Process
 
-Analyze and convert the following content into automation instructions:
-First to get to the page from where you follow the document You need to know that from home page to get to Document Viewer or Image Viewer you need to click on the "Document Viewer" or "Image Viewer" button on the wheel interface.
-Wheel interface pops up when you click on one of the worklist records just find a name in the worklist table and click on it to open the wheel interface.
+# Analyze and convert the following content into automation instructions:
+# First to get to the page from where you follow the document You need to know that from home page to get to Document Viewer or Image Viewer you need to click on the "Document Viewer" or "Image Viewer" button on the wheel interface.
+# Wheel interface pops up when you click on one of the worklist records just find a name in the worklist table and click on it to open the wheel interface.
 
----
-{doc_content}
----
-"""
+# ---
+# {doc_content}
+# ---
+# """
 
 def get_prompt_for_new_feature( doc_content):
     """
@@ -97,7 +97,7 @@ def get_prompt_for_new_feature( doc_content):
     """
                       
     doc_content = doc_content.replace("![", "").replace("](", "").replace(")", "")
-
+    print("2/n/n/n/n/n")
     print(doc_content)
     print("have used the get_prompt_for_new_feature function")
     return f"""
@@ -142,7 +142,6 @@ When describing the elements to interact with:
 - IF there is a command to popout window then ignore it do not add it to the instructions.
 - Take screenshots if there are placeholders for it and name them accordingly.
 - If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
-- Ignore image Paths that are in the documentation. Do not add them or use them to make instructions just straight ignore them.
 - Finish the instructions at the last placeholder because that is the objective, doing anything after is of no point.
 ---
 Example output:
@@ -151,6 +150,14 @@ Example output:
 
 
 but the wheel has the document viewer button, image viewer button, study history, billing, etc.
+---
+Critical Rules for Taking Screenshots
+Your primary goal is to generate instructions to capture screenshots only where they are explicitly requested by a placeholder. You must learn to differentiate between two types of image indicators in the source document:
+1. The Placeholder (Your ONLY Target):
+You will identify a task to take a screenshot only when you see the following specific HTML comment in the document:
+<!-- placeholder for a screenshot -->
+This is your sole trigger to generate screenshot instructions.
+All steps you write should lead to capturing the UI state described immediately before or after this exact placeholder comment.
 ---
 ## Document to Process
 
@@ -196,89 +203,91 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     document_instructions = "Default: No document content was processed or an error occurred during instruction generation."
     if content and content.strip():  # Check if content is not empty or just whitespace
         # Select the appropriate prompt based on scenario type
-        if scenario_type == "ui_change":
-            # UI change: replace each image, no Spanish document needed
-            instruction_generation_prompt = get_prompt_for_new_feature(content)
-        elif scenario_type == "new_feature":
-            # New feature: find placeholders, only English document needed
-            instruction_generation_prompt = get_prompt_for_new_feature(content)
-        else:
-            # Fallback: use the existing prompt logic
-            instruction_generation_prompt = f"""
-The goal is to take screenshots of the Spanish version of the website to replace each and every image currently shown from the English website in the documentation.
+        print("1/n/n/n/n/n/n")
+        instruction_generation_prompt = get_prompt_for_new_feature(content)
+        # if scenario_type == "ui_change":
+        #     # UI change: replace each image, no Spanish document needed
+        #     instruction_generation_prompt = get_prompt_for_new_feature(content)
+        # elif scenario_type == "new_feature":
+        #     # New feature: find placeholders, only English document needed
+        #     instruction_generation_prompt = get_prompt_for_new_feature(content)
+#         else:
+#             # Fallback: use the existing prompt logic
+#             instruction_generation_prompt = f"""
+# The goal is to take screenshots of the Spanish version of the website to replace each and every image currently shown from the English website in the documentation.
 
-You are going to write instructions that help navigate through the Spanish website to reach the exact position needed to take the screenshot.
+# You are going to write instructions that help navigate through the Spanish website to reach the exact position needed to take the screenshot.
 
-The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
-To understand what the image shows, you need to look at both the image filename and the text/content around it.
+# The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
+# To understand what the image shows, you need to look at both the image filename and the text/content around it.
 
-Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
-- This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
-- If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
-- Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
+# Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
+# - This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
+# - If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
+# - Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
 
-These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+# These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
 
-The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+# The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
 
-When describing the elements to interact with:
+# When describing the elements to interact with:
 
-Include the English name of the element (it helps match HTML tags).
-Include the Spanish name of the element (it helps find the element in the Spanish website using the text locator function).
-Describe the appearance or position of the element if it helps identify it faster.
+# Include the English name of the element (it helps match HTML tags).
+# Include the Spanish name of the element (it helps find the element in the Spanish website using the text locator function).
+# Describe the appearance or position of the element if it helps identify it faster.
 
----
+# ---
 
-## Instruction Format Guidelines
+# ## Instruction Format Guidelines
 
-Follow these strict formatting rules for each instruction:
+# Follow these strict formatting rules for each instruction:
 
-- Use a number to define each step starts with 1.
-- Every step must indicate a specific browser action.
-- Each instruction must describe **a single, actionable browser operation**.
-- Use **imperative voice** (e.g., "find", "click", "enter").
-- **CRITICAL: For every element you interact with, you MUST include BOTH the English name AND the Spanish name of the element in the instruction.**
-- Be **explicit** about:
-  - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
-  - **Visual characteristics** (e.g., button color, icons, shapes)
-  - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
-- If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
-- Conserve the order of instruction to match the documentation.
-- Everything you output should be just an instruction and nothing else — no headings or summaries.
-- The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
-- If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
-- For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
-- You are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
-- Always add this "Based on the intructions executed If you think some screenshot taken is not right, redo the process to oget that screenshot" at the end of the instructions.
-- IF there is a command to popout window then ignore it do not add it to the instructions.
-- Take screenshots if there are placeholders for it and name them accordingly.
-- If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
+# - Use a number to define each step starts with 1.
+# - Every step must indicate a specific browser action.
+# - Each instruction must describe **a single, actionable browser operation**.
+# - Use **imperative voice** (e.g., "find", "click", "enter").
+# - **CRITICAL: For every element you interact with, you MUST include BOTH the English name AND the Spanish name of the element in the instruction.**
+# - Be **explicit** about:
+#   - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
+#   - **Visual characteristics** (e.g., button color, icons, shapes)
+#   - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
+# - If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
+# - Conserve the order of instruction to match the documentation.
+# - Everything you output should be just an instruction and nothing else — no headings or summaries.
+# - The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+# - If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
+# - For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
+# - You are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
+# - Always add this "Based on the intructions executed If you think some screenshot taken is not right, redo the process to oget that screenshot" at the end of the instructions.
+# - IF there is a command to popout window then ignore it do not add it to the instructions.
+# - Take screenshots if there are placeholders for it and name them accordingly.
+# - If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
 
----
+# ---
 
-## Example Output Format
+# ## Example Output Format
 
-1.look for the worklist table (tabla de lista de trabajo) displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
-2.locate the "Document Viewer" (Visor de Documentos) button on the wheel interface — it appears as a paper/document icon — and click on it
-3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
+# 1.look for the worklist table (tabla de lista de trabajo) displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
+# 2.locate the "Document Viewer" (Visor de Documentos) button on the wheel interface — it appears as a paper/document icon — and click on it
+# 3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
 
-but the wheel has the document viewer button, image viewer button, study history, billing, etc.
----
-## Document to Process
+# but the wheel has the document viewer button, image viewer button, study history, billing, etc.
+# ---
+# ## Document to Process
 
-Analyze and convert the following content into automation instructions:
+# Analyze and convert the following content into automation instructions:
 
----
-{content}
----
-For reference of what these buttons are named in Spanish, use this Spanish documentation:
+# ---
+# {content}
+# ---
+# For reference of what these buttons are named in Spanish, use this Spanish documentation:
 
----
-{spanish_content}
----
-Also, you are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table.
-## Generate Automation Instructions for the Spanish website below:
-"""
+# ---
+# {spanish_content}
+# ---
+# Also, you are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table.
+# ## Generate Automation Instructions for the Spanish website below:
+# """
 
         # Log the exact prompt sent to LLM to a text file
         try:
