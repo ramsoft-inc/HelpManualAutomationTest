@@ -17,6 +17,13 @@ steps/**
 AutoSnap/steps/
 AutoSnap/steps/**
 
+# Playwright folder
+playwright/
+**/playwright/
+playwright/**
+/playwright/
+/playwright/**
+
 # Production
 /build
 
