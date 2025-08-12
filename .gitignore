@@ -1,5 +1,21 @@
 # Dependencies
-/node_modules
+node_modules
+node_modules/
+**/node_modules/
+**/node_modules/**
+/node_modules/
+/node_modules/**
+AutoSnap/node_modules/
+AutoSnap/node_modules/**
+
+# Steps folder
+steps/
+**/steps/
+steps/**
+/steps/
+/steps/**
+AutoSnap/steps/
+AutoSnap/steps/**
 
 # Production
 /build
@@ -21,3 +37,26 @@ yarn-debug.log*
 yarn-error.log*
 docusaurus.config.js
 AutoSnap/test_workflow.py
+
+# Exclude images except those in docs and image folders
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+*.ico
+*.webp
+
+# Allow images in docs folder
+!docs/**/*.png
+!docs/**/*.jpg
+!docs/**/*.jpeg
+!docs/**/*.gif
+!docs/**/*.bmp
+!docs/**/*.svg
+!docs/**/*.ico
+!docs/**/*.webp
+
+# Allow images in specific image folders
+!static/img/**
