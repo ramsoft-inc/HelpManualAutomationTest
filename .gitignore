@@ -39,6 +39,16 @@ playwright/**
 .env.test.local
 .env.production.local
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+AutoSnap/__pycache__/
+*/__pycache__/
+**/__pycache__/
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
