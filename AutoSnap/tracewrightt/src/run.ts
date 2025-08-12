@@ -15,6 +15,8 @@ export const run = async (page: Page, options: TracewrightOptions) => {
   const allExecutedStepCode: string[] = [];
   let currentStepCodeResponse: GenerateCodeResponse;
   let currentStepErroredCode: string[] = [];
+  let previousStepThinking: string = ""; // Track previous step's thinking
+  const previousStepsThinking: string[] = []; // Store all steps' thinking for logging
 
   cleanStepFiles();
 
@@ -45,7 +47,8 @@ export const run = async (page: Page, options: TracewrightOptions) => {
       script,
       stepCounter,
       allExecutedStepCode.join("\n"),
-      currentStepErroredCode.join("\n\n")
+      currentStepErroredCode.join("\n\n"),
+      previousStepThinking
     );
     console.info(chalk.gray(currentStepCodeResponse.code));
 
@@ -55,6 +58,14 @@ export const run = async (page: Page, options: TracewrightOptions) => {
     outputTokenTotalCount += currentStepCodeResponse.outputTokenCount;
 
     if (currentStepCodeResponse.code === doneString) {
+      // Print the thinking associated with the done command
+      console.info(chalk.green("*** script completion reason:"));
+      console.info(chalk.blue(currentStepCodeResponse.thinking || "No completion reasoning provided"));
+      
+      // Store the done command thinking as well
+      if (currentStepCodeResponse.thinking) {
+        previousStepsThinking.push(`DONE COMMAND: ${currentStepCodeResponse.thinking}`);
+      }
       break;
     }
 
@@ -68,16 +79,58 @@ export const run = async (page: Page, options: TracewrightOptions) => {
 
     allExecutedStepCode.push(currentStepCodeResponse.code);
     currentStepErroredCode = [];
-
+    
+    // Store the current step's thinking for the next step
+    previousStepThinking = currentStepCodeResponse.thinking || "";
+    
+    // Also store this step's thinking in the array for later logging
+    previousStepsThinking.push(`Step ${stepCounter}: ${previousStepThinking}`);
+    
     console.info(chalk.green("*** end of step"), stepCounter);
+    console.info(chalk.blue("*** thinking for next step: "), previousStepThinking.substring(0, 100) + (previousStepThinking.length > 100 ? "..." : ""));
 
     stepCounter++;
   }
 
-  console.info(chalk.green("*** script completed"));
-  console.info(chalk.green("steps executed:\t"), stepCounter);
-  console.info(chalk.green("\t"), inputTokenTotalCount);
-  console.info(chalk.green("output tokens:\t"), outputTokenTotalCount);
+  console.info(chalk.green("\n==============================================="));
+  console.info(chalk.green("🏁 EXECUTION COMPLETE - FINAL TOKEN REPORT 🏁"));
+  console.info(chalk.green("==============================================="));
+  console.info(chalk.green("Total Steps Executed:\t\t"), chalk.yellow(stepCounter));
+  console.info(chalk.green("Total Input Tokens:\t\t"), chalk.yellow(inputTokenTotalCount.toLocaleString()));
+  console.info(chalk.green("Total Output Tokens:\t\t"), chalk.yellow(outputTokenTotalCount.toLocaleString()));
+  console.info(chalk.green("Total Tokens Used:\t\t"), chalk.yellow((inputTokenTotalCount + outputTokenTotalCount).toLocaleString()));
+  console.info(chalk.green("Average Tokens Per Step:\t"), chalk.yellow(Math.round((inputTokenTotalCount + outputTokenTotalCount) / stepCounter).toLocaleString()));
+  console.info(chalk.green("==============================================="));
+  
+  // Display comprehensive token usage statistics at the end
+  try {
+    // Write detailed token usage statistics to file
+    const tokenLogPath = 'token_usage_summary.txt';
+    const thinkingLogPath = 'ai_thinking_log.txt';
+    
+    // Create a comprehensive token usage summary
+    const timestamp = new Date().toISOString();
+    const tokenSummary = [
+      `\n===== Comprehensive Token Usage Summary (${timestamp}) =====`,
+      `Script completed with ${stepCounter} steps`,
+      `Input tokens: ${inputTokenTotalCount}`,
+      `Output tokens: ${outputTokenTotalCount}`,
+      `Total tokens: ${inputTokenTotalCount + outputTokenTotalCount}`,
+      `Average tokens per step: ${Math.round((inputTokenTotalCount + outputTokenTotalCount) / stepCounter)}`,
+      '====================================================='
+    ].join('\n');
+    
+    // Write the summary to file
+    const fs = await import('fs');
+    fs.appendFileSync(tokenLogPath, tokenSummary + '\n\n');
+    
+    // Don't write thinking logs at the end, they're now written in real-time
+    console.info(chalk.blue("*** AI thinking logs are written in real-time to:"), thinkingLogPath);
+    
+    console.info(chalk.blue("*** Token usage statistics written to:"), tokenLogPath);
+  } catch (e) {
+    console.warn(chalk.yellow("Could not write token usage statistics:"), e.message);
+  }
 
 };
 

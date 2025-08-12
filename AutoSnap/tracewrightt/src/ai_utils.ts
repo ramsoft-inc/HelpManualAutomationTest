@@ -2,6 +2,7 @@ import { Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
+import { apiLogger, APILogEntry } from "./llm_providers/api_logger";
 
 // ---------------------------------------------------------------------------
 // Robustly load the root-level Playwright config regardless of whether we are
@@ -39,6 +40,7 @@ export class AIUtils {
 
   /**
    * Enhanced helper function to extract visible, interactive elements.
+   * This list is meant to be concise and focused on direct interaction points.
    */
   private async getVisibleInteractiveElements(): Promise<Array<any>> {
     return await this.page.evaluate(() => {
@@ -60,9 +62,8 @@ export class AIUtils {
           role: parent.getAttribute('role') || undefined,
           'aria-label': parent.getAttribute('aria-label') || undefined,
           title: parent.getAttribute('title') || undefined,
+          class: parent.className.includes('Mui') ? parent.className.split(' ').filter(c => c.startsWith('Mui')).join(' ') : undefined
         } : undefined;
-        const hasParentIdentifier = parentData && (Object.values(parentData).some(val => val !== undefined && val !== ''));
-
 
         const data: any = {
           tag: el.tagName.toLowerCase(),
@@ -76,8 +77,8 @@ export class AIUtils {
           'aria-labelledby': el.getAttribute('aria-labelledby') || undefined,
           'aria-describedby': el.getAttribute('aria-describedby') || undefined,
           title: el.getAttribute('title') || undefined,
-          text: el.textContent?.trim()?.substring(0, 70) || undefined, // Increased text length
-          parent: hasParentIdentifier ? parentData : undefined
+          text: el.textContent?.trim()?.substring(0, 70) || undefined,
+          parent: parentData
         };
 
         if (el.tagName.toLowerCase() === 'input') {
@@ -89,10 +90,9 @@ export class AIUtils {
           data.href = (el as HTMLAnchorElement).href || undefined;
         }
 
-        // Basic menu item extraction
         if (el.getAttribute('role') === 'menu') {
-          const items = Array.from(el.querySelectorAll(':scope > li[role="menuitem"], :scope > div[role="menuitem"]')) // Direct children
-                             .map(item => item.textContent?.trim().substring(0, 40)) // Shorter text for menu items
+          const items = Array.from(el.querySelectorAll(':scope > li[role="menuitem"], :scope > div[role="menuitem"]'))
+                             .map(item => item.textContent?.trim().substring(0, 40))
                              .filter(text => text && text.length > 0);
           if (items.length > 0) {
             data.menuItems = items;
@@ -106,7 +106,9 @@ export class AIUtils {
         '[role="link"]', '[role="menuitem"]', '[role="tab"]', '[role="checkbox"]', 
         '[role="radio"]', '[role="option"]', '[role="combobox"]', '[role="slider"]', 
         '[role="spinbutton"]', '[role="switch"]', '[contenteditable="true"]', 
-        'a[href]', '[data-cy]', '[data-testid]', '[toolname]', '[aria-label]', '[title]'
+        'a[href]', '[data-cy]', '[data-testid]', '[toolname]', '[aria-label]', '[title]',
+        '[role="region"]', '[role="group"]', 'div[class*="container"]', 'div[class*="section"]',
+        'div[class*="wrapper"]', 'div[class*="card"]', 'div[class*="header"]', 'div[class*="footer"]'
       ].join(', ');
 
       const elements = Array.from(
@@ -118,50 +120,47 @@ export class AIUtils {
         attrs.id || attrs['data-testid'] || attrs['data-cy'] || attrs.role ||
         attrs['aria-label'] || attrs.title || attrs.name || 
         (attrs.text && attrs.text.length > 0) || 
+        (attrs.tag === 'div' && attrs.class && attrs.class.length > 0 && !/^\s*$/.test(attrs.class)) || 
         attrs.placeholder || attrs.href || attrs.menuItems ||
-        attrs.parent // Keep if parent has an identifier
+        (attrs.tag === 'div' && attrs.text && attrs.text.length > 0)
       );
       return elements;
     });
   }
 
-  /**
-   * Enhanced function to extract a broader set of identifiable elements.
-   */
-  private async getIdentifiableElements(maxElements = 500): Promise<Array<any>> {
+  // getIdentifiableElements is no longer used in the prompt context but keeping it for completeness if needed elsewhere
+  private async getIdentifiableElements(maxElements = 250): Promise<Array<any>> {
     return await this.page.evaluate((limit) => {
       const results: any[] = [];
+      const selectorsToExclude = ['html', 'head', 'body', 'script', 'style', 'meta', 'link', 'noscript', 'title'];
       const all = Array.from(document.querySelectorAll('*')) as HTMLElement[];
 
       function getElementData(el: HTMLElement): any {
           const data: any = {
             tag: el.tagName.toLowerCase(),
             id: el.id || undefined,
-            class: (el.className && typeof el.className === 'string') ? (el.className as string).trim().substring(0, 100) : undefined,
+            class: (el.className && typeof el.className === 'string') ? el.className.trim().substring(0, 70) : undefined,
             'data-testid': el.getAttribute('data-testid') || undefined,
             'data-cy': el.getAttribute('data-cy') || undefined,
             role: el.getAttribute('role') || undefined,
             'aria-label': el.getAttribute('aria-label') || undefined,
-            'aria-labelledby': el.getAttribute('aria-labelledby') || undefined,
-            'aria-describedby': el.getAttribute('aria-describedby') || undefined,
             title: el.getAttribute('title') || undefined,
             name: el.getAttribute('name') || undefined,
             toolname: el.getAttribute('toolname') || undefined,
-            text: el.textContent?.trim()?.substring(0, 40) || undefined, // Slightly shorter for general elements
+            text: el.textContent?.trim()?.substring(0, 20) || undefined,
           };
           if (el.tagName.toLowerCase() === 'input') {
             data.placeholder = (el as HTMLInputElement).placeholder || undefined;
-            data.value = (el as HTMLInputElement).value?.substring(0, 30) || undefined;
+            data.value = (el as HTMLInputElement).value?.substring(0, 15) || undefined;
             data.type = (el as HTMLInputElement).type || undefined;
           }
           if (el.tagName.toLowerCase() === 'a') {
             data.href = (el as HTMLAnchorElement).href || undefined;
           }
 
-          // Basic menu item extraction
           if (el.getAttribute('role') === 'menu') {
-            const items = Array.from(el.querySelectorAll(':scope > li[role="menuitem"], :scope > div[role="menuitem"]')) // Direct children
-                               .map(item => item.textContent?.trim().substring(0, 30))
+            const items = Array.from(el.querySelectorAll(':scope > li[role="menuitem"], :scope > div[role="menuitem"]'))
+                               .map(item => item.textContent?.trim().substring(0, 15))
                                .filter(text => text && text.length > 0);
             if (items.length > 0) {
               data.menuItems = items;
@@ -172,17 +171,17 @@ export class AIUtils {
       
       for (const el of all) {
         if (results.length >= limit) break;
+        if (selectorsToExclude.includes(el.tagName.toLowerCase())) continue;
+
         const data = getElementData(el);
-        // Filter: include if it has any significant identifying attribute
         if (data.id || data['data-testid'] || data['data-cy'] || data.role || 
             data['aria-label'] || data.title || data.name || data.toolname ||
-            (data.class && data.class.length > 0 && !/^\s*$/.test(data.class)) || // Non-empty class
+            (data.class && data.class.length > 0 && !/^\s*$/.test(data.class)) || 
             (data.text && data.text.length > 0) || 
             data.placeholder || data.href || data.menuItems
         ) {
-          // Remove undefined properties for cleaner JSON
-          Object.keys(data).forEach(key => data[key] === undefined && delete data[key]);
-          if (Object.keys(data).length > 1 || (Object.keys(data).length === 1 && data.tag)) { // Ensure it's not just a tag
+          if (Object.keys(data).length > 1 || (Object.keys(data).length === 1 && data.tag && (data.text || data.class))) { 
+            Object.keys(data).forEach(key => data[key] === undefined && delete data[key]);
             results.push(data);
           }
         }
@@ -193,7 +192,6 @@ export class AIUtils {
 
   /**
    * Enhanced HTML parser that provides rich context with indexed elements and full HTML structure.
-   * This approach is inspired by the tracewright project's element highlighting and indexing system.
    */
   private async getRichHTMLContext(maxElements = 200): Promise<Array<any>> {
     return await this.page.evaluate((limit) => {
@@ -208,40 +206,32 @@ export class AIUtils {
         return rect.width > 0 && rect.height > 0;
       }
 
-      function isTopElement(element: Element): boolean {
+      function isElementOrChildTopmost(element: Element): boolean {
         const rect = element.getBoundingClientRect();
-        const elementX = rect.left + rect.width / 2;
-        const elementY = rect.top + rect.height / 2;
-        const topElement = document.elementFromPoint(elementX, elementY);
-        return !topElement ? false : topElement === element;
-      }
+        if (rect.width === 0 || rect.height === 0) return false;
 
-      function containsChildOnTop(element: Element): boolean {
-        const children = element.children;
-        if (element.children.length === 0) return isTopElement(element);
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          const isTopElement = containsChildOnTop(child);
-          if (isTopElement) return true;
-        }
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        let topmostElement = document.elementFromPoint(centerX, centerY);
+        if (topmostElement && (topmostElement === element || element.contains(topmostElement))) return true;
+
+        topmostElement = document.elementFromPoint(rect.left + 1, rect.top + 1);
+        if (topmostElement && (topmostElement === element || element.contains(topmostElement))) return true;
+
         return false;
       }
-
+      
       function isInteractiveElement(element: HTMLElement): boolean {
         const tag = element.tagName.toLowerCase();
         const role = element.getAttribute('role');
         const style = window.getComputedStyle(element);
         
-        // Check for interactive tags
         if (['button', 'input', 'select', 'textarea', 'a'].includes(tag)) return true;
         
-        // Check for interactive roles
         if (['button', 'link', 'menuitem', 'tab', 'checkbox', 'radio', 'option', 'combobox', 'slider', 'spinbutton', 'switch'].includes(role || '')) return true;
         
-        // Check for clickable styling
         if (style.cursor === 'pointer' && tag !== 'input') return true;
         
-        // Check for data attributes that indicate interactivity
         if (element.getAttribute('data-testid') || element.getAttribute('data-cy') || element.getAttribute('toolname')) return true;
         
         return false;
@@ -253,7 +243,7 @@ export class AIUtils {
           index: index,
           tag: element.tagName.toLowerCase(),
           id: element.id || undefined,
-          class: (element.className && typeof element.className === 'string') ? (element.className as string).trim().substring(0, 150) : undefined,
+          class: (element.className && typeof element.className === 'string') ? element.className.trim().substring(0, 150) : undefined,
           'data-testid': element.getAttribute('data-testid') || undefined,
           'data-cy': element.getAttribute('data-cy') || undefined,
           'toolname': element.getAttribute('toolname') || undefined,
@@ -271,31 +261,26 @@ export class AIUtils {
             height: Math.round(rect.height)
           },
           isVisible: isVisible(element),
-          isTopElement: isTopElement(element),
           isInteractive: isInteractiveElement(element),
-          outerHTML: element.outerHTML.substring(0, 500) // Truncated for token efficiency
+          outerHTML: element.outerHTML.substring(0, 500)
         };
 
-        // Add input-specific attributes
         if (element.tagName.toLowerCase() === 'input') {
           data.placeholder = (element as HTMLInputElement).placeholder || undefined;
           data.value = (element as HTMLInputElement).value?.substring(0, 50) || undefined;
           data.type = (element as HTMLInputElement).type || undefined;
         }
-        
-        // Add link-specific attributes
         if (element.tagName.toLowerCase() === 'a') {
           data.href = (element as HTMLAnchorElement).href || undefined;
         }
 
-        // Enhanced menu item extraction
         if (element.getAttribute('role') === 'menu') {
           const items = Array.from(element.querySelectorAll(':scope > li[role="menuitem"], :scope > div[role="menuitem"], :scope > [role="menuitem"]'))
                              .map(item => ({
                                text: item.textContent?.trim().substring(0, 50) || '',
                                id: item.id || undefined,
                                'data-testid': item.getAttribute('data-testid') || undefined,
-                               class: (item.className && typeof item.className === 'string') ? (item.className as string).trim().substring(0, 100) : undefined
+                               class: (item.className && typeof item.className === 'string') ? item.className.trim().substring(0, 100) : undefined
                              }))
                              .filter(item => item.text.length > 0);
           if (items.length > 0) {
@@ -303,7 +288,6 @@ export class AIUtils {
           }
         }
 
-        // Get parent context for better element identification
         const parent = element.parentElement;
         if (parent && parent !== document.body) {
           const parentData: any = {
@@ -312,9 +296,8 @@ export class AIUtils {
             'data-testid': parent.getAttribute('data-testid') || undefined,
             'data-cy': parent.getAttribute('data-cy') || undefined,
             role: parent.getAttribute('role') || undefined,
-            class: (parent.className && typeof parent.className === 'string') ? (parent.className as string).trim().substring(0, 100) : undefined
+            class: (parent.className && typeof parent.className === 'string') ? parent.className.trim().substring(0, 100) : undefined
           };
-          // Only include parent if it has meaningful identifiers
           const hasParentIdentifier = Object.values(parentData).some(val => val !== undefined && val !== '');
           if (hasParentIdentifier) {
             data.parent = parentData;
@@ -324,53 +307,103 @@ export class AIUtils {
         return data;
       }
 
-      // Get all interactive and identifiable elements
       const interactiveSelectors = [
         'button', 'input:not([type="hidden"])', 'select', 'textarea', 
         '[role="button"]', '[role="link"]', '[role="menuitem"]', '[role="tab"]', 
         '[role="checkbox"]', '[role="radio"]', '[role="option"]', '[role="combobox"]', 
         '[role="slider"]', '[role="spinbutton"]', '[role="switch"]', 
         '[contenteditable="true"]', 'a[href]', '[data-cy]', '[data-testid]', 
-        '[toolname]', '[aria-label]', '[title]', 'div[class*="menu"]', 
-        'div[class*="dropdown"]', 'div[class*="popup"]'
+        '[toolname]', '[aria-label]', '[title]'
       ].join(', ');
 
-      const elements = Array.from(document.querySelectorAll(interactiveSelectors) as NodeListOf<HTMLElement>);
-      
-      for (const element of elements) {
-        if (results.length >= limit) break;
-        
-        // Only include visible elements that are on top or have meaningful content
-        if (isVisible(element) && (containsChildOnTop(element) || isInteractiveElement(element))) {
-          const elementData = getElementContext(element, elementIndex);
-          
-          // Filter out elements that don't have enough identifying information
-          if (elementData.id || elementData['data-testid'] || elementData['data-cy'] || 
-              elementData.role || elementData['aria-label'] || elementData.title || 
-              elementData.name || elementData.toolname || elementData.menuItems ||
-              (elementData.text && elementData.text.length > 0) || 
-              elementData.placeholder || elementData.href || elementData.parent) {
-            
-            // Remove undefined properties for cleaner JSON
-            Object.keys(elementData).forEach(key => {
-              if (elementData[key] === undefined) delete elementData[key];
-            });
-            
-            results.push(elementData);
-            elementIndex++;
+      const relevantSelectors = [
+        ...interactiveSelectors.split(', '), // Include all interactive selectors
+        'div[id]', 'div[data-testid]', 'div[data-cy]', 'div[role]', 'div[aria-label]', 'div[title]',
+        'div[class*="container"]', 'div[class*="section"]', 'div[class*="wrapper"]',
+        'div[class*="card"]', 'div[class*="header"]', 'div[class*="footer"]',
+        'form', 'fieldset', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span',
+        'section', 'article', 'aside', 'nav', 'main', 'header', 'footer'
+      ].join(', ');
+
+      const allElementsOnPage = Array.from(document.querySelectorAll(relevantSelectors) as NodeListOf<HTMLElement>)
+                                  .filter(el => {
+                                      const tag = el.tagName.toLowerCase();
+                                      return !['script', 'style', 'noscript', 'meta', 'link', 'title'].includes(tag) && isVisible(el);
+                                  });
+
+      const filteredElements = allElementsOnPage.filter(element => {
+          if (isInteractiveElement(element)) return true;
+          if (element.id || element.getAttribute('data-testid') || element.getAttribute('data-cy') || element.getAttribute('role')) return true;
+          if (element.textContent?.trim().length && element.textContent.trim().length > 0 && element.children.length === 0) return true;
+          if (['div', 'form', 'fieldset', 'ul', 'ol', 'li', 'section', 'article', 'aside', 'nav', 'main', 'header', 'footer'].includes(element.tagName.toLowerCase())) {
+              if (element.className && element.className.trim().length > 0) return true;
+              if (element.textContent?.trim().length && element.textContent.trim().length > 0) return true;
+              return Array.from(element.querySelectorAll(interactiveSelectors)).some(child => isVisible(child as HTMLElement));
           }
-        }
+          return false;
+      });
+
+      for (const element of filteredElements) {
+        if (results.length >= limit) break;
+        const elementData = getElementContext(element, elementIndex);
+        Object.keys(elementData).forEach(key => {
+          if (elementData[key] === undefined) delete elementData[key];
+        });
+        results.push(elementData);
+        elementIndex++;
       }
 
       return results;
     }, maxElements);
   }
 
-  // ... getReferenceImageBase64, generatePlaywrightScreenshotFunction, loadReferenceImages,
-  //     interceptScreenshotCommand, applyTimeoutAndClean, extractScreenshotContext,
-  //     executeWithScreenshotInterception, findMarkdownContextLines
-  //     remain the same as in the previously provided "complete" version.
-  //     Make sure to copy them from that version to make this file truly complete.
+  // ... (All other methods remain the same) ...
+
+  /**
+   * Intercepts screenshot commands and processes them through AI generation.
+   */
+  async interceptScreenshotCommand(
+    originalCodeBlock: string, 
+    isRefinementCycle: boolean = false, 
+    refinementContext?: RefinementContext,
+    thinking?: string
+  ): Promise<string> {
+    const screenshotCommandRegex = /(\bawait\s+)?(page\.screenshot\s*\(.*?\)|[^;]+\.screenshot\s*\(.*?\));?/i;
+    const match = originalCodeBlock.match(screenshotCommandRegex);
+
+    if (!match) return this.applyTimeoutAndClean(originalCodeBlock);
+
+    const originalScreenshotCommand = match[0];
+    console.log(isRefinementCycle ? "🎯 Refining screenshot command..." : "🎯 Screenshot command detected! Intercepting...");
+
+    try {
+      let imgFileName: string | null = null;
+      const pathMatch = originalScreenshotCommand.match(/path\s*:\s*['"]([^'\"]+\.(?:png|jpg|jpeg|gif|bmp|webp))['"]/i);
+      if (pathMatch?.[1]) {
+        imgFileName = path.basename(decodeURIComponent(pathMatch[1]));
+      }
+
+      let base64Screenshot = '';
+      if (imgFileName) {
+        base64Screenshot = this.getReferenceImageBase64(imgFileName);
+        if (!base64Screenshot) console.warn(`⚠️  Reference image '${imgFileName}' not found.`);
+      }
+
+      const aiGeneratedCode = await this.generatePlaywrightScreenshotFunction(
+        base64Screenshot, 
+        originalCodeBlock, 
+        imgFileName, 
+        refinementContext, 
+        thinking
+      );
+
+      const processedCode = this.applyTimeoutAndClean(aiGeneratedCode);
+      return originalCodeBlock.replace(originalScreenshotCommand, processedCode);
+    } catch (error: any) {
+      console.warn(`⚠️  Screenshot interception failed: ${error.message}`);
+      return this.applyTimeoutAndClean(originalCodeBlock);
+    }
+  }
 
   /**
    * Generates Playwright screenshot code using an AI model.
@@ -379,7 +412,8 @@ export class AIUtils {
     base64Screenshot: string,
     codeContext: string, // Original user code or failing AI code
     imgFileName: string | null,
-    refinementContext?: RefinementContext
+    refinementContext?: RefinementContext,
+    thinking?: string
   ): Promise<string> {
     try {
       // Check if required environment variables are set
@@ -391,9 +425,8 @@ export class AIUtils {
         return codeContext;
       }
 
-      const visibleElements = await this.getVisibleInteractiveElements(); // Uses new parsing
-      const identifiableElements = await this.getIdentifiableElements(); // Uses new parsing
-      const richHTMLContext = await this.getRichHTMLContext(); // Enhanced HTML parsing with indexed elements
+      const visibleElements = await this.getVisibleInteractiveElements();
+      const richHTMLContext = await this.getRichHTMLContext();
 
       let markdownContext = '';
       const imgMatchInCodeContext = codeContext.match(/["']([^"']+\.(?:png|jpg|jpeg|gif|bmp|webp))["']/i);
@@ -404,9 +437,13 @@ export class AIUtils {
       }
 
       const targetImgFilenameOrDefault = imgFileName || 'derived-screenshot.png';
-      let targetImageFilenameInstruction = `\nThe output screenshot file MUST be named '${targetImgFilenameOrDefault}'. Include this in the 'path' option of the screenshot command.`;
-      
+      let targetImageFilenameInstruction = `\nThe output screenshot file MUST be named 'img/${targetImgFilenameOrDefault}'. Include this in the 'path' option of the screenshot command.`;
+
       let userPromptIntro = `The goal is to generate a Playwright screenshot command for the specific UI element shown in the 'Reference screenshot' (which will be provided as image data if available).`;
+
+      if (thinking) {
+        userPromptIntro += `\n\n🧠 LLM THINKING CONTEXT: ${thinking}\nThis thinking explains the intention behind taking this screenshot and what it should demonstrate.`;
+      }
 
       if (refinementContext) {
         console.log("🧠 AI Refinement Mode: Using error context in prompt.");
@@ -423,6 +460,7 @@ ${refinementContext.conflictingElementsHTML}
 
 Your task is to provide a *more specific Playwright locator* for the screenshot command that uniquely identifies the element shown in the 'Reference screenshot' (image data provided) and resolves this conflict.
 Consider the text content, aria-labels, roles, menuItems (if applicable), and unique class names (like 'MuiMenu-list' or 'css-r8u8y9' for the target menu, or 'css-1ontqvh' for a different menu if that's the conflict) visible in the DOM data below and in the reference image. The target menu likely contains items like 'Burn Study', 'Toggles', etc.
+${thinking ? `\n\n🧠 LLM THINKING CONTEXT: ${thinking}\nThis thinking explains the intention behind taking this screenshot and what it should demonstrate.` : ''}
 `;
       }
 
@@ -434,39 +472,41 @@ Use the following DOM information to identify the target element and its selecto
 ${JSON.stringify(visibleElements, null, 2)}
 <<END_VISIBLE_INTERACTIVE_ELEMENTS>>
 
-<<IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT>>
-${JSON.stringify(identifiableElements, null, 2)}
-<<END_IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT>>
-
 <<RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS>>
 ${JSON.stringify(richHTMLContext, null, 2)}
 <<END_RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS>>
 ${markdownContext ? `\n<<NEARBY_DOC_LINES>>\n${markdownContext}\n<<END_NEARBY_DOC_LINES>>` : ''}`;
 
-      const systemPrompt = `You are an expert Playwright automation engineer.
-Your goal is to generate a single Playwright 'locator.screenshot()' command.
+      // --- START OF SYSTEM PROMPT CLARITY IMPROVEMENTS ---
+      const systemPrompt = `You are an expert Playwright automation engineer. Your primary goal is to generate highly accurate and robust Playwright 'locator.screenshot()' commands.
 
-You will be given:
-1.  Possibly a reference screenshot (English locale, provided as image data) showing a specific UI element.
-2.  DOM context: 'VISIBLE_INTERACTIVE_ELEMENTS' and 'IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT'. These now include more attributes and potentially 'menuItems' for elements with role='menu'.
-3.  'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS' - Enhanced DOM analysis with indexed elements, position data, visibility status, and full HTML structure for better element identification.
-4.  Optional: 'NEARBY_DOC_LINES'.
-5.  An instruction for the output screenshot filename.
-6.  ${refinementContext ? "Context about a previous failing locator and the conflict it caused." : "Standard generation task."}
+Your instructions are as follows:
+1.  **Understand the Target:** Carefully analyze the 'Reference screenshot' to visually identify the exact UI element or section to be captured.
+2.  **Utilize Provided DOM Context:**
+    *   **'VISIBLE_INTERACTIVE_ELEMENTS'**: This list contains key interactive elements (buttons, inputs, links, etc.) and significant logical grouping containers (like cards, sections, or wrappers) that are currently visible on the page. Use this for high-level identification and potential direct selectors.
+    *   **'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS'**: This provides a more detailed, structural view of the relevant visible elements, including their positions, full HTML snippets, and parent relationships. Use this for precise identification, understanding element nesting, and resolving ambiguities.
+    *   **Removed for Efficiency**: Note that 'IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT' has been removed to reduce prompt length and focus on the most relevant data.
+3.  **Prioritize Robust Selectors:**
+    *   Favor selectors that are resilient to minor UI changes and language localization.
+    *   Prefer built-in Playwright locators: \`page.getByRole()\`, \`page.getByText()\`, \`page.getByLabel()\`, \`page.getByPlaceholder()\`, \`page.getByAltText()\`, \`page.getByTitle()\`, \`page.getByTestId()\`.
+    *   When a specific UI *section* (a logical grouping of elements) is targeted in the reference image, use Playwright's \`locator().filter()\` or CSS \`:has()\` pseudo-class (e.g., \`page.locator('div:has(button:has-text("Button1")):has(button:has-text("Button2"))')\`) to select the appropriate parent container.
+    *   Only use complex CSS selectors or XPath as a last resort.
+4.  **Screenshot Scope:**
+    *   The generated command MUST capture the *entire* UI element or logical section as depicted in the reference screenshot.
+    *   This includes any expanded parts (like open dropdowns or menus) *if they are shown as such in the reference image*.
+    *   The screenshot should provide sufficient surrounding context for clarity, but it should NOT capture the entire page unless the entire page is the specific, relevant context.
+5.  **Command Requirements:**
+    *   Generate ONLY the Playwright JavaScript code for the 'locator.screenshot()' command.
+    *   The command MUST include a 'path' option, using the specified filename (e.g., \`path: 'img/your_filename.png'\`).
+    *   Assume the UI is already in the exact state shown in the reference image.
+6.  **Refinement Tasks (if applicable):**
+    *   If a RefinementContext is provided, your task is to **REFINE** the previous, failing locator. Focus on resolving the strict mode violation or ambiguity by finding a more unique and stable selector for the target.
+7.  **LLM Thinking Context:**
+    *   If a LLM THINKING CONTEXT is provided, use it to understand the specific intention and purpose of this screenshot, which might guide your choice of selector or the boundaries of the captured element.
 
-Your task is to:
-1.  Analyze all provided information, especially the reference screenshot and the DOM context (including 'menuItems' if the target is a menu).
-2.  ${refinementContext ? "REFINE the locator to be more specific and avoid the previously reported conflict." : "Identify the most accurate and robust Playwright selector (e.g., page.locator('...'), page.getByRole(...), etc.) for the element in the reference image."}
-    The selector must be resilient to language changes. Prioritize 'data-testid', 'data-cy', 'id', 'role' combined with 'aria-label' or 'name', 'title', or unique combinations of classes and text.
-    If multiple elements visually match (e.g., multiple menus), use distinguishing features from the DOM lists like 'menuItems' or text content specific to the element in the REFERENCE IMAGE. For example, the target menu might have class 'MuiMenu-list' and its 'menuItems' array would contain 'Burn Study', while another might have different classes or menu items.
-    Use the 'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS' to understand element positioning, visibility, and HTML structure for more precise selection.
-3.  Generate the 'locator.screenshot()' command. It must capture the *entire* UI element as depicted in the reference screenshot, including expanded parts *if shown as such in the reference image*.
-4.  The command MUST include a 'path' option with the specified filename add it to a folder called 'img'.
-5.  Assume the UI is already in the state shown in the reference image.
-6.  Know that the expected screenshot is never just a single element we want to show the surrounding context. does'nt mean the whole page but if it is targeted towards a element in a dropdown then u take the screenshot of the whole dropdown.
 Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' command.
 `;
-
+      // --- END OF SYSTEM PROMPT CLARITY IMPROVEMENTS ---
 
       const userMessageContent: Array<{ type: string; text?: string; image_url?: { url: string, detail?: string } }> =
         [{ type: "text", text: userTextPrompt }];
@@ -502,25 +542,106 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
         max_tokens: 1000,
       };
 
+      const startTime = Date.now();
+      
       if (process.env.VERBOSE_LLM === 'true') {
         console.log(`🔗 Azure OpenAI request -> ${endpoint}`);
         console.log(`   prompt tokens approx (user text prompt only): ${userTextPrompt.split(/\s+/).length}`);
       }
       
-      const response = await axios.post(endpoint, requestPayload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': apiKey, 
-        },
-      });
+      let response;
 
-      if (process.env.VERBOSE_LLM === 'true') console.log(`✅ Azure response status: ${response.status}`);
+      try {
+        response = await axios.post(endpoint, requestPayload, {
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': apiKey, 
+          },
+        });
 
-      const aiContent: string = response.data.choices?.[0]?.message?.content || '';
-      const cleaned = aiContent.replace(/^```[a-zA-Z]*\s*/g, '').replace(/```\s*$/g, '').trim();
-      
-      if (cleaned && !cleaned.endsWith(';') && !cleaned.endsWith('}')) return `${cleaned};`;
-      return cleaned || codeContext;
+        const duration = Date.now() - startTime;
+        const aiContent: string = response.data.choices?.[0]?.message?.content || '';
+        const inputTokenCount = response.data.usage?.prompt_tokens || 0;
+        const outputTokenCount = response.data.usage?.completion_tokens || 0;
+
+        // Create log entry
+        const logEntry: APILogEntry = {
+          timestamp: new Date().toISOString(),
+          provider: 'openai',
+          model: 'gpt-4o-mini', // Assuming this is the model being used
+          request: {
+            systemInstruction: systemPrompt,
+            userPrompt: userTextPrompt,
+            hasImage: !!base64Screenshot,
+            imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
+            pageUrl: await this.page.url(),
+            visibleElementsLength: userTextPrompt.length,
+            previouslyExecutedCode: codeContext,
+            currentStepErrorCode: refinementContext?.errorMessage || ''
+          },
+          response: {
+            status: response.status,
+            content: aiContent,
+            inputTokenCount,
+            outputTokenCount,
+            totalTokens: inputTokenCount + outputTokenCount,
+            thinking: "Screenshot generation",
+            code: aiContent
+          },
+          metadata: {
+            temperature: refinementContext ? 0.2 : 0.3,
+            maxTokens: 1000,
+            topP: 1
+          },
+          duration
+        };
+
+        apiLogger.logAPICall(logEntry);
+
+        if (process.env.VERBOSE_LLM === 'true') console.log(`✅ Azure response status: ${response.status}`);
+
+        const cleaned = aiContent.replace(/^```[a-zA-Z]*\s*/g, '').replace(/```\s*$/g, '').trim();
+        
+        if (cleaned && !cleaned.endsWith(';') && !cleaned.endsWith('}')) return `${cleaned};`;
+        return cleaned || codeContext;
+      } catch (error: any) {
+        const duration = Date.now() - startTime;
+        
+        // Log error entry
+        const errorLogEntry: APILogEntry = {
+          timestamp: new Date().toISOString(),
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          request: {
+            systemInstruction: systemPrompt,
+            userPrompt: userTextPrompt,
+            hasImage: !!base64Screenshot,
+            imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
+            pageUrl: await this.page.url(),
+            visibleElementsLength: userTextPrompt.length,
+            previouslyExecutedCode: codeContext,
+            currentStepErrorCode: refinementContext?.errorMessage || ''
+          },
+          response: {
+            status: error?.response?.status || 500,
+            content: error?.message || "Unknown error",
+            inputTokenCount: 0,
+            outputTokenCount: 0,
+            totalTokens: 0,
+            thinking: "Error occurred",
+            code: "error"
+          },
+          metadata: {
+            temperature: refinementContext ? 0.2 : 0.3,
+            maxTokens: 1000,
+            topP: 1
+          },
+          duration
+        };
+
+        apiLogger.logAPICall(errorLogEntry);
+        throw error;
+      }
 
     } catch (error: any) {
       const shortMsg = error?.message || 'unknown error';
@@ -530,240 +651,7 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
     }
   }
 
-  /**
-   * Loads reference images from the reference images directory
-   */
-  private async loadReferenceImages(): Promise<string[]> {
-    try {
-      if (!fs.existsSync(this.referenceImagesDir)) {
-        return [];
-      }
-      const files = fs.readdirSync(this.referenceImagesDir);
-      return files.filter(file =>
-        /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(file)
-      );
-    } catch (error: any) {
-      console.error("❌ Error loading reference images:", error.message);
-      return [];
-    }
-  }
-
-  /**
-   * Intercepts screenshot commands.
-   */
-  async interceptScreenshotCommand(
-    originalCodeBlock: string, 
-    isRefinementCycle: boolean = false, 
-    refinementContext?: RefinementContext
-  ): Promise<string> {
-    const screenshotCommandRegex = /(\bawait\s+)?(page\.screenshot\s*\(.*?\)|[^;]+\.screenshot\s*\(.*?\));?/i;
-    const match = originalCodeBlock.match(screenshotCommandRegex);
-
-    if (!match) return originalCodeBlock;
-
-    const originalScreenshotCommand = match[0];
-    console.log(isRefinementCycle ? "🎯 Refining screenshot command..." : "🎯 Screenshot command detected! Intercepting...");
-    if(process.env.VERBOSE_LLM === 'true' || isRefinementCycle) {
-        console.log("   Original screenshot command being processed:", originalScreenshotCommand);
-    }
-
-    try {
-      let imgFileName: string | null = null;
-      const pathMatch = originalScreenshotCommand.match(/path\s*:\s*['"]([^'\"]+\.(?:png|jpg|jpeg|gif|bmp|webp))['"]/i);
-      if (pathMatch?.[1]) {
-        imgFileName = path.basename(decodeURIComponent(pathMatch[1]));
-      } else {
-        const argMatch = originalScreenshotCommand.match(/(?:page\.screenshot|\.screenshot)\(\s*['"]([^'\"]+\.(?:png|jpg|jpeg|gif|bmp|webp))['"]/i);
-        if (argMatch?.[1]) imgFileName = path.basename(decodeURIComponent(argMatch[1]));
-      }
-
-      let base64Screenshot = '';
-      if (imgFileName) {
-        const imgDir = path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'img');
-        const candidatePath = path.join(imgDir, imgFileName);
-        if (fs.existsSync(candidatePath)) {
-          base64Screenshot = fs.readFileSync(candidatePath).toString('base64');
-        } else {
-          base64Screenshot = this.getReferenceImageBase64(imgFileName);
-          if (!base64Screenshot) console.warn(`⚠️  Reference image '${imgFileName}' not found.`);
-        }
-      } else {
-        console.warn(`⚠️  Could not extract image filename from: ${originalScreenshotCommand.substring(0, 100)}...`);
-      }
-      
-      const aiGeneratedCommand = await this.generatePlaywrightScreenshotFunction(
-        base64Screenshot,
-        originalScreenshotCommand, 
-        imgFileName,
-        refinementContext
-      );
-
-      if (aiGeneratedCommand === originalScreenshotCommand || !aiGeneratedCommand.includes('.screenshot')) {
-        console.log(isRefinementCycle ? "ℹ️ AI did not refine the command or refinement skipped." : "ℹ️ AI did not provide a different command, or generation was skipped.");
-        return this.applyTimeoutAndClean(originalCodeBlock);
-      }
-
-      console.log(isRefinementCycle ? '✨ AI provided refined screenshot code.' : '🖼️ Enhanced screenshot code generated by AI.');
-      
-      const finalCodeBlock = originalCodeBlock.replace(originalScreenshotCommand, aiGeneratedCommand);
-      return this.applyTimeoutAndClean(finalCodeBlock);
-
-    } catch (error: any) {
-      console.warn(`⚠️ Failed to ${isRefinementCycle ? 'refine' : 'enhance'} screenshot command (${error?.message ?? 'unknown'}).`);
-      return this.applyTimeoutAndClean(originalCodeBlock);
-    }
-  }
-
-  private applyTimeoutAndClean(code: string): string {
-    let processedCode = code;
-    processedCode = processedCode.replace(
-      /(\.screenshot\(\s*)(\{)?(\s*[^}]*?\s*)(\})?(\s*\))/g,
-      (match, prefix, openBrace, inside, closeBrace, suffix) => {
-        let options = inside ? inside.trim() : '';
-        if (options.includes('timeout:')) return match;
-        if (openBrace && closeBrace) {
-          return `${prefix}{ timeout: 180000, ${options.length > 0 ? options + (options.endsWith(',') ? '' : ',') : ''} }${suffix}`;
-        } else if (openBrace || closeBrace) {
-            console.warn("⚠️ Malformed screenshot options, timeout not injected:", match);
-            return match;
-        } else {
-          return `${prefix}{ timeout: 180000 }${suffix}`;
-        }
-      }
-    );
-    processedCode = processedCode.replace(/\bawait\s+await\s+/g, 'await ');
-    processedCode = processedCode.replace(/^await([a-zA-Z\(])/, 'await $1'); 
-    const trimmedCode = processedCode.trim();
-    if (trimmedCode.split('\n').length === 1 && !trimmedCode.endsWith(';') && !trimmedCode.endsWith('}')) {
-        processedCode = `${trimmedCode};`;
-    }
-    if (code.includes('.screenshot')) {
-        console.log('⚙️ Final code after timeout/cleaning:\n', processedCode);
-        console.log("✅ Screenshot command processing complete!");
-    }
-    return processedCode;
-  }
-
-  /**
-   * Extracts a natural language command from the Playwright screenshot code.
-   */
-  private extractScreenshotContext(code: string): string {
-    const screenshotMatch = code.match(/await\s+page\.screenshot\([^)]*\);/i);
-    if (screenshotMatch) {
-      return `Screenshot command: ${screenshotMatch[0]}`;
-    }
-    const locatorScreenshotMatch = code.match(/await\s+\S+\.screenshot\([^)]*\);/i);
-    if (locatorScreenshotMatch) {
-        return `Screenshot command: ${locatorScreenshotMatch[0]}`;
-    }
-    return "Screenshot command detected in code";
-  }
-
-  /**
-   * Executes Playwright code with stabilization, interception, and retries.
-   */
-  async executeWithScreenshotInterception(code: string, isInternalRetry: boolean = false): Promise<void> {
-    let currentCodeToExecute = code;
-    try {
-      if (!isInternalRetry) {
-        await this.page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {
-            console.warn("⚠️ Page did not reach networkidle state within timeout.");
-        });
-        await this.page.waitForTimeout(500);
-        currentCodeToExecute = await this.interceptScreenshotCommand(code, false);
-      }
-      
-      console.log('🚀 Executing code:\n', currentCodeToExecute);
-      
-      const runSnippet = async (snippet: string) => {
-        const fn = new Function("page", `return (async (page) => { ${snippet} })(page);`);
-        await fn(this.page);
-      };
-
-      const hasScreenshotCmd = /\.screenshot\(/i.test(currentCodeToExecute);
-      const MAX_RETRIES = hasScreenshotCmd ? 1 : 1;
-
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          console.log(`🔄 Executing attempt ${attempt}/${MAX_RETRIES} ...`);
-          await runSnippet(currentCodeToExecute);
-          console.log('✅ Snippet executed successfully');
-          return; 
-        } catch (err: any) {
-          const msg = err?.message || '';
-          const isRetryableError = err?.name === 'TimeoutError' || /timeout|waiting for selector|No node found|strict mode violation/i.test(msg);
-          console.warn(`⚠️  Attempt ${attempt} failed: ${msg.split('\n')[0]}`);
-
-          if (attempt === MAX_RETRIES || !isRetryableError) {
-            if (msg.includes('strict mode violation') && !isInternalRetry) {
-              console.log("🎢 Strict mode violation on final retry, will attempt specific fixes.");
-            }
-            throw err;
-          }
-          console.log('⏳ Waiting 1s before retry...');
-          await this.page.waitForTimeout(1000);
-        }
-      }
-    } catch (error: any) {
-      if (error.message && error.message.includes('strict mode violation') && !isInternalRetry) {
-        console.log('SMV: Strict mode violation detected for original step code.');
-
-        let codeForFirstFix = code;
-        let modifiedByFirst = false;
-        const locatorPattern = /(page\.locator\((?:[^()'""]+|"[^"]*"|'[^']*')+\))(?!\.first\(\))(?=\.(?:screenshot|click|fill|hover|check|uncheck|selectOption|focus|blur|dblclick|press|type|setInputFiles|dispatchEvent|evaluate|evaluateHandle|scrollIntoViewIfNeeded|selectText|tap|waitFor))/g;
-        codeForFirstFix = codeForFirstFix.replace(locatorPattern, (match, p1) => { modifiedByFirst = true; console.log(`SMV: Appending .first() to locator: ${p1}`); return `${p1}.first()`; });
-        
-        const getByPattern = /(page\.(getBy(?:Role|Text|Label|Placeholder|AltText|Title|TestId)\((?:[^()'""]+|"[^"]*"|'[^']*')+\)))(?!\.first\(\))(?=\.(?:screenshot|click|fill|hover|check|uncheck|selectOption|focus|blur|dblclick|press|type|setInputFiles|dispatchEvent|evaluate|evaluateHandle|scrollIntoViewIfNeeded|selectText|tap|waitFor))/g;
-        codeForFirstFix = codeForFirstFix.replace(getByPattern, (match, p1) => { modifiedByFirst = true; console.log(`SMV: Appending .first() to getBy: ${p1}`); return `${p1}.first()`; });
-        
-        if (modifiedByFirst) {
-          console.log('SMV: Attempting retry with .first() appended code:\n', codeForFirstFix);
-          try {
-            const firstAttemptProcessedCode = await this.interceptScreenshotCommand(codeForFirstFix, true);
-            await this.executeWithScreenshotInterception(firstAttemptProcessedCode, true); 
-            console.log('✅ SMV: Strict mode violation resolved with .first().');
-            return;
-          } catch (firstFixError: any) {
-            console.warn('⚠️ SMV: Retry with .first() also failed:', firstFixError.message.split('\n')[0]);
-            error = firstFixError; 
-          }
-        } else {
-          console.warn("SMV: .first() fix did not alter the code. Proceeding to AI refinement.");
-        }
-
-        console.log('🆘 SMV: .first() fix failed or not applicable – requesting AI to refine the locator...');
-        
-        const failingCommandMatch = (currentCodeToExecute || code).match(/(\bawait\s+)?(page\.screenshot\s*\(.*?\)|[^;]+\.screenshot\s*\(.*?\));?/i);
-        const failingCommandForContext = failingCommandMatch ? failingCommandMatch[0] : (currentCodeToExecute || code);
-
-        const errorMessage = error.message.split('\nCall log:')[0].trim();
-        const elementDetailsMatch = error.message.match(/resolved to \d+ elements:\s*([\s\S]*?)Call log:/);
-        const conflictingElementsHTML = elementDetailsMatch ? elementDetailsMatch[1].trim() : "Conflict details not extracted from error message.";
-
-        const refinementContext: RefinementContext = {
-          failingLocator: failingCommandForContext, 
-          errorMessage: errorMessage,
-          conflictingElementsHTML: conflictingElementsHTML
-        };
-        
-        const aiRefinedCode = await this.interceptScreenshotCommand(code, true, refinementContext);
-
-        if (aiRefinedCode !== code && aiRefinedCode !== currentCodeToExecute && aiRefinedCode.includes('.screenshot')) { 
-          console.log('SMV: Re-executing with AI-refined code after strict mode failure:\n', aiRefinedCode);
-          await this.executeWithScreenshotInterception(aiRefinedCode, true); 
-          console.log('✅ SMV: Strict mode violation potentially resolved by AI refinement.');
-        } else {
-          console.warn('SMV: AI did not provide a new refined code or refinement failed. Rethrowing error.');
-          throw error; 
-        }
-      } else {
-        console.error(`❌ Error executing step (isInternalRetry: ${isInternalRetry}). Final error:`, error.message.split('\n')[0]);
-        throw error;
-      }
-    }
-  }
-
-  
+  // ... (rest of AIUtils class methods) ...
   private getReferenceImageBase64(imageFileName: string): string {
     try {
       const docsRoot = path.join(process.cwd(), 'docs');
@@ -794,7 +682,6 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
    */
   private findMarkdownContextLines(imageFileName: string, linesBefore = 10, filePaths?: string[]): string | null {
     try {
-      // If filePaths are provided, only search those files
       if (filePaths && filePaths.length > 0) {
         for (const filePath of filePaths) {
           if (!fs.existsSync(filePath)) continue;
@@ -860,54 +747,212 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
       return null;
     }
   }
+
+  private applyTimeoutAndClean(code: string): string {
+    let processedCode = code;
+    processedCode = processedCode.replace(
+      /(\.screenshot\(\s*)(\{)?(\s*[^}]*?\s*)(\})?(\s*\))/g,
+      (match, prefix, openBrace, inside, closeBrace, suffix) => {
+        let options = inside ? inside.trim() : '';
+        if (options.includes('timeout:')) return match;
+        if (openBrace && closeBrace) {
+          return `${prefix}{ timeout: 180000, ${options.length > 0 ? options + (options.endsWith(',') ? '' : ',') : ''} }${suffix}`;
+        } else if (openBrace || closeBrace) {
+            console.warn("⚠️ Malformed screenshot options, timeout not injected:", match);
+            return match;
+        } else {
+          return `${prefix}{ timeout: 180000 }${suffix}`;
+        }
+      }
+    );
+    processedCode = processedCode.replace(/\bawait\s+await\s+/g, 'await ');
+    processedCode = processedCode.replace(/^await([a-zA-Z\(])/, 'await $1'); 
+    const trimmedCode = processedCode.trim();
+    if (trimmedCode.split('\n').length === 1 && !trimmedCode.endsWith(';') && !trimmedCode.endsWith('}')) {
+        processedCode = `${trimmedCode};`;
+    }
+    if (code.includes('.screenshot')) {
+        console.log('⚙️ Final code after timeout/cleaning:\n', processedCode);
+        console.log("✅ Screenshot command processing complete!");
+    }
+    return processedCode;
+  }
+
+  /**
+   * Extracts a natural language command from the Playwright screenshot code.
+   */
+  private extractScreenshotContext(code: string): string {
+    const screenshotMatch = code.match(/await\s+page\.screenshot\([^)]*\);/i);
+    if (screenshotMatch) {
+      return `Screenshot command: ${screenshotMatch[0]}`;
+    }
+    const locatorScreenshotMatch = code.match(/await\s+\S+\.screenshot\([^)]*\);/i);
+    if (locatorScreenshotMatch) {
+        return `Screenshot command: ${locatorScreenshotMatch[0]}`;
+    }
+    return "Screenshot command detected in code";
+  }
+
+  /**
+   * Executes Playwright code with stabilization, interception, and retries.
+   */
+  async executeWithScreenshotInterception(
+    code: string, 
+    isInternalRetry: boolean = false, 
+    logger?: any, 
+    stepNumber?: number, 
+    thinking?: string
+  ): Promise<void> {
+    let currentCodeToExecute = code;
+    try {
+      if (!isInternalRetry) {
+        await this.page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {
+            console.warn("⚠️ Page did not reach networkidle state within timeout.");
+        });
+        await this.page.waitForTimeout(500);
+        currentCodeToExecute = await this.interceptScreenshotCommand(code, false, undefined, thinking);
+      }
+      
+      console.log('🚀 Executing code:\n', currentCodeToExecute);
+      if (thinking) {
+        console.log('🧠 LLM thinking:', thinking);
+      }
+      
+      const runSnippet = async (snippet: string) => {
+        const fn = new Function("page", `return (async (page) => { ${snippet} })(page);`);
+        await fn(this.page);
+      };
+
+      const hasScreenshotCmd = /\.screenshot\(/i.test(currentCodeToExecute);
+      const MAX_RETRIES = hasScreenshotCmd ? 1 : 1;
+
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          console.log(`🔄 Executing attempt ${attempt}/${MAX_RETRIES} ...`);
+          await runSnippet(currentCodeToExecute);
+          console.log('✅ Snippet executed successfully');
+          return; 
+        } catch (err: any) {
+          const msg = err?.message || '';
+          const isRetryableError = err?.name === 'TimeoutError' || /timeout|waiting for selector|No node found|strict mode violation/i.test(msg);
+          console.warn(`⚠️  Attempt ${attempt} failed: ${msg.split('\n')[0]}`);
+
+          if (attempt === MAX_RETRIES || !isRetryableError) {
+            if (msg.includes('strict mode violation') && !isInternalRetry) {
+              console.log("🎢 Strict mode violation on final retry, will attempt specific fixes.");
+            }
+            throw err;
+          }
+          console.log('⏳ Waiting 1s before retry...');
+          await this.page.waitForTimeout(1000);
+        }
+      }
+    } catch (error: any) {
+      if (error.message && error.message.includes('strict mode violation') && !isInternalRetry) {
+        console.log('SMV: Strict mode violation detected for original step code.');
+
+        let codeForFirstFix = code;
+        let modifiedByFirst = false;
+        const locatorPattern = /(page\.locator\((?:[^()'""]+|"[^"]*"|'[^']*')+\))(?!\.first\(\))(?=\.(?:screenshot|click|fill|hover|check|uncheck|selectOption|focus|blur|dblclick|press|type|setInputFiles|dispatchEvent|evaluate|evaluateHandle|scrollIntoViewIfNeeded|selectText|tap|waitFor))/g;
+        codeForFirstFix = codeForFirstFix.replace(locatorPattern, (match, p1) => { modifiedByFirst = true; console.log(`SMV: Appending .first() to locator: ${p1}`); return `${p1}.first()`; });
+        
+        const getByPattern = /(page\.(getBy(?:Role|Text|Label|Placeholder|AltText|Title|TestId)\((?:[^()'""]+|"[^"]*"|'[^']*')+\)))(?!\.first\(\))(?=\.(?:screenshot|click|fill|hover|check|uncheck|selectOption|focus|blur|dblclick|press|type|setInputFiles|dispatchEvent|evaluate|evaluateHandle|scrollIntoViewIfNeeded|selectText|tap|waitFor))/g;
+        codeForFirstFix = codeForFirstFix.replace(getByPattern, (match, p1) => { modifiedByFirst = true; console.log(`SMV: Appending .first() to getBy: ${p1}`); return `${p1}.first()`; });
+        
+        if (modifiedByFirst) {
+          console.log('SMV: Attempting retry with .first() appended code:\n', codeForFirstFix);
+          try {
+            const firstAttemptProcessedCode = await this.interceptScreenshotCommand(codeForFirstFix, true, undefined, thinking);
+            await this.executeWithScreenshotInterception(firstAttemptProcessedCode, true, logger, stepNumber, thinking); 
+            console.log('✅ SMV: Strict mode violation resolved with .first().');
+            return;
+          } catch (firstFixError: any) {
+            console.warn('⚠️ SMV: Retry with .first() also failed:', firstFixError.message.split('\n')[0]);
+            error = firstFixError; 
+          }
+        } else {
+          console.warn("SMV: .first() fix did not alter the code. Proceeding to AI refinement.");
+        }
+
+        console.log('🆘 SMV: .first() fix failed or not applicable – requesting AI to refine the locator...');
+        
+        const failingCommandMatch = (currentCodeToExecute || code).match(/(\bawait\s+)?(page\.screenshot\s*\(.*?\)|[^;]+\.screenshot\s*\(.*?\));?/i);
+        const failingCommandForContext = failingCommandMatch ? failingCommandMatch[0] : (currentCodeToExecute || code);
+
+        const errorMessage = error.message.split('\nCall log:')[0].trim();
+        const elementDetailsMatch = error.message.match(/resolved to \d+ elements:\s*([\s\S]*?)Call log:/);
+        const conflictingElementsHTML = elementDetailsMatch ? elementDetailsMatch[1].trim() : "Conflict details not extracted from error message.";
+
+        const refinementContext: RefinementContext = {
+          failingLocator: failingCommandForContext, 
+          errorMessage: errorMessage,
+          conflictingElementsHTML: conflictingElementsHTML
+        };
+        
+        const aiRefinedCode = await this.interceptScreenshotCommand(code, true, refinementContext, thinking);
+
+        if (aiRefinedCode !== code && aiRefinedCode !== currentCodeToExecute && aiRefinedCode.includes('.screenshot')) { 
+          console.log('SMV: Re-executing with AI-refined code after strict mode failure:\n', aiRefinedCode);
+          await this.executeWithScreenshotInterception(aiRefinedCode, true, logger, stepNumber, thinking); 
+          console.log('✅ SMV: Strict mode violation potentially resolved by AI refinement.');
+        } else {
+          console.warn('SMV: AI did not provide a new refined code or refinement failed. Rethrowing error.');
+          throw error; 
+        }
+      } else {
+        console.error(`❌ Error executing step (isInternalRetry: ${isInternalRetry}). Final error:`, error.message.split('\n')[0]);
+        throw error;
+      }
+    }
+  }
 }
 
 /**
  * Generates a prompt for replacing a screenshot due to a UI element change.
+ * UPDATED: Removed identifiableElements from arguments and prompt structure.
  */
-
 export function getPromptForUIChange({
   imgFileName,
   visibleElements,
-  identifiableElements,
   richHTMLContext,
   markdownContext = '',
 }: {
   imgFileName: string;
   visibleElements: any;
-  identifiableElements: any;
   richHTMLContext: any;
   markdownContext?: string;
 }): string {
-  return `You are an expert Playwright automation engineer.
+  // --- START OF SYSTEM PROMPT CLARITY IMPROVEMENTS (for specific scenarios) ---
+  return `You are an expert Playwright automation engineer. Your primary goal is to generate highly accurate and robust Playwright 'locator.screenshot()' commands.
 A UI element has changed (selector, appearance, or structure), and the existing screenshot is now outdated.
 
-Your goal is to generate a single Playwright 'locator.screenshot()' command that captures the updated UI element as shown in the new reference screenshot.
+Your instructions are as follows:
+1.  **Understand the Target:** Carefully analyze the 'Reference screenshot' to visually identify the exact UI element or section to be captured.
+2.  **Utilize Provided DOM Context:**
+    *   **'VISIBLE_INTERACTIVE_ELEMENTS'**: This list contains key interactive elements (buttons, inputs, links, etc.) and significant logical grouping containers (like cards, sections, or wrappers) that are currently visible on the page. Use this for high-level identification and potential direct selectors.
+    *   **'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS'**: This provides a more detailed, structural view of the relevant visible elements, including their positions, full HTML snippets, and parent relationships. Use this for precise identification, understanding element nesting, and resolving ambiguities.
+    *   **Removed for Efficiency**: Note that 'IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT' has been removed to reduce prompt length and focus on the most relevant data.
+3.  **Prioritize Robust Selectors:**
+    *   Favor selectors that are resilient to minor UI changes and language localization.
+    *   Prefer built-in Playwright locators: \`page.getByRole()\`, \`page.getByText()\`, \`page.getByLabel()\`, \`page.getByPlaceholder()\`, \`page.getByAltText()\`, \`page.getByTitle()\`, \`page.getByTestId()\`.
+    *   When a specific UI *section* (a logical grouping of elements) is targeted in the reference image, use Playwright's \`locator().filter()\` or CSS \`:has()\` pseudo-class (e.g., \`page.locator('div:has(button:has-text("Button1")):has(button:has-text("Button2"))')\`) to select the appropriate parent container.
+    *   Only use complex CSS selectors or XPath as a last resort.
+4.  **Screenshot Scope:**
+    *   The generated command MUST capture the *entire* UI element or logical section as depicted in the reference screenshot.
+    *   This includes any expanded parts (like open dropdowns or menus) *if they are shown as such in the reference image*.
+    *   The screenshot should provide sufficient surrounding context for clarity, but it should NOT capture the entire page unless the entire page is the specific, relevant context.
+5.  **Command Requirements:**
+    *   Generate ONLY the Playwright JavaScript code for the 'locator.screenshot()' command.
+    *   The command MUST include a 'path' option, using the specified filename (e.g., \`path: 'img/your_filename.png'\`).
+    *   Assume the UI is already in the exact state shown in the reference image.
+6.  **LLM Thinking Context:**
+    *   If a LLM THINKING CONTEXT is provided (though not explicitly in this specific getPromptForUIChange call, it's a general instruction), use it to understand the specific intention and purpose of this screenshot.
 
-You will be given:
-1.  A reference screenshot (English locale, provided as image data) showing the updated UI element.
-2.  DOM context: 'VISIBLE_INTERACTIVE_ELEMENTS' and 'IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT'.
-3.  'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS' - Enhanced DOM analysis with indexed elements, position data, visibility status, and full HTML structure for better element identification.
-4.  Optional: 'NEARBY_DOC_LINES'.
-5.  An instruction for the output screenshot filename.
-
-Your task is to:
-1.  Analyze all provided information, especially the reference screenshot and the DOM context (including 'menuItems' if the target is a menu).
-2.  Identify the most accurate and robust Playwright selector (e.g., page.locator('...'), page.getByRole(...), etc.) for the element in the reference image. The selector must be resilient to language changes. Prioritize 'data-testid', 'data-cy', 'id', 'role' combined with 'aria-label' or 'name', 'title', or unique combinations of classes and text.
-3.  Use the 'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS' to understand element positioning, visibility, and HTML structure for more precise selection.
-4.  Generate the 'locator.screenshot()' command. It must capture the *entire* UI element as depicted in the reference screenshot, including expanded parts *if shown as such in the reference image*.
-5.  The command MUST include a 'path' option with the specified filename and add it to a folder called 'img'.
-6.  Assume the UI is already in the state shown in the reference image.
-7.  The expected screenshot is never just a single element; show the surrounding context as appropriate.
 Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' command.
 
 <<VISIBLE_INTERACTIVE_ELEMENTS>>
 ${JSON.stringify(visibleElements, null, 2)}
 <<END_VISIBLE_INTERACTIVE_ELEMENTS>>
-
-<<IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT>>
-${JSON.stringify(identifiableElements, null, 2)}
-<<END_IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT>>
 
 <<RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS>>
 ${JSON.stringify(richHTMLContext, null, 2)}
@@ -917,49 +962,50 @@ ${markdownContext ? `\n<<NEARBY_DOC_LINES>>\n${markdownContext}\n<<END_NEARBY_DO
 
 /**
  * Generates a prompt for filling a screenshot placeholder for a new document or feature.
+ * UPDATED: Removed identifiableElements from arguments and prompt structure.
  */
 export function getPromptForNewFeature({
   imgFileName,
   visibleElements,
-  identifiableElements,
   richHTMLContext,
   markdownContext = '',
 }: {
   imgFileName: string;
   visibleElements: any;
-  identifiableElements: any;
   richHTMLContext: any;
   markdownContext?: string;
 }): string {
-  return `You are an expert Playwright automation engineer.
+  // --- START OF SYSTEM PROMPT CLARITY IMPROVEMENTS (for specific scenarios) ---
+  return `You are an expert Playwright automation engineer. Your primary goal is to generate highly accurate and robust Playwright 'locator.screenshot()' commands.
 A new document section or feature has been added, and there is a placeholder for a screenshot that needs to be filled.
 
-Your goal is to generate a single Playwright 'locator.screenshot()' command that captures the relevant UI element or feature as shown in the provided reference screenshot.
+Your instructions are as follows:
+1.  **Understand the Target:** Carefully analyze the 'Reference screenshot' to visually identify the exact UI element or section to be captured.
+2.  **Utilize Provided DOM Context:**
+    *   **'VISIBLE_INTERACTIVE_ELEMENTS'**: This list contains key interactive elements (buttons, inputs, links, etc.) and significant logical grouping containers (like cards, sections, or wrappers) that are currently visible on the page. Use this for high-level identification and potential direct selectors.
+    *   **'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS'**: This provides a more detailed, structural view of the relevant visible elements, including their positions, full HTML snippets, and parent relationships. Use this for precise identification, understanding element nesting, and resolving ambiguities.
+    *   **Removed for Efficiency**: Note that 'IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT' has been removed to reduce prompt length and focus on the most relevant data.
+3.  **Prioritize Robust Selectors:**
+    *   Favor selectors that are resilient to minor UI changes and language localization.
+    *   Prefer built-in Playwright locators: \`page.getByRole()\`, \`page.getByText()\`, \`page.getByLabel()\`, \`page.getByPlaceholder()\`, \`page.getByAltText()\`, \`page.getByTitle()\`, \`page.getByTestId()\`.
+    *   When a specific UI *section* (a logical grouping of elements) is targeted in the reference image, use Playwright's \`locator().filter()\` or CSS \`:has()\` pseudo-class (e.g., \`page.locator('div:has(button:has-text("Button1")):has(button:has-text("Button2"))')\`) to select the appropriate parent container.
+    *   Only use complex CSS selectors or XPath as a last resort.
+4.  **Screenshot Scope:**
+    *   The generated command MUST capture the *entire* UI element or logical section as depicted in the reference screenshot.
+    *   This includes any expanded parts (like open dropdowns or menus) *if they are shown as such in the reference image*.
+    *   The screenshot should provide sufficient surrounding context for clarity, but it should NOT capture the entire page unless the entire page is the specific, relevant context.
+5.  **Command Requirements:**
+    *   Generate ONLY the Playwright JavaScript code for the 'locator.screenshot()' command.
+    *   The command MUST include a 'path' option, using the specified filename (e.g., \`path: 'img/your_filename.png'\`).
+    *   Assume the UI is already in the exact state shown in the reference image.
+6.  **LLM Thinking Context:**
+    *   If a LLM THINKING CONTEXT is provided (though not explicitly in this specific getPromptForNewFeature call, it's a general instruction), use it to understand the specific intention and purpose of this screenshot.
 
-You will be given:
-1.  A reference screenshot (English locale, provided as image data) showing the new UI element or feature.
-2.  DOM context: 'VISIBLE_INTERACTIVE_ELEMENTS' and 'IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT'.
-3.  'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS' - Enhanced DOM analysis with indexed elements, position data, visibility status, and full HTML structure for better element identification.
-4.  Optional: 'NEARBY_DOC_LINES'.
-5.  An instruction for the output screenshot filename.
-
-Your task is to:
-1.  Analyze all provided information, especially the reference screenshot and the DOM context (including 'menuItems' if the target is a menu).
-2.  Identify the most accurate and robust Playwright selector (e.g., page.locator('...'), page.getByRole(...), etc.) for the element in the reference image. The selector must be resilient to language changes. Prioritize 'data-testid', 'data-cy', 'id', 'role' combined with 'aria-label' or 'name', 'title', or unique combinations of classes and text.
-3.  Use the 'RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS' to understand element positioning, visibility, and HTML structure for more precise selection.
-4.  Generate the 'locator.screenshot()' command. It must capture the *entire* UI element as depicted in the reference screenshot, including expanded parts *if shown as such in the reference image*.
-5.  The command MUST include a 'path' option with the specified filename and add it to a folder called 'img'.
-6.  Assume the UI is already in the state shown in the reference image.
-7.  The expected screenshot is never just a single element; show the surrounding context as appropriate.
 Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' command.
 
 <<VISIBLE_INTERACTIVE_ELEMENTS>>
 ${JSON.stringify(visibleElements, null, 2)}
 <<END_VISIBLE_INTERACTIVE_ELEMENTS>>
-
-<<IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT>>
-${JSON.stringify(identifiableElements, null, 2)}
-<<END_IDENTIFIABLE_PAGE_ELEMENTS_FOR_CONTEXT>>
 
 <<RICH_HTML_CONTEXT_WITH_INDEXED_ELEMENTS>>
 ${JSON.stringify(richHTMLContext, null, 2)}
@@ -973,7 +1019,7 @@ export function getPromptByScenario({
   scenarioType,
   imgFileName,
   visibleElements,
-  identifiableElements,
+  identifiableElements, // Keep for signature, but argument for prompt is removed
   richHTMLContext,
   markdownContext = '',
   defaultPromptFn
@@ -991,7 +1037,6 @@ export function getPromptByScenario({
       return getPromptForUIChange({
         imgFileName,
         visibleElements,
-        identifiableElements,
         richHTMLContext,
         markdownContext
       });
@@ -999,13 +1044,15 @@ export function getPromptByScenario({
       return getPromptForNewFeature({
         imgFileName,
         visibleElements,
-        identifiableElements,
         richHTMLContext,
         markdownContext
       });
     case 'default':
     default:
-      return defaultPromptFn();
+      // The defaultPromptFn itself should ideally generate the new, clearer system prompt structure.
+      // For a clean implementation, generatePlaywrightScreenshotFunction's internal prompt is the source of truth.
+      // The getPromptByScenario is mostly for external interfaces.
+      return defaultPromptFn(); // This will call the main generatePlaywrightScreenshotFunction's prompt logic.
   }
 }
 

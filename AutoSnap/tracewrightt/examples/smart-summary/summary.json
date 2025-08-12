@@ -1,0 +1,2964 @@
+{
+  "url": "file:///C:/Users/Rohith.MR/browser-use/tracewright/another_page.html",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "containers": [
+    {
+      "uid": 1,
+      "selector": "div#doc > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1)",
+      "type": "element",
+      "semanticTag": "div",
+      "role": "region",
+      "classes": "MuiAccordion-region",
+      "bbox": {
+        "x": 64,
+        "y": 23002,
+        "width": 1856,
+        "height": 152
+      },
+      "area": 281474,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": true,
+      "isModalLike": false,
+      "keywords": [
+        "document",
+        "uploaded",
+        "registration",
+        "form",
+        "upload"
+      ],
+      "elementCount": 4,
+      "interactiveCount": 4,
+      "parentUid": 38,
+      "childrenUids": [
+        11
+      ]
+    },
+    {
+      "uid": 2,
+      "selector": "div#currentStudy > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1)",
+      "type": "element",
+      "semanticTag": "div",
+      "role": "region",
+      "classes": "MuiAccordion-region",
+      "bbox": {
+        "x": 64,
+        "y": 23117,
+        "width": 1856,
+        "height": 2003
+      },
+      "area": 3717568,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": true,
+      "isModalLike": false,
+      "keywords": [
+        "preliminary",
+        "report",
+        "reading",
+        "physician",
+        "date",
+        "time"
+      ],
+      "elementCount": 2,
+      "interactiveCount": 2,
+      "parentUid": 39,
+      "childrenUids": [
+        18
+      ]
+    },
+    {
+      "uid": 3,
+      "selector": "[data-testid=\"generic-drawer-test\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "generic-drawer-test",
+      "classes": "MuiBox-root css-0",
+      "bbox": {
+        "x": 0,
+        "y": 652,
+        "width": 1920,
+        "height": 3838
+      },
+      "area": 7368960,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "childrenUids": []
+    },
+    {
+      "uid": 4,
+      "selector": "[data-testid=\"generic-drawer-test\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "generic-drawer-test",
+      "classes": "MuiBox-root css-0",
+      "bbox": {
+        "x": 0,
+        "y": 4506,
+        "width": 1920,
+        "height": 16486
+      },
+      "area": 31652160,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "childrenUids": []
+    },
+    {
+      "uid": 5,
+      "selector": "[data-testid=\"navigator-wrapper\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "navigator-wrapper",
+      "classes": "MuiBox-root css-1ufmd79",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 4135
+      },
+      "area": 7674560,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "patient",
+        "document",
+        "2020",
+        "oscar",
+        "rice",
+        "studies"
+      ],
+      "elementCount": 2,
+      "interactiveCount": 2,
+      "childrenUids": [
+        6
+      ]
+    },
+    {
+      "uid": 6,
+      "selector": "[data-testid=\"navigator-wrapper-container\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "navigator-wrapper-container",
+      "classes": "MuiBox-root css-14avw2w",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 4129
+      },
+      "area": 7663424,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "patient",
+        "document",
+        "2020",
+        "oscar",
+        "rice",
+        "studies"
+      ],
+      "elementCount": 4,
+      "interactiveCount": 4,
+      "parentUid": 5,
+      "childrenUids": [
+        7,
+        39,
+        40
+      ]
+    },
+    {
+      "uid": 7,
+      "selector": "[data-testid=\"resizer-card\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "resizer-card",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 60
+      },
+      "area": 111360,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "patient",
+        "document",
+        "oscar",
+        "rice",
+        "1971",
+        "2024"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 6,
+      "childrenUids": [
+        8
+      ]
+    },
+    {
+      "uid": 8,
+      "selector": "[data-testid=\"patient-card-content\"]",
+      "type": "card",
+      "semanticTag": "div",
+      "testId": "patient-card-content",
+      "classes": "patient-card-content MuiBox-root css-ey9wri",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 8266
+      },
+      "area": 15341667,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "patient",
+        "document",
+        "oscar",
+        "rice",
+        "1971",
+        "2024"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 7,
+      "childrenUids": [
+        9
+      ]
+    },
+    {
+      "uid": 9,
+      "selector": "[data-testid=\"card-container\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "card-container",
+      "id": "patient-info-cont",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 8266
+      },
+      "area": 15341667,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "patient",
+        "document",
+        "oscar",
+        "rice",
+        "1971",
+        "2024"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 8,
+      "childrenUids": [
+        42,
+        43
+      ]
+    },
+    {
+      "uid": 10,
+      "selector": "[data-testid=\"card-main-documents\"]",
+      "type": "card",
+      "semanticTag": "div",
+      "testId": "card-main-documents",
+      "classes": "patient-card-main MuiBox-root css-z6m0rm",
+      "bbox": {
+        "x": 64,
+        "y": 21094,
+        "width": 1856,
+        "height": 2060
+      },
+      "area": 3823331,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "document",
+        "patient",
+        "uploaded",
+        "registration",
+        "form",
+        "upload"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 42,
+      "childrenUids": [
+        38
+      ]
+    },
+    {
+      "uid": 11,
+      "selector": "[data-testid=\"no-documents-container\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "no-documents-container",
+      "classes": "MuiBox-root css-lj9tmi",
+      "bbox": {
+        "x": 64,
+        "y": 23039,
+        "width": 1856,
+        "height": 115
+      },
+      "area": 213440,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "upload",
+        "document"
+      ],
+      "elementCount": 2,
+      "interactiveCount": 2,
+      "parentUid": 1,
+      "childrenUids": []
+    },
+    {
+      "uid": 12,
+      "selector": "[data-testid=\"patient-card-title\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "patient-card-title",
+      "classes": "MuiBox-root css-a94z1a",
+      "bbox": {
+        "x": 64,
+        "y": 23170,
+        "width": 1856,
+        "height": 1875
+      },
+      "area": 3480000,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "oscar",
+        "rice"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 43,
+      "childrenUids": []
+    },
+    {
+      "uid": 13,
+      "selector": "[data-testid=\"card-main-info\"]",
+      "type": "card",
+      "semanticTag": "div",
+      "testId": "card-main-info",
+      "classes": "patient-card-main MuiBox-root css-z6m0rm",
+      "bbox": {
+        "x": 64,
+        "y": 25061,
+        "width": 1856,
+        "height": 4264
+      },
+      "area": 7913984,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "1971",
+        "2024",
+        "oscar",
+        "rice",
+        "patient",
+        "female"
+      ],
+      "elementCount": 6,
+      "interactiveCount": 6,
+      "parentUid": 43,
+      "childrenUids": [
+        14,
+        16
+      ]
+    },
+    {
+      "uid": 14,
+      "selector": "[data-testid=\"name-tooltip\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "name-tooltip",
+      "ariaLabel": "OSCAR RICE",
+      "classes": "MuiBox-root css-1ofqig9",
+      "bbox": {
+        "x": 64,
+        "y": 25061,
+        "width": 1856,
+        "height": 1926
+      },
+      "area": 3574656,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "1971",
+        "oscar",
+        "rice",
+        "patient"
+      ],
+      "elementCount": 2,
+      "interactiveCount": 2,
+      "parentUid": 13,
+      "childrenUids": [
+        15
+      ]
+    },
+    {
+      "uid": 15,
+      "selector": "[data-testid=\"name-label\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "name-label",
+      "classes": "MuiBox-root css-68ay2u",
+      "bbox": {
+        "x": 64,
+        "y": 25061,
+        "width": 1856,
+        "height": 1891
+      },
+      "area": 3509696,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "oscar",
+        "rice"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 14,
+      "childrenUids": []
+    },
+    {
+      "uid": 16,
+      "selector": "[data-testid=\"patient-vitals\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "patient-vitals",
+      "classes": "css-16fchvy",
+      "bbox": {
+        "x": 64,
+        "y": 29008,
+        "width": 1856,
+        "height": 317
+      },
+      "area": 588352,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 6,
+      "interactiveCount": 6,
+      "parentUid": 13,
+      "childrenUids": []
+    },
+    {
+      "uid": 17,
+      "selector": "[data-testid=\"study-accordion-summary\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "study-accordion-summary",
+      "id": "1059",
+      "role": "button",
+      "classes": "MuiButtonBase-root MuiAccordionSummary-root Mui-expanded css-1vfax5w",
+      "bbox": {
+        "x": 64,
+        "y": 23049,
+        "width": 1856,
+        "height": 68
+      },
+      "area": 126208,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "2020",
+        "12663213"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 39,
+      "childrenUids": []
+    },
+    {
+      "uid": 18,
+      "selector": "[data-testid=\"study-document-box-wrapper\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "study-document-box-wrapper",
+      "id": "Preliminary Report",
+      "classes": "MuiBox-root css-0",
+      "bbox": {
+        "x": 64,
+        "y": 23117,
+        "width": 1856,
+        "height": 1997
+      },
+      "area": 3706432,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "preliminary",
+        "report",
+        "reading",
+        "physician",
+        "date",
+        "time"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 2,
+      "childrenUids": [
+        19
+      ]
+    },
+    {
+      "uid": 19,
+      "selector": "[data-testid=\"actions-stack\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "actions-stack",
+      "classes": "actions css-1xxfoc6",
+      "bbox": {
+        "x": 64,
+        "y": 23258,
+        "width": 1856,
+        "height": 1856
+      },
+      "area": 3444736,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 18,
+      "childrenUids": []
+    },
+    {
+      "uid": 20,
+      "selector": "[data-testid=\"study-accordion-summary\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "study-accordion-summary",
+      "id": "1060",
+      "role": "button",
+      "classes": "MuiButtonBase-root MuiAccordionSummary-root css-1vfax5w",
+      "bbox": {
+        "x": 64,
+        "y": 25120,
+        "width": 1856,
+        "height": 68
+      },
+      "area": 126208,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "2020",
+        "12663270"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 40,
+      "childrenUids": []
+    },
+    {
+      "uid": 21,
+      "selector": "[data-testid=\"viewport-wrapper\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "viewport-wrapper",
+      "classes": "MuiBox-root css-10991nz",
+      "bbox": {
+        "x": 64,
+        "y": 25194,
+        "width": 1856,
+        "height": 3846
+      },
+      "area": 7138176,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "read",
+        "onlytakeover",
+        "editing"
+      ],
+      "elementCount": 6,
+      "interactiveCount": 6,
+      "childrenUids": [
+        22,
+        25
+      ]
+    },
+    {
+      "uid": 22,
+      "selector": "[data-testid=\"editor-wrapper\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "editor-wrapper",
+      "classes": "MuiBox-root css-1uy1hl3",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 66
+      },
+      "area": 122496,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 2,
+      "interactiveCount": 2,
+      "parentUid": 21,
+      "childrenUids": [
+        23
+      ]
+    },
+    {
+      "uid": 23,
+      "selector": "[data-testid=\"viewport-page-scroller\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "viewport-page-scroller",
+      "classes": "MuiBox-root css-17yzgrf",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 60
+      },
+      "area": 111360,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 22,
+      "childrenUids": [
+        24
+      ]
+    },
+    {
+      "uid": 24,
+      "selector": "[data-testid=\"viewport-tiptap-page\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "viewport-tiptap-page",
+      "classes": "MuiBox-root css-1xf9qe3",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 60
+      },
+      "area": 111360,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 8,
+      "interactiveCount": 8,
+      "parentUid": 23,
+      "childrenUids": []
+    },
+    {
+      "uid": 25,
+      "selector": "[data-testid=\"imageViewerButton\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "imageViewerButton",
+      "classes": "MuiBox-root css-dp98om",
+      "bbox": {
+        "x": 64,
+        "y": 27184,
+        "width": 1856,
+        "height": 1856
+      },
+      "area": 3444736,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 21,
+      "childrenUids": []
+    },
+    {
+      "uid": 26,
+      "selector": "[data-testid=\"resizable-wrap-elements-container\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "resizable-wrap-elements-container",
+      "classes": "MuiBox-root css-232f43",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "area": 11596288,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "today",
+        "july",
+        "resources",
+        "selected"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "childrenUids": [
+        27
+      ]
+    },
+    {
+      "uid": 27,
+      "selector": "[data-testid=\"resizable-wrap-content\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "resizable-wrap-content",
+      "classes": "MuiBox-root css-v3ate2",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "area": 11596288,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "today",
+        "july",
+        "resources",
+        "selected"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 26,
+      "childrenUids": [
+        28
+      ]
+    },
+    {
+      "uid": 28,
+      "selector": "[data-testid=\"calendar-card-wrap\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "calendar-card-wrap",
+      "classes": "MuiBox-root css-1r3os2x",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "area": 11596288,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "today",
+        "july",
+        "resources",
+        "selected"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 27,
+      "childrenUids": [
+        29
+      ]
+    },
+    {
+      "uid": 29,
+      "selector": "[data-testid=\"calendar-card-body\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "calendar-card-body",
+      "classes": "MuiBox-root css-10x98nd",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "area": 11596288,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "today",
+        "july",
+        "resources",
+        "selected"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 28,
+      "childrenUids": [
+        30,
+        31
+      ]
+    },
+    {
+      "uid": 30,
+      "selector": "[data-testid=\"calendar-toolbar\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "calendar-toolbar",
+      "classes": "MuiBox-root css-v2kfba",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 112
+      },
+      "area": 207872,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "today",
+        "july"
+      ],
+      "elementCount": 9,
+      "interactiveCount": 9,
+      "parentUid": 29,
+      "childrenUids": []
+    },
+    {
+      "uid": 31,
+      "selector": "[data-testid=\"calendar-content\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "calendar-content",
+      "classes": "calendar-content css-1nk5mf5",
+      "bbox": {
+        "x": 64,
+        "y": 29188,
+        "width": 1856,
+        "height": 6136
+      },
+      "area": 11388416,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "resources",
+        "selected"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 29,
+      "childrenUids": [
+        32,
+        44
+      ]
+    },
+    {
+      "uid": 32,
+      "selector": "[data-testid=\"calendar-study-status\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "calendar-study-status",
+      "classes": "MuiBox-root css-ub8mqh",
+      "bbox": {
+        "x": 64,
+        "y": 29188,
+        "width": 1856,
+        "height": 114
+      },
+      "area": 211584,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 2,
+      "interactiveCount": 2,
+      "parentUid": 31,
+      "childrenUids": []
+    },
+    {
+      "uid": 33,
+      "selector": "[data-testid=\"resource-container\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "resource-container",
+      "classes": "MuiBox-root css-4nicfo",
+      "bbox": {
+        "x": 64,
+        "y": 29318,
+        "width": 204,
+        "height": 258
+      },
+      "area": 52632,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "resources",
+        "selected"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 44,
+      "childrenUids": [
+        34
+      ]
+    },
+    {
+      "uid": 34,
+      "selector": "[data-testid=\"resource-content\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "resource-content",
+      "classes": "MuiBox-root css-1fwoslq",
+      "bbox": {
+        "x": 64,
+        "y": 29318,
+        "width": 204,
+        "height": 258
+      },
+      "area": 52632,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "resources",
+        "selected"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 33,
+      "childrenUids": []
+    },
+    {
+      "uid": 35,
+      "selector": "[data-testid=\"search-input\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "search-input",
+      "classes": "MuiFormControl-root MuiTextField-root css-1jxt13",
+      "bbox": {
+        "x": 64,
+        "y": 35392,
+        "width": 1856,
+        "height": 61
+      },
+      "area": 112462,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [],
+      "elementCount": 4,
+      "interactiveCount": 4,
+      "childrenUids": []
+    },
+    {
+      "uid": 36,
+      "selector": "[data-testid=\"chat-list-container\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "chat-list-container",
+      "classes": "MuiBox-root css-rnxa1f",
+      "bbox": {
+        "x": 64,
+        "y": 35500,
+        "width": 1856,
+        "height": 308
+      },
+      "area": 571648,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "headerText": "No chat in the list",
+      "keywords": [
+        "chat",
+        "list",
+        "start",
+        "help",
+        "question"
+      ],
+      "elementCount": 2,
+      "interactiveCount": 2,
+      "parentUid": 45,
+      "childrenUids": [
+        37
+      ]
+    },
+    {
+      "uid": 37,
+      "selector": "[data-testid=\"empty\"]",
+      "type": "element",
+      "semanticTag": "div",
+      "testId": "empty",
+      "classes": "MuiBox-root css-u6hr7x",
+      "bbox": {
+        "x": 64,
+        "y": 35500,
+        "width": 1856,
+        "height": 254
+      },
+      "area": 471424,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "headerText": "No chat in the list",
+      "keywords": [
+        "chat",
+        "list",
+        "start"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 36,
+      "childrenUids": []
+    },
+    {
+      "uid": 38,
+      "selector": "#doc",
+      "type": "element",
+      "semanticTag": "div",
+      "id": "doc",
+      "classes": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiAccordion-root MuiAccordion-rounded Mui-expanded css-1lsukkx",
+      "bbox": {
+        "x": 64,
+        "y": 21094,
+        "width": 1856,
+        "height": 2060
+      },
+      "area": 3823331,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "document",
+        "patient",
+        "uploaded",
+        "registration",
+        "form",
+        "upload"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 10,
+      "childrenUids": [
+        1
+      ]
+    },
+    {
+      "uid": 39,
+      "selector": "#currentStudy",
+      "type": "element",
+      "semanticTag": "div",
+      "id": "currentStudy",
+      "classes": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiAccordion-root MuiAccordion-rounded Mui-expanded css-gpnxbm",
+      "bbox": {
+        "x": 64,
+        "y": 23049,
+        "width": 1856,
+        "height": 2071
+      },
+      "area": 3843776,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "preliminary",
+        "report",
+        "2020",
+        "12663213",
+        "reading",
+        "physician"
+      ],
+      "elementCount": 0,
+      "interactiveCount": 0,
+      "parentUid": 6,
+      "childrenUids": [
+        2,
+        17
+      ]
+    },
+    {
+      "uid": 40,
+      "selector": "#prior",
+      "type": "element",
+      "semanticTag": "div",
+      "id": "prior",
+      "classes": "MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiAccordion-root MuiAccordion-rounded css-gpnxbm",
+      "bbox": {
+        "x": 64,
+        "y": 25120,
+        "width": 1856,
+        "height": 68
+      },
+      "area": 126208,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "2020",
+        "12663270"
+      ],
+      "elementCount": 0,
+      "interactiveCount": 0,
+      "parentUid": 6,
+      "childrenUids": [
+        20
+      ]
+    },
+    {
+      "uid": 41,
+      "selector": ".nav-section.MuiBox-root.css-0",
+      "type": "element",
+      "semanticTag": "div",
+      "classes": "nav-section MuiBox-root css-0",
+      "bbox": {
+        "x": 0,
+        "y": 219,
+        "width": 299,
+        "height": 408
+      },
+      "area": 121992,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "worklist",
+        "organization",
+        "logs",
+        "teaching",
+        "folder",
+        "apps"
+      ],
+      "elementCount": 7,
+      "interactiveCount": 7,
+      "childrenUids": []
+    },
+    {
+      "uid": 42,
+      "selector": ".patient-card-title.MuiBox-root.css-129qqnq",
+      "type": "card",
+      "semanticTag": "div",
+      "classes": "patient-card-title MuiBox-root css-129qqnq",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 2095
+      },
+      "area": 3888291,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "document",
+        "patient",
+        "documents",
+        "uploaded",
+        "registration",
+        "form"
+      ],
+      "elementCount": 1,
+      "interactiveCount": 1,
+      "parentUid": 9,
+      "childrenUids": [
+        10
+      ]
+    },
+    {
+      "uid": 43,
+      "selector": ".patient-card-title.MuiBox-root.css-1gcme1i",
+      "type": "card",
+      "semanticTag": "div",
+      "classes": "patient-card-title MuiBox-root css-1gcme1i",
+      "bbox": {
+        "x": 64,
+        "y": 23170,
+        "width": 1856,
+        "height": 6155
+      },
+      "area": 11423680,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "oscar",
+        "rice",
+        "1971",
+        "2024",
+        "patient",
+        "female"
+      ],
+      "elementCount": 0,
+      "interactiveCount": 0,
+      "parentUid": 9,
+      "childrenUids": [
+        12,
+        13
+      ]
+    },
+    {
+      "uid": 44,
+      "selector": "div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1)",
+      "type": "container",
+      "semanticTag": "div",
+      "classes": "sc-btIRyd hbQwbR rec rec-slider-container",
+      "bbox": {
+        "x": 64,
+        "y": 29302,
+        "width": 1856,
+        "height": 290
+      },
+      "area": 538240,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "keywords": [
+        "resources",
+        "selected"
+      ],
+      "elementCount": 0,
+      "interactiveCount": 0,
+      "parentUid": 31,
+      "childrenUids": [
+        33
+      ]
+    },
+    {
+      "uid": 45,
+      "selector": ".chat-container.MuiBox-root.css-v7mc0q",
+      "type": "container",
+      "semanticTag": "div",
+      "classes": "chat-container MuiBox-root css-v7mc0q",
+      "bbox": {
+        "x": 64,
+        "y": 35500,
+        "width": 1856,
+        "height": 308
+      },
+      "area": 571648,
+      "zIndex": 0,
+      "scrollable": false,
+      "isLandmark": false,
+      "isModalLike": false,
+      "headerText": "No chat in the list",
+      "keywords": [
+        "chat",
+        "list",
+        "start",
+        "help",
+        "question"
+      ],
+      "elementCount": 0,
+      "interactiveCount": 0,
+      "childrenUids": [
+        36
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "uid": 1,
+      "tag": "div",
+      "text": "Add New\nWorklist\nOrganization\nLogs\nTeaching Folder\nMy Apps\nHelp\nUR\n\nUSER02 RAMSOFTLOCAL",
+      "bbox": {
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 627
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 2,
+      "tag": "div",
+      "bbox": {
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 3,
+      "tag": "button",
+      "ariaLabel": "Add New button",
+      "text": "Add New",
+      "bbox": {
+        "x": 0,
+        "y": 109,
+        "width": 110,
+        "height": 89
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 4,
+      "containerUid": 41,
+      "tag": "a",
+      "text": "Worklist",
+      "bbox": {
+        "x": 0,
+        "y": 219,
+        "width": 299,
+        "height": 48
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 5,
+      "containerUid": 41,
+      "tag": "a",
+      "text": "Organization",
+      "bbox": {
+        "x": 0,
+        "y": 267,
+        "width": 299,
+        "height": 48
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 6,
+      "containerUid": 41,
+      "tag": "a",
+      "text": "Logs",
+      "bbox": {
+        "x": 0,
+        "y": 315,
+        "width": 299,
+        "height": 48
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 7,
+      "containerUid": 41,
+      "tag": "a",
+      "text": "Teaching Folder",
+      "bbox": {
+        "x": 0,
+        "y": 384,
+        "width": 299,
+        "height": 48
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 8,
+      "containerUid": 41,
+      "tag": "a",
+      "text": "My Apps",
+      "bbox": {
+        "x": 0,
+        "y": 448,
+        "width": 299,
+        "height": 48
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 9,
+      "containerUid": 41,
+      "tag": "a",
+      "text": "UR\n\nUSER02 RAMSOFTLOCAL",
+      "bbox": {
+        "x": 0,
+        "y": 554,
+        "width": 299,
+        "height": 73
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 10,
+      "containerUid": 41,
+      "tag": "div",
+      "testId": "Avatar USER02 RAMSOFTLOCAL",
+      "text": "UR",
+      "bbox": {
+        "x": 17,
+        "y": 574,
+        "width": 32,
+        "height": 32
+      },
+      "ancestorTestIds": [
+        "Avatar USER02 RAMSOFTLOCAL"
+      ]
+    },
+    {
+      "uid": 11,
+      "containerUid": 3,
+      "tag": "div",
+      "testId": "generic-drawer-test",
+      "text": "Import Order",
+      "bbox": {
+        "x": 0,
+        "y": 652,
+        "width": 1920,
+        "height": 3838
+      },
+      "ancestorTestIds": [
+        "generic-drawer-test"
+      ]
+    },
+    {
+      "uid": 12,
+      "containerUid": 4,
+      "tag": "div",
+      "testId": "generic-drawer-test",
+      "text": "New OrderImaging Organization​Imaging OrganizationRequiredPrioritySTATASAPURGENTROUTINEPatient Name​Patient NameRequired",
+      "bbox": {
+        "x": 0,
+        "y": 4506,
+        "width": 1920,
+        "height": 16486
+      },
+      "ancestorTestIds": [
+        "generic-drawer-test"
+      ]
+    },
+    {
+      "uid": 13,
+      "tag": "div",
+      "testId": "search-bar",
+      "bbox": {
+        "x": 712,
+        "y": 21007,
+        "width": 560,
+        "height": 46
+      },
+      "ancestorTestIds": [
+        "search-bar"
+      ]
+    },
+    {
+      "uid": 14,
+      "tag": "div",
+      "testId": "top-search",
+      "bbox": {
+        "x": 757,
+        "y": 21008,
+        "width": 499,
+        "height": 44
+      },
+      "ancestorTestIds": [
+        "top-search"
+      ]
+    },
+    {
+      "uid": 15,
+      "tag": "input",
+      "id": "top-search",
+      "bbox": {
+        "x": 771,
+        "y": 21008,
+        "width": 155,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "top-search"
+      ]
+    },
+    {
+      "uid": 16,
+      "tag": "button",
+      "testId": "icon-button",
+      "bbox": {
+        "x": 64,
+        "y": 21053,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "icon-button"
+      ]
+    },
+    {
+      "uid": 17,
+      "containerUid": 5,
+      "tag": "div",
+      "testId": "navigator-wrapper",
+      "text": "Patient Documents\n\nPatient Document\n\nAll\nUploaded Document\nRegistration Form\n\nUpload Document\n\nOSCAR RICE\n\nOSCAR RICE\n\nP",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 4135
+      },
+      "ancestorTestIds": [
+        "navigator-wrapper"
+      ]
+    },
+    {
+      "uid": 18,
+      "containerUid": 6,
+      "tag": "div",
+      "testId": "navigator-wrapper-container",
+      "text": "Patient Documents\n\nPatient Document\n\nAll\nUploaded Document\nRegistration Form\n\nUpload Document\n\nOSCAR RICE\n\nOSCAR RICE\n\nP",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 4129
+      },
+      "ancestorTestIds": [
+        "navigator-wrapper-container"
+      ]
+    },
+    {
+      "uid": 19,
+      "containerUid": 7,
+      "tag": "div",
+      "testId": "resizer-card",
+      "text": "Patient Documents\n\nPatient Document\n\nAll\nUploaded Document\nRegistration Form\n\nUpload Document\n\nOSCAR RICE\n\nOSCAR RICE\n\nP",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 60
+      },
+      "ancestorTestIds": [
+        "resizer-card"
+      ]
+    },
+    {
+      "uid": 20,
+      "containerUid": 8,
+      "tag": "div",
+      "testId": "patient-card-content",
+      "text": "Patient Documents\n\nPatient Document\n\nAll\nUploaded Document\nRegistration Form\n\nUpload Document\n\nOSCAR RICE\n\nOSCAR RICE\n\nP",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 8266
+      },
+      "ancestorTestIds": [
+        "patient-card-content"
+      ]
+    },
+    {
+      "uid": 21,
+      "containerUid": 9,
+      "tag": "div",
+      "testId": "card-container",
+      "id": "patient-info-cont",
+      "text": "Patient Documents\n\nPatient Document\n\nAll\nUploaded Document\nRegistration Form\n\nUpload Document\n\nOSCAR RICE\n\nOSCAR RICE\n\nP",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 8266
+      },
+      "ancestorTestIds": [
+        "card-container"
+      ]
+    },
+    {
+      "uid": 22,
+      "containerUid": 42,
+      "tag": "div",
+      "testId": "patient-card-title",
+      "text": "Patient Documents",
+      "bbox": {
+        "x": 64,
+        "y": 21059,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "patient-card-title"
+      ]
+    },
+    {
+      "uid": 23,
+      "containerUid": 10,
+      "tag": "div",
+      "testId": "card-main-documents",
+      "text": "Patient Document\n\nAll\nUploaded Document\nRegistration Form\n\nUpload Document",
+      "bbox": {
+        "x": 64,
+        "y": 21094,
+        "width": 1856,
+        "height": 2060
+      },
+      "ancestorTestIds": [
+        "card-main-documents"
+      ]
+    },
+    {
+      "uid": 24,
+      "containerUid": 38,
+      "tag": "div",
+      "role": "button",
+      "id": "doc-summary",
+      "text": "Patient Document",
+      "bbox": {
+        "x": 64,
+        "y": 21094,
+        "width": 1856,
+        "height": 1908
+      },
+      "ancestorTestIds": [
+        "card-main-documents"
+      ]
+    },
+    {
+      "uid": 25,
+      "containerUid": 1,
+      "tag": "div",
+      "role": "region",
+      "text": "All\nUploaded Document\nRegistration Form\n\nUpload Document",
+      "bbox": {
+        "x": 64,
+        "y": 23002,
+        "width": 1856,
+        "height": 152
+      },
+      "ancestorTestIds": [
+        "card-main-documents"
+      ]
+    },
+    {
+      "uid": 26,
+      "containerUid": 1,
+      "tag": "button",
+      "text": "All",
+      "bbox": {
+        "x": 64,
+        "y": 23015,
+        "width": 31,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "card-main-documents"
+      ]
+    },
+    {
+      "uid": 27,
+      "containerUid": 1,
+      "tag": "button",
+      "text": "Uploaded Document",
+      "bbox": {
+        "x": 95,
+        "y": 23002,
+        "width": 138,
+        "height": 37
+      },
+      "ancestorTestIds": [
+        "card-main-documents"
+      ]
+    },
+    {
+      "uid": 28,
+      "containerUid": 1,
+      "tag": "button",
+      "text": "Registration Form",
+      "bbox": {
+        "x": 232,
+        "y": 23002,
+        "width": 122,
+        "height": 37
+      },
+      "ancestorTestIds": [
+        "card-main-documents"
+      ]
+    },
+    {
+      "uid": 29,
+      "containerUid": 11,
+      "tag": "div",
+      "testId": "no-documents-container",
+      "text": "Upload Document",
+      "bbox": {
+        "x": 64,
+        "y": 23039,
+        "width": 1856,
+        "height": 115
+      },
+      "ancestorTestIds": [
+        "no-documents-container"
+      ]
+    },
+    {
+      "uid": 30,
+      "containerUid": 11,
+      "tag": "p",
+      "testId": "no-documents-text",
+      "text": "Upload Document",
+      "bbox": {
+        "x": 64,
+        "y": 23135,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "no-documents-text"
+      ]
+    },
+    {
+      "uid": 31,
+      "containerUid": 12,
+      "tag": "div",
+      "testId": "patient-card-title",
+      "text": "OSCAR RICE",
+      "bbox": {
+        "x": 64,
+        "y": 23170,
+        "width": 1856,
+        "height": 1875
+      },
+      "ancestorTestIds": [
+        "patient-card-title"
+      ]
+    },
+    {
+      "uid": 32,
+      "containerUid": 13,
+      "tag": "div",
+      "testId": "card-main-info",
+      "text": "OSCAR RICE\n\nPatient ID: 1971\n\n07/29/2024 (Age 11m)\n\nFemale\n\n0\n\n0\n\n0\n\n0\n\n0/0",
+      "bbox": {
+        "x": 64,
+        "y": 25061,
+        "width": 1856,
+        "height": 4264
+      },
+      "ancestorTestIds": [
+        "card-main-info"
+      ]
+    },
+    {
+      "uid": 33,
+      "containerUid": 14,
+      "tag": "div",
+      "testId": "name-tooltip",
+      "ariaLabel": "OSCAR RICE",
+      "text": "OSCAR RICE\n\nPatient ID: 1971",
+      "bbox": {
+        "x": 64,
+        "y": 25061,
+        "width": 1856,
+        "height": 1926
+      },
+      "ancestorTestIds": [
+        "name-tooltip"
+      ]
+    },
+    {
+      "uid": 34,
+      "containerUid": 15,
+      "tag": "div",
+      "testId": "name-label",
+      "text": "OSCAR RICE",
+      "bbox": {
+        "x": 64,
+        "y": 25061,
+        "width": 1856,
+        "height": 1891
+      },
+      "ancestorTestIds": [
+        "name-label"
+      ]
+    },
+    {
+      "uid": 35,
+      "containerUid": 14,
+      "tag": "div",
+      "testId": "patient-id-label",
+      "text": "Patient ID: 1971",
+      "bbox": {
+        "x": 64,
+        "y": 26968,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "patient-id-label"
+      ]
+    },
+    {
+      "uid": 36,
+      "containerUid": 13,
+      "tag": "button",
+      "testId": "collapse-btn",
+      "bbox": {
+        "x": 64,
+        "y": 27003,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "collapse-btn"
+      ]
+    },
+    {
+      "uid": 37,
+      "containerUid": 13,
+      "tag": "div",
+      "testId": "birthdate-wrapper",
+      "ariaLabel": "Birth Date",
+      "text": "07/29/2024 (Age 11m)",
+      "bbox": {
+        "x": 64,
+        "y": 28865,
+        "width": 1856,
+        "height": 59
+      },
+      "ancestorTestIds": [
+        "birthdate-wrapper"
+      ]
+    },
+    {
+      "uid": 38,
+      "containerUid": 13,
+      "tag": "p",
+      "testId": "birthDate-text",
+      "text": "07/29/2024 (Age 11m)",
+      "bbox": {
+        "x": 64,
+        "y": 28905,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "birthDate-text"
+      ]
+    },
+    {
+      "uid": 39,
+      "containerUid": 13,
+      "tag": "div",
+      "testId": "gender-wrapper",
+      "ariaLabel": "Gender",
+      "text": "Female",
+      "bbox": {
+        "x": 64,
+        "y": 28940,
+        "width": 1856,
+        "height": 52
+      },
+      "ancestorTestIds": [
+        "gender-wrapper"
+      ]
+    },
+    {
+      "uid": 40,
+      "containerUid": 13,
+      "tag": "p",
+      "testId": "gender-text",
+      "text": "Female",
+      "bbox": {
+        "x": 64,
+        "y": 28973,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "gender-text"
+      ]
+    },
+    {
+      "uid": 41,
+      "containerUid": 16,
+      "tag": "div",
+      "testId": "patient-vitals",
+      "text": "0\n\n0\n\n0\n\n0\n\n0/0",
+      "bbox": {
+        "x": 64,
+        "y": 29008,
+        "width": 1856,
+        "height": 317
+      },
+      "ancestorTestIds": [
+        "patient-vitals"
+      ]
+    },
+    {
+      "uid": 42,
+      "containerUid": 16,
+      "tag": "p",
+      "testId": "bmiValue-text",
+      "text": "0",
+      "bbox": {
+        "x": 64,
+        "y": 29042,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "bmiValue-text"
+      ]
+    },
+    {
+      "uid": 43,
+      "containerUid": 16,
+      "tag": "p",
+      "testId": "height-text",
+      "text": "0",
+      "bbox": {
+        "x": 64,
+        "y": 29103,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "height-text"
+      ]
+    },
+    {
+      "uid": 44,
+      "containerUid": 16,
+      "tag": "p",
+      "testId": "weight-text",
+      "text": "0",
+      "bbox": {
+        "x": 64,
+        "y": 29170,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "weight-text"
+      ]
+    },
+    {
+      "uid": 45,
+      "containerUid": 16,
+      "tag": "p",
+      "testId": "heartRate-text",
+      "text": "0",
+      "bbox": {
+        "x": 64,
+        "y": 29237,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "heartRate-text"
+      ]
+    },
+    {
+      "uid": 46,
+      "containerUid": 16,
+      "tag": "p",
+      "testId": "systolicBlood-diastolicBlood-text",
+      "text": "0/0",
+      "bbox": {
+        "x": 64,
+        "y": 29306,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "systolicBlood-diastolicBlood-text"
+      ]
+    },
+    {
+      "uid": 47,
+      "containerUid": 6,
+      "tag": "button",
+      "text": "All",
+      "bbox": {
+        "x": 64,
+        "y": 23025,
+        "width": 31,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "navigator-wrapper-container"
+      ]
+    },
+    {
+      "uid": 48,
+      "containerUid": 6,
+      "tag": "button",
+      "text": "Current Study",
+      "bbox": {
+        "x": 95,
+        "y": 23025,
+        "width": 108,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "navigator-wrapper-container"
+      ]
+    },
+    {
+      "uid": 49,
+      "containerUid": 6,
+      "tag": "button",
+      "text": "Prior Studies",
+      "bbox": {
+        "x": 203,
+        "y": 23025,
+        "width": 102,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "navigator-wrapper-container"
+      ]
+    },
+    {
+      "uid": 50,
+      "containerUid": 17,
+      "tag": "div",
+      "role": "button",
+      "testId": "study-accordion-summary",
+      "id": "1059",
+      "text": "8/18/2020\n12663213\nCT",
+      "bbox": {
+        "x": 64,
+        "y": 23049,
+        "width": 1856,
+        "height": 68
+      },
+      "ancestorTestIds": [
+        "study-accordion-summary"
+      ]
+    },
+    {
+      "uid": 51,
+      "containerUid": 2,
+      "tag": "div",
+      "role": "region",
+      "text": "Preliminary Report\n\nPreliminary Report\n\nreading physician\n\nDate/Time",
+      "bbox": {
+        "x": 64,
+        "y": 23117,
+        "width": 1856,
+        "height": 2003
+      },
+      "ancestorTestIds": [
+        "navigator-wrapper-container"
+      ]
+    },
+    {
+      "uid": 52,
+      "containerUid": 18,
+      "tag": "div",
+      "testId": "study-document-box-wrapper",
+      "id": "Preliminary Report",
+      "text": "Preliminary Report\n\nPreliminary Report\n\nreading physician\n\nDate/Time",
+      "bbox": {
+        "x": 64,
+        "y": 23117,
+        "width": 1856,
+        "height": 1997
+      },
+      "ancestorTestIds": [
+        "study-document-box-wrapper"
+      ]
+    },
+    {
+      "uid": 53,
+      "containerUid": 19,
+      "tag": "div",
+      "testId": "actions-stack",
+      "bbox": {
+        "x": 64,
+        "y": 23258,
+        "width": 1856,
+        "height": 1856
+      },
+      "ancestorTestIds": [
+        "actions-stack"
+      ]
+    },
+    {
+      "uid": 54,
+      "containerUid": 2,
+      "tag": "button",
+      "testId": "close-study-accordion",
+      "bbox": {
+        "x": 64,
+        "y": 25114,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "close-study-accordion"
+      ]
+    },
+    {
+      "uid": 55,
+      "containerUid": 20,
+      "tag": "div",
+      "role": "button",
+      "testId": "study-accordion-summary",
+      "id": "1060",
+      "text": "8/18/2020\n12663270\nCT",
+      "bbox": {
+        "x": 64,
+        "y": 25120,
+        "width": 1856,
+        "height": 68
+      },
+      "ancestorTestIds": [
+        "study-accordion-summary"
+      ]
+    },
+    {
+      "uid": 56,
+      "containerUid": 5,
+      "tag": "button",
+      "bbox": {
+        "x": 64,
+        "y": 25188,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "navigator-wrapper"
+      ]
+    },
+    {
+      "uid": 57,
+      "containerUid": 21,
+      "tag": "div",
+      "testId": "viewport-wrapper",
+      "text": "Read-OnlyTakeover Editing",
+      "bbox": {
+        "x": 64,
+        "y": 25194,
+        "width": 1856,
+        "height": 3846
+      },
+      "ancestorTestIds": [
+        "viewport-wrapper"
+      ]
+    },
+    {
+      "uid": 58,
+      "containerUid": 21,
+      "tag": "div",
+      "testId": "toolbar",
+      "bbox": {
+        "x": 64,
+        "y": 25194,
+        "width": 1856,
+        "height": 12
+      },
+      "ancestorTestIds": [
+        "toolbar"
+      ]
+    },
+    {
+      "uid": 59,
+      "containerUid": 21,
+      "tag": "div",
+      "testId": "toolbar-wrapper",
+      "bbox": {
+        "x": 64,
+        "y": 25194,
+        "width": 1856,
+        "height": 12
+      },
+      "ancestorTestIds": [
+        "toolbar-wrapper"
+      ]
+    },
+    {
+      "uid": 60,
+      "containerUid": 21,
+      "tag": "button",
+      "role": "tooltip",
+      "testId": "speech-button",
+      "ariaLabel": "Voice Dictation",
+      "bbox": {
+        "x": 64,
+        "y": 25194,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "speech-button"
+      ]
+    },
+    {
+      "uid": 61,
+      "containerUid": 21,
+      "tag": "button",
+      "role": "tooltip",
+      "testId": "more-options-toolbar-button",
+      "id": "MoreOptionsButton",
+      "ariaLabel": "More Options",
+      "bbox": {
+        "x": 64,
+        "y": 25200,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "more-options-toolbar-button"
+      ]
+    },
+    {
+      "uid": 62,
+      "containerUid": 21,
+      "tag": "button",
+      "text": "Takeover Editing",
+      "bbox": {
+        "x": 136,
+        "y": 27078,
+        "width": 115,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "viewport-wrapper"
+      ]
+    },
+    {
+      "uid": 63,
+      "containerUid": 22,
+      "tag": "div",
+      "testId": "editor-wrapper",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 66
+      },
+      "ancestorTestIds": [
+        "editor-wrapper"
+      ]
+    },
+    {
+      "uid": 64,
+      "containerUid": 23,
+      "tag": "div",
+      "testId": "viewport-page-scroller",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 60
+      },
+      "ancestorTestIds": [
+        "viewport-page-scroller"
+      ]
+    },
+    {
+      "uid": 65,
+      "containerUid": 24,
+      "tag": "div",
+      "testId": "viewport-tiptap-page",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 60
+      },
+      "ancestorTestIds": [
+        "viewport-tiptap-page"
+      ]
+    },
+    {
+      "uid": 66,
+      "containerUid": 24,
+      "tag": "div",
+      "testId": "ViewportTipTapEditorWrapper",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "ViewportTipTapEditorWrapper"
+      ]
+    },
+    {
+      "uid": 67,
+      "containerUid": 24,
+      "tag": "div",
+      "testId": "editor-content",
+      "id": "TipTapProseMirrorEditorHeader",
+      "bbox": {
+        "x": 64,
+        "y": 27118,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "editor-content"
+      ]
+    },
+    {
+      "uid": 68,
+      "containerUid": 24,
+      "tag": "div",
+      "testId": "ViewportTipTapEditorWrapper",
+      "bbox": {
+        "x": 64,
+        "y": 27138,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "ViewportTipTapEditorWrapper"
+      ]
+    },
+    {
+      "uid": 69,
+      "containerUid": 24,
+      "tag": "div",
+      "testId": "editor-content",
+      "id": "TipTapProseMirrorEditorMain",
+      "bbox": {
+        "x": 64,
+        "y": 27138,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "editor-content"
+      ]
+    },
+    {
+      "uid": 70,
+      "containerUid": 24,
+      "tag": "div",
+      "bbox": {
+        "x": 64,
+        "y": 27138,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "editor-content"
+      ]
+    },
+    {
+      "uid": 71,
+      "containerUid": 24,
+      "tag": "div",
+      "testId": "ViewportTipTapEditorWrapper",
+      "bbox": {
+        "x": 64,
+        "y": 27158,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "ViewportTipTapEditorWrapper"
+      ]
+    },
+    {
+      "uid": 72,
+      "containerUid": 24,
+      "tag": "div",
+      "testId": "editor-content",
+      "id": "TipTapProseMirrorEditorFooter",
+      "bbox": {
+        "x": 64,
+        "y": 27158,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "editor-content"
+      ]
+    },
+    {
+      "uid": 73,
+      "containerUid": 22,
+      "tag": "button",
+      "testId": "open-btn",
+      "bbox": {
+        "x": 64,
+        "y": 27178,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "open-btn"
+      ]
+    },
+    {
+      "uid": 74,
+      "containerUid": 25,
+      "tag": "div",
+      "testId": "imageViewerButton",
+      "bbox": {
+        "x": 64,
+        "y": 27184,
+        "width": 1856,
+        "height": 1856
+      },
+      "ancestorTestIds": [
+        "imageViewerButton"
+      ]
+    },
+    {
+      "uid": 75,
+      "tag": "div",
+      "testId": "add-viewport-button",
+      "bbox": {
+        "x": 64,
+        "y": 29040,
+        "width": 1856,
+        "height": 20
+      },
+      "ancestorTestIds": [
+        "add-viewport-button"
+      ]
+    },
+    {
+      "uid": 76,
+      "containerUid": 26,
+      "tag": "div",
+      "testId": "resizable-wrap-elements-container",
+      "text": "Today\n\nSun, July 13\n\nNo resources selected\n\nN/A\n\n12\n\nam\n\n15\n\n30\n\n45\n\n1\n\nam\n\n15\n\n30\n\n45\n\n2\n\nam\n\n15\n\n30\n\n45\n\n3\n\nam\n\n15\n\n30",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "ancestorTestIds": [
+        "resizable-wrap-elements-container"
+      ]
+    },
+    {
+      "uid": 77,
+      "containerUid": 27,
+      "tag": "div",
+      "testId": "resizable-wrap-content",
+      "text": "Today\n\nSun, July 13\n\nNo resources selected\n\nN/A\n\n12\n\nam\n\n15\n\n30\n\n45\n\n1\n\nam\n\n15\n\n30\n\n45\n\n2\n\nam\n\n15\n\n30\n\n45\n\n3\n\nam\n\n15\n\n30",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "ancestorTestIds": [
+        "resizable-wrap-content"
+      ]
+    },
+    {
+      "uid": 78,
+      "containerUid": 28,
+      "tag": "div",
+      "testId": "calendar-card-wrap",
+      "text": "Today\n\nSun, July 13\n\nNo resources selected\n\nN/A\n\n12\n\nam\n\n15\n\n30\n\n45\n\n1\n\nam\n\n15\n\n30\n\n45\n\n2\n\nam\n\n15\n\n30\n\n45\n\n3\n\nam\n\n15\n\n30",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "ancestorTestIds": [
+        "calendar-card-wrap"
+      ]
+    },
+    {
+      "uid": 79,
+      "containerUid": 29,
+      "tag": "div",
+      "testId": "calendar-card-body",
+      "text": "Today\n\nSun, July 13\n\nNo resources selected\n\nN/A\n\n12\n\nam\n\n15\n\n30\n\n45\n\n1\n\nam\n\n15\n\n30\n\n45\n\n2\n\nam\n\n15\n\n30\n\n45\n\n3\n\nam\n\n15\n\n30",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 6248
+      },
+      "ancestorTestIds": [
+        "calendar-card-body"
+      ]
+    },
+    {
+      "uid": 80,
+      "containerUid": 30,
+      "tag": "div",
+      "testId": "calendar-toolbar",
+      "text": "Today\n\nSun, July 13",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 112
+      },
+      "ancestorTestIds": [
+        "calendar-toolbar"
+      ]
+    },
+    {
+      "uid": 81,
+      "containerUid": 30,
+      "tag": "p",
+      "testId": "Today",
+      "text": "Today",
+      "bbox": {
+        "x": 64,
+        "y": 29076,
+        "width": 1856,
+        "height": 19
+      },
+      "ancestorTestIds": [
+        "Today"
+      ]
+    },
+    {
+      "uid": 82,
+      "containerUid": 30,
+      "tag": "div",
+      "testId": "calendar-date-picker",
+      "text": "Sun, July 13",
+      "bbox": {
+        "x": 64,
+        "y": 29111,
+        "width": 1856,
+        "height": 41
+      },
+      "ancestorTestIds": [
+        "calendar-date-picker"
+      ]
+    },
+    {
+      "uid": 83,
+      "containerUid": 30,
+      "tag": "button",
+      "testId": "calendar-date-picker-expand-icon",
+      "bbox": {
+        "x": 64,
+        "y": 29146,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "calendar-date-picker-expand-icon"
+      ]
+    },
+    {
+      "uid": 84,
+      "containerUid": 30,
+      "tag": "button",
+      "id": "calendar-view-type-button",
+      "ariaLabel": "calendar type picker",
+      "bbox": {
+        "x": 64,
+        "y": 29152,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "calendar-toolbar"
+      ]
+    },
+    {
+      "uid": 85,
+      "containerUid": 30,
+      "tag": "div",
+      "testId": "CalendarToolBarIcons",
+      "bbox": {
+        "x": 64,
+        "y": 29158,
+        "width": 1856,
+        "height": 30
+      },
+      "ancestorTestIds": [
+        "CalendarToolBarIcons"
+      ]
+    },
+    {
+      "uid": 86,
+      "containerUid": 30,
+      "tag": "div",
+      "role": "group",
+      "bbox": {
+        "x": 64,
+        "y": 29158,
+        "width": 1856,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "CalendarToolBarIcons"
+      ]
+    },
+    {
+      "uid": 87,
+      "containerUid": 30,
+      "tag": "button",
+      "testId": "collapse-button",
+      "ariaLabel": "collapse",
+      "bbox": {
+        "x": 64,
+        "y": 29158,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "collapse-button"
+      ]
+    },
+    {
+      "uid": 88,
+      "containerUid": 30,
+      "tag": "button",
+      "ariaLabel": "Expand Calendar",
+      "bbox": {
+        "x": 64,
+        "y": 29182,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "CalendarToolBarIcons"
+      ]
+    },
+    {
+      "uid": 89,
+      "containerUid": 31,
+      "tag": "div",
+      "testId": "calendar-content",
+      "text": "No resources selected\n\nN/A\n\n12\n\nam\n\n15\n\n30\n\n45\n\n1\n\nam\n\n15\n\n30\n\n45\n\n2\n\nam\n\n15\n\n30\n\n45\n\n3\n\nam\n\n15\n\n30\n\n45\n\n4\n\nam\n\n15\n\n30\n\n",
+      "bbox": {
+        "x": 64,
+        "y": 29188,
+        "width": 1856,
+        "height": 6136
+      },
+      "ancestorTestIds": [
+        "calendar-content"
+      ]
+    },
+    {
+      "uid": 90,
+      "containerUid": 32,
+      "tag": "div",
+      "testId": "calendar-study-status",
+      "bbox": {
+        "x": 64,
+        "y": 29188,
+        "width": 1856,
+        "height": 114
+      },
+      "ancestorTestIds": [
+        "calendar-study-status"
+      ]
+    },
+    {
+      "uid": 91,
+      "containerUid": 32,
+      "tag": "button",
+      "testId": "study-status-filter-button",
+      "ariaLabel": "test",
+      "bbox": {
+        "x": 64,
+        "y": 29188,
+        "width": 84,
+        "height": 114
+      },
+      "ancestorTestIds": [
+        "study-status-filter-button"
+      ]
+    },
+    {
+      "uid": 92,
+      "containerUid": 33,
+      "tag": "div",
+      "testId": "resource-container",
+      "text": "No resources selected\n\nN/A",
+      "bbox": {
+        "x": 64,
+        "y": 29318,
+        "width": 204,
+        "height": 258
+      },
+      "ancestorTestIds": [
+        "resource-container"
+      ]
+    },
+    {
+      "uid": 93,
+      "containerUid": 34,
+      "tag": "div",
+      "testId": "resource-content",
+      "text": "No resources selected\n\nN/A",
+      "bbox": {
+        "x": 64,
+        "y": 29318,
+        "width": 204,
+        "height": 258
+      },
+      "ancestorTestIds": [
+        "resource-content"
+      ]
+    },
+    {
+      "uid": 94,
+      "containerUid": 35,
+      "tag": "div",
+      "testId": "search-input",
+      "text": "​",
+      "bbox": {
+        "x": 64,
+        "y": 35392,
+        "width": 1856,
+        "height": 61
+      },
+      "ancestorTestIds": [
+        "search-input"
+      ]
+    },
+    {
+      "uid": 95,
+      "containerUid": 35,
+      "tag": "button",
+      "testId": "search-btn",
+      "ariaLabel": "Search",
+      "bbox": {
+        "x": 64,
+        "y": 35405,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "search-btn"
+      ]
+    },
+    {
+      "uid": 96,
+      "containerUid": 35,
+      "tag": "input",
+      "id": "mui-21",
+      "name": "search",
+      "bbox": {
+        "x": 80,
+        "y": 35392,
+        "width": 155,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "search-input"
+      ]
+    },
+    {
+      "uid": 97,
+      "containerUid": 35,
+      "tag": "button",
+      "ariaLabel": "Search by Voice",
+      "bbox": {
+        "x": 235,
+        "y": 35405,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "search-input"
+      ]
+    },
+    {
+      "uid": 98,
+      "tag": "button",
+      "ariaLabel": "New Chat",
+      "bbox": {
+        "x": 64,
+        "y": 35453,
+        "width": 34,
+        "height": 23
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 99,
+      "tag": "button",
+      "testId": "toggle-fixed",
+      "ariaLabel": "Pop-Out",
+      "bbox": {
+        "x": 64,
+        "y": 35494,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "toggle-fixed"
+      ]
+    },
+    {
+      "uid": 100,
+      "tag": "button",
+      "testId": "expand-chat",
+      "ariaLabel": "Expand chat",
+      "bbox": {
+        "x": 80,
+        "y": 35494,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": [
+        "expand-chat"
+      ]
+    },
+    {
+      "uid": 101,
+      "containerUid": 36,
+      "tag": "div",
+      "testId": "chat-list-container",
+      "text": "No chat in the list\n\nStart a new chat.\n\nHi, how can I help you?\nAsk me your question",
+      "bbox": {
+        "x": 64,
+        "y": 35500,
+        "width": 1856,
+        "height": 308
+      },
+      "ancestorTestIds": [
+        "chat-list-container"
+      ]
+    },
+    {
+      "uid": 102,
+      "containerUid": 37,
+      "tag": "div",
+      "testId": "empty",
+      "text": "No chat in the list\n\nStart a new chat.",
+      "bbox": {
+        "x": 64,
+        "y": 35500,
+        "width": 1856,
+        "height": 254
+      },
+      "ancestorTestIds": [
+        "empty"
+      ]
+    },
+    {
+      "uid": 103,
+      "containerUid": 36,
+      "tag": "div",
+      "role": "button",
+      "text": "Hi, how can I help you?\nAsk me your question",
+      "bbox": {
+        "x": 64,
+        "y": 35770,
+        "width": 1856,
+        "height": 38
+      },
+      "ancestorTestIds": [
+        "chat-list-container"
+      ]
+    },
+    {
+      "uid": 104,
+      "tag": "button",
+      "testId": "NotificationBtn",
+      "ariaLabel": "Notifications",
+      "bbox": {
+        "x": 64,
+        "y": 35824,
+        "width": 40,
+        "height": 30
+      },
+      "ancestorTestIds": [
+        "NotificationBtn"
+      ]
+    },
+    {
+      "uid": 105,
+      "tag": "button",
+      "ariaLabel": "Calendar",
+      "bbox": {
+        "x": 64,
+        "y": 35872,
+        "width": 16,
+        "height": 6
+      },
+      "ancestorTestIds": []
+    },
+    {
+      "uid": 106,
+      "tag": "button",
+      "testId": "charBtn",
+      "ariaLabel": "Chat",
+      "bbox": {
+        "x": 80,
+        "y": 35854,
+        "width": 34,
+        "height": 24
+      },
+      "ancestorTestIds": [
+        "charBtn"
+      ]
+    }
+  ],
+  "landmarks": [
+    1,
+    2
+  ]
+}

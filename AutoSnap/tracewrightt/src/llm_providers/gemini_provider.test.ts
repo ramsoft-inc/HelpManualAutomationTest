@@ -127,7 +127,9 @@ describe("GeminiProvider", () => {
         pageUrl,
         screenshot,
         previouslyExecutedCode,
-        currentStepErrorCode
+        currentStepErrorCode,
+        true, // includeSystemInstruction
+        true  // isCodeAnswer
       );
 
       expect(mockGenerateContent).toHaveBeenCalledTimes(1);
@@ -182,7 +184,9 @@ describe("GeminiProvider", () => {
           pageUrl,
           screenshot,
           "",
-          ""
+          "",
+          true, // includeSystemInstruction
+          true  // isCodeAnswer
         );
 
         expect(response).toEqual({
@@ -200,7 +204,15 @@ describe("GeminiProvider", () => {
       mockGenerateContent.mockResolvedValue(mockApiResponse);
 
       const response = await provider.generateWithContext(
-        systemInstruction, scenarioText, domResult, pageUrl, screenshot, previouslyExecutedCode, currentStepErrorCode
+        systemInstruction, 
+        scenarioText, 
+        domResult, 
+        pageUrl, 
+        screenshot, 
+        previouslyExecutedCode, 
+        currentStepErrorCode,
+        true, // includeSystemInstruction
+        true  // isCodeAnswer
       );
       expect(response).toEqual({ code: "done", inputTokenCount: 10, outputTokenCount: 0 });
     });
@@ -215,7 +227,15 @@ describe("GeminiProvider", () => {
     ])("should return 'done' and token counts (or 0 if unavailable) when API response has $case", async ({ apiResponse }) => {
         mockGenerateContent.mockResolvedValue(apiResponse);
         const response = await provider.generateWithContext(
-            systemInstruction, scenarioText, domResult, pageUrl, screenshot, "", ""
+            systemInstruction, 
+            scenarioText, 
+            domResult, 
+            pageUrl, 
+            screenshot, 
+            "", 
+            "",
+            true, // includeSystemInstruction
+            true  // isCodeAnswer
         );
         expect(response.code).toBe("done");
         expect(response.inputTokenCount).toBe(apiResponse.usageMetadata?.promptTokenCount || 0);
@@ -232,7 +252,15 @@ describe("GeminiProvider", () => {
         process.env.GEMINI_MODEL = "test-model-no-extras";
 
         await provider.generateWithContext(
-            systemInstruction, scenarioText, domResult, pageUrl, screenshot, "", ""
+            systemInstruction,
+            scenarioText,
+            domResult,
+            pageUrl,
+            screenshot,
+            "",
+            "",
+            true, // includeSystemInstruction
+            true  // isCodeAnswer
         );
 
         expect(mockGenerateContent).toHaveBeenCalledTimes(1);
@@ -262,7 +290,15 @@ describe("GeminiProvider", () => {
         delete process.env.GEMINI_MODEL;
 
         await provider.generateWithContext(
-            systemInstruction, scenarioText, domResult, pageUrl, screenshot, "", ""
+            systemInstruction,
+            scenarioText,
+            domResult,
+            pageUrl,
+            screenshot,
+            "",
+            "",
+            true, // includeSystemInstruction
+            true  // isCodeAnswer
         );
         expect(mockGenerateContent).toHaveBeenCalledTimes(1);
         const calledWith = mockGenerateContent.mock.calls[0][0] as GenerateContentParameters;
@@ -277,7 +313,15 @@ describe("GeminiProvider", () => {
         mockGenerateContent.mockResolvedValue(mockApiResponse);
 
         await expect(provider.generateWithContext(
-          systemInstruction, scenarioText, domResult, pageUrl, screenshot, previouslyExecutedCode, currentStepErrorCode
+          systemInstruction, 
+          scenarioText, 
+          domResult, 
+          pageUrl, 
+          screenshot, 
+          previouslyExecutedCode, 
+          currentStepErrorCode,
+          true, // includeSystemInstruction
+          true  // isCodeAnswer
         )).rejects.toThrowError("No code matches found");
       });
   });

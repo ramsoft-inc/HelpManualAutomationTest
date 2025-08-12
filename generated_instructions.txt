@@ -1,0 +1,15 @@
+1. Click the "Scheduler" or "Calendar" icon on the navigation bar to open the calendar interface.
+2. Wait until the calendar view is fully visible.
+3. Locate the worklist table displayed alongside the calendar view, showing studies.
+4. Identify a study in the middle of the worklist (to avoid edge selections).
+5. Drag and drop the selected study into a visible timeslot within the Healthcare Service calendar.
+6. Verify the screen matches the expected state for dragging and dropping studies, with the study being moved and the timeslot visibly highlighted.
+7. Take a screenshot of the interface showing the study being dragged and dropped into the Healthcare Service timeslot to document the process of scheduling directly from the worklist. Save as "./img/10.png".
+8. Wait until the appointment box appears in the calendar, confirming the study was successfully scheduled.
+9. Drag the appointment box up or down to adjust the timeslot.
+10. Verify the screen matches the expected state for adjusting appointment times, with the appointment box visibly moving within the calendar and the timeslot boundaries highlighted.
+11. Take a screenshot of the calendar view showing the appointment box being adjusted to document the drag-and-drop rescheduling functionality. Save as "./img/11.png".
+12. Click on an empty timeslot in the calendar to open the "New Appointment" drawer.
+13. Wait until the "New Appointment" drawer is fully visible.
+14. Verify the screen matches the expected state for creating a new appointment, with the drawer displaying fields for Patient Name, Physician Details, Orders, and Notes.
+15. Take a screenshot of the calendar interface with the "New Appointment" drawer open, ensuring all fields are clearly visible, to document the process of creating an appointment. Save as "./img/12.png".

@@ -4,6 +4,7 @@ import * as path from 'path';
 import { GenerateCodeResponse } from "../llm_request";
 import { ClickableDomResult } from "../page_helpers";
 import { LLMProvider } from "./base_provider";
+import { apiLogger, APILogEntry } from "./api_logger";
 import 'dotenv/config';
 export class GeminiProvider implements LLMProvider {
   private gemini: GoogleGenAI;
@@ -41,12 +42,13 @@ export class GeminiProvider implements LLMProvider {
     pageUrl: string,
     screenshot: Buffer,
     previouslyExecutedCode: string,
-    currentStepErrorCode: string
+    currentStepErrorCode: string,
+    includeSystemInstruction: boolean,
+    isCodeAnswer: boolean,
+    previousStepThinking?: string
   ): Promise<GenerateCodeResponse> {
-    // if (process.env.VERBOSE_LLM) {
-    //   console.log('🔍 Using prompt for code generation:', scenarioText);
-    //   console.log('🔍 System instruction:', systemInstruction);
-    // }
+    const startTime = Date.now();
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-pro-preview-05-06";
 
     const request = this.buildRequest(
       systemInstruction,
@@ -55,66 +57,137 @@ export class GeminiProvider implements LLMProvider {
       pageUrl,
       screenshot,
       previouslyExecutedCode,
-      currentStepErrorCode
+      currentStepErrorCode,
+      previousStepThinking
     );
 
-    // Disable verbose Gemini API request logging to keep console output focused on generated code
-    const shouldLogGemini = false;
-    let originalFetch: typeof global.fetch | undefined;
-    if (shouldLogGemini) {
-      originalFetch = global.fetch;
-      global.fetch = async (url, options) => {
-        const defaultOptions = { method: 'GET', headers: {}, body: null, ...options } as any;
+    let response;
+    let logEntry: APILogEntry;
 
-        const logFilePath = path.join(process.cwd(), 'gemini_api_requests.log');
+    try {
+      response = await this.gemini.models.generateContent(request);
+      
+      const answer = response.candidates?.[0]?.content?.parts?.[0]?.text;
+      const inputTokenCount = response.usageMetadata?.promptTokenCount || 0;
+      const outputTokenCount = response.usageMetadata?.candidatesTokenCount || 0;
+      const duration = Date.now() - startTime;
 
-        let logContent = `\n\n==================================================\n`;
-        logContent += `🔍 Intercepted Gemini API Request at ${new Date().toISOString()}\n`;
-        logContent += `==================================================\n`;
-        logContent += `URL: ${url}\n`;
-        logContent += `METHOD: ${defaultOptions.method}\n`;
-        logContent += `HEADERS: ${JSON.stringify(defaultOptions.headers, null, 2)}\n`;
-        logContent += `BODY: ${defaultOptions.body}\n`;
-        logContent += `--------------------------------------------------\n\n`;
+      if (!answer) {
+        logEntry = {
+          timestamp: new Date().toISOString(),
+          provider: 'gemini',
+          model,
+          request: {
+            systemInstruction,
+            userPrompt: scenarioText,
+            hasImage: true,
+            imageSize: screenshot.length,
+            pageUrl,
+            visibleElementsLength: domResult.visibleElements.length,
+            previouslyExecutedCode,
+            currentStepErrorCode
+          },
+          response: {
+            status: 200,
+            content: "No response from LLM",
+            inputTokenCount,
+            outputTokenCount,
+            totalTokens: inputTokenCount + outputTokenCount,
+            thinking: "No response from LLM",
+            code: "done"
+          },
+          metadata: {
+            temperature: 0.7,
+            safetySettings: request.config?.safetySettings
+          },
+          duration
+        };
 
-        // To reconstruct as a curl command:
-        const headers = defaultOptions.headers || {};
-        const headersString = Object.entries(headers).map(([key, value]) => `  -H '${key}: ${String(value)}'`).join(' \\\n');
-        const curlCommand = `curl -X ${defaultOptions.method} '${url}' \\\n${headersString} ${defaultOptions.body ? `\\\n  -d '${defaultOptions.body}'` : ''}`;
-        
-        logContent += `Equivalent curl command:\n${curlCommand}\n`;
-        logContent += `==================================================\n\n`;
+        apiLogger.logAPICall(logEntry);
 
-        fs.appendFileSync(logFilePath, logContent);
+        return {
+          code: "done",
+          thinking: "No response from LLM",
+          inputTokenCount,
+          outputTokenCount,
+        };
+      }
 
-        return originalFetch!(url, defaultOptions);
+      const parsedResponse = this.parseCodeResponse(answer);
+
+      logEntry = {
+        timestamp: new Date().toISOString(),
+        provider: 'gemini',
+        model,
+        request: {
+          systemInstruction,
+          userPrompt: scenarioText,
+          hasImage: true,
+          imageSize: screenshot.length,
+          pageUrl,
+          visibleElementsLength: domResult.visibleElements.length,
+          previouslyExecutedCode,
+          currentStepErrorCode
+        },
+        response: {
+          status: 200,
+          content: answer,
+          inputTokenCount,
+          outputTokenCount,
+          totalTokens: inputTokenCount + outputTokenCount,
+          thinking: parsedResponse.thinking,
+          code: parsedResponse.code
+        },
+        metadata: {
+          temperature: 0.7,
+          safetySettings: request.config?.safetySettings
+        },
+        duration
       };
-    }
 
-    const response = await this.gemini.models.generateContent(request);
+      apiLogger.logAPICall(logEntry);
 
-    // Restore original fetch if we overwrote it
-    if (shouldLogGemini && originalFetch) {
-      global.fetch = originalFetch;
-    }
-    
-    const answer = response.candidates?.[0]?.content?.parts?.[0]?.text;
-    const inputTokenCount = response.usageMetadata?.promptTokenCount || 0;
-    const outputTokenCount = response.usageMetadata?.candidatesTokenCount || 0;
-
-    if (!answer) {
       return {
-        code: "done",
-        inputTokenCount: inputTokenCount,
-        outputTokenCount: outputTokenCount,
+        code: parsedResponse.code,
+        thinking: parsedResponse.thinking,
+        inputTokenCount,
+        outputTokenCount,
       };
-    }
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      
+      logEntry = {
+        timestamp: new Date().toISOString(),
+        provider: 'gemini',
+        model,
+        request: {
+          systemInstruction,
+          userPrompt: scenarioText,
+          hasImage: true,
+          imageSize: screenshot.length,
+          pageUrl,
+          visibleElementsLength: domResult.visibleElements.length,
+          previouslyExecutedCode,
+          currentStepErrorCode
+        },
+        response: {
+          status: error?.response?.status || 500,
+          content: error?.message || "Unknown error",
+          inputTokenCount: 0,
+          outputTokenCount: 0,
+          totalTokens: 0,
+          thinking: "Error occurred",
+          code: "error"
+        },
+        metadata: {
+          temperature: 0.7,
+          safetySettings: request.config?.safetySettings
+        },
+        duration
+      };
 
-
-    return {
-      code: this.parseCodeResponse(answer),
-      inputTokenCount,
-      outputTokenCount,
+      apiLogger.logAPICall(logEntry);
+      throw error;
     }
   }
 
@@ -125,7 +198,8 @@ export class GeminiProvider implements LLMProvider {
     pageUrl: string,
     screenshot: Buffer,
     previouslyExecutedCode: string,
-    currentStepErrorCode: string
+    currentStepErrorCode: string,
+    previousStepThinking?: string
   ): GenerateContentParameters {
     const parts: Content[] = [];
 
@@ -145,6 +219,13 @@ export class GeminiProvider implements LLMProvider {
     if (currentStepErrorCode !== "") {
       parts.push({
         text: `Failed Code:\n${currentStepErrorCode}`,
+      } as Content);
+    }
+
+    // Add previous step thinking if available
+    if (previousStepThinking) {
+      parts.push({
+        text: `Based on the information of the previous step gauge which step to do next following the order of the instructions. Thought behind the previous step:\n${previousStepThinking}`,
       } as Content);
     }
 
@@ -178,17 +259,36 @@ export class GeminiProvider implements LLMProvider {
     };
   }
 
-  private parseCodeResponse(answer: string): string {
+  private parseCodeResponse(answer: string): { code: string; thinking: string } {
     let generatedCode: string;
-    if (answer.includes("```")) {
+    let thinking: string = "No thinking provided";
+    
+    // Try to parse as JSON first (for the new format with thinking)
+    try {
+      const jsonMatch = answer.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.code && parsed.thinking) {
+          generatedCode = parsed.code;
+          thinking = parsed.thinking;
+        } else {
+          throw new Error("Invalid JSON format");
+        }
+      } else {
+        throw new Error("No JSON found");
+      }
+    } catch (e) {
+      // Fallback to old format
+      if (answer.includes("```")) {
         const regex = /```.*?\n(.*)\n```/gs;
         const matches = regex.exec(answer);
         if (!matches) {
-            throw new Error("No code matches found");
+          throw new Error("No code matches found");
         }
         generatedCode = matches[1];
-    } else {
+      } else {
         generatedCode = answer;
+      }
     }
 
     // Ensure every Playwright click has force:true without duplicating or nesting objects
@@ -197,11 +297,23 @@ export class GeminiProvider implements LLMProvider {
 
     // 2) existing object literal but missing force => append it
     generatedCode = generatedCode.replace(/\.click\(\s*{([^}]*)}\s*\)/g, (match, inner) => {
-      return /force\s*:\s*/.test(inner)
-        ? match // already has force
-        : `.click({ ${inner.trim()}${inner.trim() ? ', ' : ''}force: true })`;
+      if (inner.includes('force')) {
+        return match; // Already has force
+      }
+      return `.click({ ${inner}, force: true })`;
     });
 
-    return generatedCode.trim();
+    // 3) existing object literal with force but missing timeout => append it
+    generatedCode = generatedCode.replace(/\.click\(\s*{([^}]*)}\s*\)/g, (match, inner) => {
+      if (inner.includes('timeout')) {
+        return match; // Already has timeout
+      }
+      return `.click({ ${inner}, timeout: 20000 })`;
+    });
+
+    // 4) no object literal at all => add both
+    generatedCode = generatedCode.replace(/\.click\(\s*\)/g, '.click({ force: true, timeout: 20000 })');
+
+    return { code: generatedCode, thinking };
   }
 }
