@@ -26,8 +26,118 @@ import { generateInstructions, checkPythonDependencies } from './preprocess_inst
 // Import placeholder management functions
 import { processMarkdownFile, extractImageNamesFromPlaceholders, replacePlaceholderWithImage } from './placeholder-manager.js';
 
-// Obsolete helper functions (`removeOverlays`, `clickDocumentViewerIcon`) have been removed
-// since the application no longer shows blocking overlays or special viewer buttons.
+// Import standard AI utils and page helpers
+// Note: These will be imported dynamically since they are TypeScript files
+
+// Global error handlers for browser context issues
+process.on('uncaughtException', (error) => {
+    if (error.message.includes('Target page, context or browser has been closed')) {
+        console.log('🔍 Browser was closed, ending gracefully.');
+        process.exit(0);
+    } else {
+        console.error('❌ Uncaught exception:', error.message);
+        process.exit(1);
+    }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    if (reason && reason.message && reason.message.includes('Target page, context or browser has been closed')) {
+        console.log('🔍 Browser was closed during promise rejection, ending gracefully.');
+        process.exit(0);
+    } else {
+        console.error('❌ Unhandled promise rejection:', reason);
+        process.exit(1);
+    }
+});
+
+// Browser state check utility function
+const checkBrowserState = async (page) => {
+    try {
+        const isClosed = await page.isClosed();
+        if (isClosed) {
+            console.log('🔍 Browser is closed.');
+            return false;
+        }
+        const url = await page.url();
+        console.log(`✅ Browser is accessible, current URL: ${url}`);
+        return true;
+    } catch (error) {
+        console.log(`🔍 Browser state check failed: ${error.message}`);
+        return false;
+    }
+};
+
+// Create a default test document for testing
+const createDefaultTestDocument = () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    
+    // Create docs directory if it doesn't exist
+    const docsDir = path.join(process.cwd(), 'docs');
+    if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true });
+        console.log(`📁 Created docs directory: ${docsDir}`);
+    }
+    
+    const testDocContent = `# Test Document for Enhanced Flow
+
+This is a test document to demonstrate the enhanced clickable elements detection flow.
+
+## Features to Test
+
+### 1. Basic Navigation
+- [ ] Login functionality
+- [ ] Menu navigation
+- [ ] User settings
+
+### 2. Document Viewer
+- [ ] Open document viewer
+- [ ] Navigate through documents
+- [ ] Use zoom controls
+
+### 3. Language Settings
+- [ ] Change language to Spanish
+- [ ] Verify language change
+- [ ] Test UI elements in new language
+
+## Screenshots Needed
+
+1. Login screen
+2. Main dashboard
+3. Document viewer interface
+4. Language settings page
+5. User profile section
+
+## Test Instructions
+
+1. Navigate to the login page
+2. Enter credentials and login
+3. Access the document viewer
+4. Change language settings
+5. Verify all UI elements are working
+
+This document will be used to test the enhanced clickable elements detection with intelligent promotion and smart bypasses.
+`;
+
+    const testDocPath = path.join(docsDir, 'test-document.md');
+    fs.writeFileSync(testDocPath, testDocContent);
+    console.log(`📝 Created test document: ${testDocPath}`);
+    return testDocPath;
+};
+
+// Create a temporary changed files list
+const createChangedFilesList = (testDocPath) => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    
+    // Convert Windows path to use forward slashes for Python script compatibility
+    const normalizedPath = testDocPath.replace(/\\/g, '/');
+    
+    const changedFilesPath = path.join(process.cwd(), 'changed-files-test.txt');
+    fs.writeFileSync(changedFilesPath, normalizedPath);
+    console.log(`📋 Created changed files list: ${changedFilesPath}`);
+    return changedFilesPath;
+};
 
 // Accept --changed-files argument
 const args = process.argv.slice(2);
@@ -40,6 +150,26 @@ for (let i = 0; i < args.length; i++) {
     } else if ((args[i] === '--mode' || args[i] === '-m') && args[i + 1]) {
         modeArg = args[i + 1];
         i++;
+    }
+}
+
+// If no changed files provided, use the specific document explorer file
+if (!changedFiles) {
+    console.log('📝 No changed files provided, using specified document explorer file...');
+    const fs = require('node:fs');
+    const path = require('node:path');
+    
+    // Use the specified document explorer file
+    const testDocPath = 'C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest\\docs\\6-Image-Viewer\\9_Study,_Voice_Notes,_&_Dictations.md';
+    
+    // Verify the file exists
+    if (fs.existsSync(testDocPath)) {
+        console.log(`📄 Using document explorer file: ${testDocPath}`);
+        changedFiles = createChangedFilesList(testDocPath);
+    } else {
+        console.log('⚠️  Specified document explorer file not found, creating default...');
+        const defaultDocPath = createDefaultTestDocument();
+        changedFiles = createChangedFilesList(defaultDocPath);
     }
 }
 
@@ -175,7 +305,7 @@ async function postprocessPlaceholders(processedFiles) {
 }
 
 (async () => {
-    console.log('🚀 Starting Enhanced Tracewright with Instruction Generation...\n');
+    console.log('🚀 Starting Enhanced Tracewright Test Flow...\n');
     console.log(`📋 Mode: ${SCENARIO_TYPE} - ${MODE_DESCRIPTIONS[SCENARIO_TYPE]}\n`);
     
     // Step 1: Check Python dependencies
@@ -302,7 +432,7 @@ if (
     }
     
     const browser = await chromium.launch({
-        headless: true,
+        headless: false, // Changed to false for testing
         channel: 'chrome',
         args: [
             "--disable-notifications",
@@ -377,53 +507,109 @@ if (
         
         console.log('✅ Login completed and application loaded');
 
-        // await page.locator('[data-testid="documentviewer-icon"]').first().click({ force: true, timeout: 60000 });
-    //     await page.getByTestId('Avatar Team Prime, Ramsoft Local').click({ timeout: 60000 });
-    //     await page.getByRole('button', { name: 'USER SETTINGS' }).click({ timeout: 60000 });
-    //     await page.getByTestId('LanguageIcon').click({ timeout: 60000 });
-    //     // await page.getByRole('button', { name: 'English' }).click({ timeout: 60000 });
-    //     // await page.locator('[role="button"][aria-haspopup="listbox"]').click({ timeout: 60000 });
-    //     await page.getByRole('button', { name: 'English' })
-    // .or(page.getByRole('button', { name: 'Español' }))
-    // .click({ timeout: 60000 });
-    //     const espanolElements = page.getByText('Español');
-    //     const count = await espanolElements.count();
+        // Step 4.5: Analyze page structure before running tracewright
+        console.log('🔍 Analyzing page structure and creating enhanced log...');
         
-    //     if (count === 1) {
-    //         await espanolElements.click({ timeout: 60000 });
-    //         console.log('Clicked on Español');
-    //     } else if (count > 1) {
-    //         console.log('Multiple Español elements found, skipping step');
-    //     } else {
-    //         console.log('No Español element found, skipping step');
-    //     }
-    //     // Use the function before clicking the SVG element
-    //     try {
-    //         console.log('🔄 Removing overlays before clicking SVG...');
-    //         await removeOverlays(page);
-    //         await page.waitForTimeout(500); // Wait a bit to ensure overlays are gone
-    //         await page.locator('svg:has(path[d*="m12 5.69 5 4.5V18"])').click({ timeout: 60000, force: true });
-    //         console.log('✅ SVG clicked successfully');
-    //     } catch (error) {
-    //         console.error('❌ Error clicking SVG:', error);
-    //     }
+        // Create log file for detailed output
+        const fs = await import('node:fs');
+        const logFilePath = 'enhanced-flow-log.txt';
+        const logEntry = (message) => {
+            const timestamp = new Date().toISOString();
+            const logMessage = `[${timestamp}] ${message}\n`;
+            console.log(message);
+            fs.appendFileSync(logFilePath, logMessage);
+        };
+        
+        // Clear log file
+        fs.writeFileSync(logFilePath, `=== Enhanced Flow Log - ${new Date().toISOString()} ===\n\n`);
+        
+        // Hierarchical page structure analysis has been removed as it was failing consistently
+        logEntry('🔍 Running with streamlined analysis - hierarchical structure detection removed');
 
-        // Step 5: Run Tracewright with generated instructions
-        console.log('🤖 Running Tracewright with generated instructions...');
+        // Step 5: Run Tracewright with enhanced AI utils
+        console.log('🤖 Running Tracewright with Enhanced AI Utils...');
         try {
-            await tracewright(page, {
-                script: generatedInstructions
-            });
+            // Import the enhanced AI utils from compiled version
+            const { AIUtilsEnhanced } = await import('./tracewrightt/dist/esm/tracewrightt/src/ai_utils_enhanced.js');
+            const aiUtils = new AIUtilsEnhanced(page);
             
-            // No additional manual fallbacks required
+            // Add error handling for browser context issues
+            const originalEvaluate = page.evaluate;
+            page.evaluate = async (fn, ...args) => {
+                try {
+                    return await originalEvaluate.call(page, fn, ...args);
+                } catch (error) {
+                    if (error.message.includes('Target page, context or browser has been closed')) {
+                        console.log('⚠️  Browser context closed, attempting to recover...');
+                        // Wait a moment and try to check if page is still accessible
+                        try {
+                            await page.waitForTimeout(2000);
+                            const url = await page.url();
+                            console.log(`✅ Page recovered, current URL: ${url}`);
+                            return await originalEvaluate.call(page, fn, ...args);
+                        } catch (recoveryError) {
+                            console.error('❌ Failed to recover browser context:', recoveryError.message);
+                            throw error;
+                        }
+                    }
+                    throw error;
+                }
+            };
+            
+            // Run tracewright with enhanced screenshot interception
+            await tracewright(page, {
+                script: generatedInstructions,
+                // Use the enhanced AI utils
+                aiUtils: aiUtils
+            });
         } catch (tracewrightError) {
-            console.log('⚠️  Tracewright failed, trying enhanced manual approach...');
+            console.log('⚠️  Tracewright with enhanced AI utils failed');
             console.error('Tracewright error details:', tracewrightError);
             
-            // Manual overlay / viewer workaround removed (no longer necessary)
+            // Check if browser is still accessible
+            try {
+                const isClosed = await page.isClosed();
+                console.log(`🔍 Browser closed status: ${isClosed}`);
+                if (!isClosed) {
+                    console.log('🔄 Browser is still open, attempting to continue...');
+                }
+            } catch (checkError) {
+                console.log('❌ Cannot check browser status:', checkError.message);
+            }
         }
  
         console.log('✅ Automation execution completed successfully!');
+        
+        // Generate and display token usage statistics
+        try {
+            console.log('\n' + '='.repeat(80));
+            console.log('📊 GENERATING TOKEN USAGE STATISTICS');
+            
+            // Create token usage summary
+            const tokenLogPath = 'token_usage_summary.txt';
+            const timestamp = new Date().toISOString();
+            
+            // Get AI Utils instance if available
+            if (typeof AIUtilsEnhanced !== 'undefined' && aiUtils) {
+                console.log('\n📊 GENERATING FINAL TOKEN REPORT 📊');
+                aiUtils.writeTokenUsageSummary(tokenLogPath);
+                // The report is printed directly by the writeTokenUsageSummary method
+            } else {
+                // Fallback to simple token logging
+                const summary = [
+                    `\n===== Token Usage Summary (${timestamp}) =====`,
+                    '(Note: Detailed statistics not available - using simple summary)',
+                    '==========================================='
+                ].join('\n');
+                
+                fs.appendFileSync(tokenLogPath, summary + '\n\n');
+                console.log('✅ Basic token usage log created at:', tokenLogPath);
+            }
+            
+            console.log('='.repeat(80) + '\n');
+        } catch (tokenError) {
+            console.error('⚠️ Could not generate token usage statistics:', tokenError.message);
+        }
         
         // Step 6: Post-process placeholders - Replace with actual image references
         if (processedFiles.length > 0) {
@@ -438,13 +624,25 @@ if (
             console.log('='.repeat(80) + '\n');
         }
         
-w        // Auto-close browser in CI environments, keep open locally for inspection
-        if (process.env.CI || process.env.GITHUB_ACTIONS) {
-            console.log('🤖 CI environment detected - automatically closing browser...');
-            await browser.close();
-            console.log('✅ Browser closed successfully');
-        } else {
-            console.log('🔍 Browser will remain open for inspection. Close manually when done.');
+        // Keep browser open for testing (changed from auto-close)
+        console.log('🔍 Browser will remain open for testing. Close manually when done.');
+        console.log('⏳ Keeping browser open for 60 seconds for testing...');
+        
+        // Check browser state before timeout
+        const browserAccessible = await checkBrowserState(page);
+        if (!browserAccessible) {
+            console.log('🔍 Browser is already closed, ending gracefully.');
+            return;
+        }
+        
+        try {
+            await page.waitForTimeout(60000);
+        } catch (timeoutError) {
+            if (timeoutError.message.includes('Target page, context or browser has been closed')) {
+                console.log('🔍 Browser was closed during timeout, ending gracefully.');
+            } else {
+                console.error('❌ Unexpected error during timeout:', timeoutError.message);
+            }
         }
         
     } catch (error) {
@@ -461,13 +659,25 @@ w        // Auto-close browser in CI environments, keep open locally for inspect
             }
         }
         
-        // Auto-close browser in CI environments, keep open locally for debugging
-        if (process.env.CI || process.env.GITHUB_ACTIONS) {
-            console.log('🤖 CI environment detected - closing browser after error...');
-            await browser.close();
-            console.log('✅ Browser closed after error');
-        } else {
-            console.log('🔍 Browser will remain open for debugging. Close manually when done.');
+        // Keep browser open for debugging
+        console.log('🔍 Browser will remain open for debugging. Close manually when done.');
+        console.log('⏳ Keeping browser open for 60 seconds for debugging...');
+        
+        // Check browser state before timeout
+        const browserAccessible = await checkBrowserState(page);
+        if (!browserAccessible) {
+            console.log('🔍 Browser is already closed, ending gracefully.');
+            return;
+        }
+        
+        try {
+            await page.waitForTimeout(60000);
+        } catch (timeoutError) {
+            if (timeoutError.message.includes('Target page, context or browser has been closed')) {
+                console.log('🔍 Browser was closed during debugging timeout, ending gracefully.');
+            } else {
+                console.error('❌ Unexpected error during debugging timeout:', timeoutError.message);
+            }
         }
     }
 })(); 

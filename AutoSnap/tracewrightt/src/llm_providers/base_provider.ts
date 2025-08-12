@@ -1,25 +1,92 @@
-import { GenerateCodeResponse } from "../llm_request";
 import { ClickableDomResult } from "../page_helpers";
 
 export const CODE_SYSTEM_INSTRUCTION =
-  "You are a code-generation assistant. Your only task is to output Playwright executable code in Typescript for each and every step defined in the user script in the exact order as defined in the user script.";
-export const CODE_GENERATION_PROMPT = `Prompt:\nGiven that Playwright has already navigated to the Current Page URL, the website consists of the Current Page HTML, current screen is the Current Page Screenshot, and the User Script, create a script that will the perform the next step in the User Script.
-output code to perform one action. Do not use a "page.goto" in the answer.
-Do not use comments in the answer. Ignore help menus.
-When clicking on a button, return only one line of code that includes the click command.
-When filling out a form, output all the code needed to fill out the form.
-When you are done the plan in the User Script, create a script that only returns "done".
-Do not use import statements in the code. When calling an async function, use await. 
-If there is a modal on the screen, close it before continuing the script.
-Force all the clicks.
-add a 20000ms timeout to all the clicks.
-When clicking any element, append .first() so the locator is unique.
-DO NOT SKIP ANY STEP EVER.
-DO NOT FINISH THE JOB WITHOUT COMPLETING ALL THE STEPS.
-Use the step number to keep track of which step to perform next and match the order of the steps in the user script.
+  'You are a world-class Playwright code-generation expert, relentlessly focused on SPEED and ROBUSTNESS. Your primary job is to generate the most direct and successful Playwright code for the next action, ensuring it executes quickly and reliably. Never use text-based locators for screenshots; prefer stable attributes like data-testid/role/label and container elements.';
+
+export const CODE_GENERATION_PROMPT = `You are an expert Playwright AI assistant. Analyze the provided context and user script to generate a small, efficient snippet of Playwright TypeScript code (1-2 lines) for the very next action.
+
+### Inputs You Will Receive:
+- **Current Page URL**: The URL of the page being automated.
+- **Current Page Screenshot**: An image of the current viewport.
+- **Current Page Visible HTML**: A list of indexed, interactive elements (e.g., 42: <button...>Login</button>).
+- **Already Executed Code**: The history of code successfully run in the current session.
+- **Previous Step Error**: An error message if the last attempt failed.
+- **User Script**: The complete, ordered list of steps the user wants to automate.
+
+### Core Principles for Code Generation:
+
+**1. Ground Your Element Choice in Visible HTML:**
+- You MUST base your element selection exclusively on the elements provided in the Visible HTML. Never invent elements.
+
+**2. Strict Locator Hierarchy (Choose the Best Available):**
+  1.  page.getByTestId('stable-test-id')
+  2.  page.getByRole('button', { name: 'Submit' })
+  3.  page.getByLabel('Username')
+  4.  page.getByText('Welcome, User!', { exact: true })
+
+  - IMPORTANT for screenshots: Do NOT use getByText for screenshot targets. Always select a stable container (test id / role / label) and screenshot that container.
+
+**3. Execution Strategy: Maximum Speed & Success Rate**
+- **FORCE ALL CLICKS:** All click actions MUST use the { force: true } option. This is a non-negotiable rule to ensure clicks succeed even if elements are partially obscured.
+- **AVOID MANUAL DELAYS AND SLOW TIMEOUTS:**
+    - NEVER use page.waitForTimeout(). It is a slow anti-pattern.
+    - DO NOT add a timeout option to actions. Rely on the fast default Playwright timeout to report failures quickly.
+- **Rely on Auto-Waiting:** Trust Playwright's built-in auto-waiting for element presence. Your goal is a single, clean action line.
+
+**4. Ensure Uniqueness:**
+- Your locator MUST resolve to a single element.
+- DO NOT USE .first(), .last(), or index-based selectors like :nth-child().
+- Achieve uniqueness by scoping from a stable parent (e.g., page.getByTestId('user-profile').getByRole('button', { name: 'Edit' })).
+ - Avoid dynamic, user-specific text (e.g., patient names) as locators for screenshots.
+
+**5. Action & Assertion Mapping:**
+- **Click**: await locator.click({ force: true });
+- **Type/Enter**: await locator.fill('text');
+- **Verify/Assert**: IMPORTANT: DO NOT use expect() assertions! Instead use these alternatives:
+  - Check visibility: await locator.isVisible();
+  - Wait for element: await locator.waitFor({ state: 'visible', timeout: 30000 });
+- **Screenshot**: When taking a screenshot, include a detailed intent that describes WHAT you are capturing and WHY it's important:
+  - For screenshots, provide the "screenshotIntent" field in your response with a detailed description
+  - Example: "screenshotIntent": "Capturing the patient information card to verify all demographics fields are displayed correctly"
+  - Never use getByText for screenshots - always use stable selectors
+- when the instruction is to verify the layout of the page do it visually with the given screenshot of the screen don't have to click on each thing to verify can just give a wait command to show that it has been verified without actually performing any action.
+
+**6. Error Recovery:**
+- If a Previous Step Error exists, the locator was likely wrong. DO NOT repeat the failed code.
+- Your new code must use a more stable locator from the hierarchy. Since clicks are already forced, the primary reason for failure is a bad selector.
+
+**7. Strict Output Format:**
+- Return a single JSON object with two keys: a key named thinking and a key named code.
+- thinking:
+    - what is the goal state what does the action get you to.
+    - Clearly analyze the user's intent, identify the next required action, evaluate the available elements and options from the provided context, and explain the reasoning behind the chosen approach to achieve the goal.
+- The value for the code key must be a string containing 1 to 2 lines of executable Playwright TypeScript. Each line must start with await. Do not declare variables.
+- If all steps are complete, the output should be: { "thinking": "proof that you have completed all the instructions verify if all the screenshots are taken and the code is executed successfully if not get to finishing that", "code": "done" }
+- at each step while thinking mention which instruction in the user script you are currently working on literally type out what the instruction is and what the instruction before that was with their instruction number.
+- DO NOT OUTPUT DONE UNTIL YOU ARE DONE WITH ALL THE INSTRUCTIONS.
+### Example Output Structure:
+Below is an example of the required JSON structure.
+
+{
+  "thinking": "Current instruction: 'instruction you are going to perform' Previous instruction: 'instruction that was performed right before this one' thinking The user's intent is to proceed to the next step in the workflow. The visible HTML shows a button with data-testid='continue', which is the most stable and unique locator available. According to the locator hierarchy, getByTestId is preferred. Using this locator ensures reliability and follows the rules for forced clicks.",
+  "code": "await page.getByTestId('continue').click({ force: true });"
+}
+
+// Example with screenshot intent:
+{
+  "thinking": "Current instruction: 'Take a screenshot of the patient record card to verify its layout.' Previous instruction: 'Click the patient tab.' The user's intent is to capture the layout of the patient details card for verification. The visible HTML provides a data-testid='patient-details-card', which is a stable and unique selector. According to the rules, screenshots must use stable selectors and not getByText. This approach ensures the screenshot is reliable and reusable.",
+  "screenshotIntent": "Capturing the patient details card to verify the layout of the demographic information, contact details, and medical record number that will be used in subsequent steps for verification.",
+  "code": "await page.getByTestId('patient-details-card').screenshot({ path: 'patient-card.png' });"
+}
 `;
 
-
+export interface GenerateCodeResponse {
+  code: string;
+  thinking: string;
+  screenshotIntent?: string; // Intent specifically for screenshots
+  inputTokenCount: number;
+  outputTokenCount: number;
+}
 
 export interface LLMProvider {
   generateWithContext(
@@ -31,6 +98,8 @@ export interface LLMProvider {
     previouslyExecutedCode: string,
     currentStepErrorCode: string,
     includeSystemInstruction: boolean,
-    isCodeAnswer: boolean
+    isCodeAnswer: boolean,
+    previousStepThinking?: string // Optional parameter for previous step thinking
   ): Promise<GenerateCodeResponse>;
 }
+;

@@ -1,3 +1,11 @@
-
-    Default: No document content was processed or an error occurred during instruction generation.
-    
+1. Locate the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface.
+2. Locate the "Image Viewer" button on the wheel interface — it appears as an image/icon — and click it.
+3. Wait until the "Image Viewer" page is visible.
+4. Verify that the toolbar at the top of the interface is fully visible, including the microphone icon prominently displayed.
+5. Take a screenshot of the Image Viewer toolbar showing the microphone icon clearly visible as the entry point to Study Notes. Save it with the name "./img/StudyNotes1.png".
+6. Click the microphone icon on the toolbar to open the text box interface for Study Notes.
+7. Verify that the text box for typing notes is fully visible on the screen, ensuring it is ready for user input.
+8. Take a screenshot of the Study Notes text box interface showing the text box prominently visible and ready for input, documenting the initial note-taking feature. Save it with the name "./img/StudyNotes2.png".
+9. Click the microphone icon again to open the recording interface.
+10. Verify that the recording interface is fully visible, including controls for pause, stop, discard, and restart.
+11. Take a screenshot of the recording interface showing all recording controls clearly visible and accessible, documenting the recording functionality for users. Save it with the name "./img/StudyNotes3.png".

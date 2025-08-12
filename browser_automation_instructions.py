@@ -411,7 +411,7 @@ INSTRUCTIONS
 3. wait until the "Document Viewer" page is visible
 4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
 5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
-6. when writing instructions make it as detailed as possible based on the information you know so be more descriptive of what is where adn what is need to be done.
+
 Notes about navigation in this product:
 - To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
 

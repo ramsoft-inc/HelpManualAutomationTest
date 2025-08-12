@@ -27,7 +27,8 @@ export const generateStep = async (
   scenarioText: string,
   stepCount: number,
   previouslyExecutedCode: string,
-  currentStepErrorCode: string
+  currentStepErrorCode: string,
+  previousStepThinking: string = "" // Default to empty string if not provided
 ): Promise<GenerateCodeResponse> => {
   let stepScreenshotBuffer: Buffer | undefined;
 
@@ -76,6 +77,9 @@ ${previouslyExecutedCode || 'None'}
 
 Current Step Error Code:
 ${currentStepErrorCode || 'None'}
+
+${previousStepThinking ? `Previous Step Thinking:
+${previousStepThinking}` : ''}
 `;
 
   fs.writeFileSync(`./steps/${stepCount}-prompt.txt`, fullPrompt);
@@ -89,7 +93,8 @@ ${currentStepErrorCode || 'None'}
     previouslyExecutedCode,
     currentStepErrorCode,
     true,
-    true
+    true,
+    previousStepThinking // Pass previous step thinking to the LLM handler
   );
 
   fs.writeFileSync(`./steps/${stepCount}-code.ts`, codeResponse.code);

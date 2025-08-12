@@ -52,7 +52,8 @@ below features:
 
 - **Overlay:** Allows you to overlay different image layers.
 
-<!-- placeholder for a screenshot -->
+![image1](./img/image1.png)
+
 - **Scout Lines:** Enables you to view scout lines on the image.
 
 - **Unified Stack:** Merges multiple series into a single stack for easy

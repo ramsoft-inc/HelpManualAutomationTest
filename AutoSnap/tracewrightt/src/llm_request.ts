@@ -1,11 +1,7 @@
-import { LLMProvider } from "./llm_providers/base_provider";
+import { LLMProvider, GenerateCodeResponse } from "./llm_providers/base_provider";
 import { ClickableDomResult } from "./page_helpers";
 
-export type GenerateCodeResponse = {
-  code: string;
-  inputTokenCount: number;
-  outputTokenCount: number;
-};
+export type { GenerateCodeResponse };
 
 export class LLMRequestHandler {
   private provider: LLMProvider;
@@ -23,7 +19,8 @@ export class LLMRequestHandler {
     previouslyExecutedCode: string,
     currentStepErrorCode: string,
     includeSystemInstruction: boolean,
-    isCodeAnswer: boolean
+    isCodeAnswer: boolean,
+    previousStepThinking?: string // Added optional parameter
   ): Promise<GenerateCodeResponse> {
     return this.provider.generateWithContext(
       systemInstruction,
@@ -34,7 +31,8 @@ export class LLMRequestHandler {
       previouslyExecutedCode,
       currentStepErrorCode,
       includeSystemInstruction,
-      isCodeAnswer
+      isCodeAnswer,
+      previousStepThinking // Pass to provider
     );
   }
 }
