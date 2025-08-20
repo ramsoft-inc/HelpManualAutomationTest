@@ -160,7 +160,7 @@ if (!changedFiles) {
     const path = require('node:path');
     
     // Use the specified document explorer file
-    const testDocPath = 'C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest\\docs\\6-Image-Viewer\\9_Study,_Voice_Notes,_&_Dictations.md';
+    const testDocPath = 'C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest\\docs\\5-Document-Viewer\\document_explorer.md';
     
     // Verify the file exists
     if (fs.existsSync(testDocPath)) {
@@ -246,6 +246,12 @@ async function preprocessPlaceholders(changedFiles) {
             try {
                 console.log(`📝 Processing placeholders in: ${filePath}`);
                 const result = await processMarkdownFile(filePath);
+                
+                // Set the current markdown file path for image reference
+                if (aiUtils) {
+                    console.log(`📄 Setting current markdown path for AIUtilsEnhanced: ${filePath}`);
+                    aiUtils.setCurrentMdFilePath(filePath);
+                }
                 
                 if (result.placeholderCount > 0) {
                     const imageNames = extractImageNamesFromPlaceholders(result.updatedContent);
@@ -533,6 +539,13 @@ if (
             const { AIUtilsEnhanced } = await import('./tracewrightt/dist/esm/tracewrightt/src/ai_utils_enhanced.js');
             const aiUtils = new AIUtilsEnhanced(page);
             
+            // Set the current markdown file path for image reference if we have processed files
+            if (processedFiles.length > 0) {
+                const lastProcessedFile = processedFiles[processedFiles.length - 1].filePath;
+                console.log(`📄 Setting current markdown path for AIUtilsEnhanced: ${lastProcessedFile}`);
+                aiUtils.setCurrentMdFilePath(lastProcessedFile);
+            }
+            
             // Add error handling for browser context issues
             const originalEvaluate = page.evaluate;
             page.evaluate = async (fn, ...args) => {
@@ -557,6 +570,7 @@ if (
             };
             
             // Run tracewright with enhanced screenshot interception
+            // Note: Instructions are already extracted by _extract_instructions_only in Python
             await tracewright(page, {
                 script: generatedInstructions,
                 // Use the enhanced AI utils
@@ -624,11 +638,10 @@ if (
             console.log('='.repeat(80) + '\n');
         }
         
-        // Keep browser open for testing (changed from auto-close)
-        console.log('🔍 Browser will remain open for testing. Close manually when done.');
-        console.log('⏳ Keeping browser open for 60 seconds for testing...');
+        // Close browser automatically when job is done
+        console.log('✅ Job completed successfully, closing browser...');
         
-        // Check browser state before timeout
+        // Check browser state before closing
         const browserAccessible = await checkBrowserState(page);
         if (!browserAccessible) {
             console.log('🔍 Browser is already closed, ending gracefully.');
@@ -636,13 +649,10 @@ if (
         }
         
         try {
-            await page.waitForTimeout(60000);
-        } catch (timeoutError) {
-            if (timeoutError.message.includes('Target page, context or browser has been closed')) {
-                console.log('🔍 Browser was closed during timeout, ending gracefully.');
-            } else {
-                console.error('❌ Unexpected error during timeout:', timeoutError.message);
-            }
+            await browser.close();
+            console.log('✅ Browser closed successfully.');
+        } catch (closeError) {
+            console.error('❌ Error closing browser:', closeError.message);
         }
         
     } catch (error) {
@@ -659,11 +669,10 @@ if (
             }
         }
         
-        // Keep browser open for debugging
-        console.log('🔍 Browser will remain open for debugging. Close manually when done.');
-        console.log('⏳ Keeping browser open for 60 seconds for debugging...');
+        // Close browser even when there are errors
+        console.log('⚠️ Job completed with errors, closing browser...');
         
-        // Check browser state before timeout
+        // Check browser state before closing
         const browserAccessible = await checkBrowserState(page);
         if (!browserAccessible) {
             console.log('🔍 Browser is already closed, ending gracefully.');
@@ -671,13 +680,10 @@ if (
         }
         
         try {
-            await page.waitForTimeout(60000);
-        } catch (timeoutError) {
-            if (timeoutError.message.includes('Target page, context or browser has been closed')) {
-                console.log('🔍 Browser was closed during debugging timeout, ending gracefully.');
-            } else {
-                console.error('❌ Unexpected error during debugging timeout:', timeoutError.message);
-            }
+            await browser.close();
+            console.log('✅ Browser closed successfully.');
+        } catch (closeError) {
+            console.error('❌ Error closing browser:', closeError.message);
         }
     }
 })(); 

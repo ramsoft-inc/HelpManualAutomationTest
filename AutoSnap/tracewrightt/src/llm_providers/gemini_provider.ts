@@ -65,7 +65,13 @@ export class GeminiProvider implements LLMProvider {
     let logEntry: APILogEntry;
 
     try {
+      // Store the raw request payload
+      const rawRequest = JSON.parse(JSON.stringify(request));
+      
       response = await this.gemini.models.generateContent(request);
+      
+      // Store the raw response
+      const rawResponse = JSON.parse(JSON.stringify(response));
       
       const answer = response.candidates?.[0]?.content?.parts?.[0]?.text;
       const inputTokenCount = response.usageMetadata?.promptTokenCount || 0;
@@ -73,35 +79,37 @@ export class GeminiProvider implements LLMProvider {
       const duration = Date.now() - startTime;
 
       if (!answer) {
-        logEntry = {
-          timestamp: new Date().toISOString(),
-          provider: 'gemini',
-          model,
-          request: {
-            systemInstruction,
-            userPrompt: scenarioText,
-            hasImage: true,
-            imageSize: screenshot.length,
-            pageUrl,
-            visibleElementsLength: domResult.visibleElements.length,
-            previouslyExecutedCode,
-            currentStepErrorCode
-          },
-          response: {
-            status: 200,
-            content: "No response from LLM",
-            inputTokenCount,
-            outputTokenCount,
-            totalTokens: inputTokenCount + outputTokenCount,
-            thinking: "No response from LLM",
-            code: "done"
-          },
-          metadata: {
-            temperature: 0.7,
-            safetySettings: request.config?.safetySettings
-          },
-          duration
-        };
+              logEntry = {
+        timestamp: new Date().toISOString(),
+        provider: 'gemini',
+        model,
+        rawRequest,
+        rawResponse,
+        request: {
+          systemInstruction,
+          userPrompt: scenarioText,
+          hasImage: true,
+          imageSize: screenshot.length,
+          pageUrl,
+          visibleElementsLength: domResult.visibleElements.length,
+          previouslyExecutedCode,
+          currentStepErrorCode
+        },
+        response: {
+          status: 200,
+          content: "No response from LLM",
+          inputTokenCount,
+          outputTokenCount,
+          totalTokens: inputTokenCount + outputTokenCount,
+          thinking: "No response from LLM",
+          code: "done"
+        },
+        metadata: {
+          temperature: 0.7,
+          safetySettings: request.config?.safetySettings
+        },
+        duration
+      };
 
         apiLogger.logAPICall(logEntry);
 
@@ -119,6 +127,8 @@ export class GeminiProvider implements LLMProvider {
         timestamp: new Date().toISOString(),
         provider: 'gemini',
         model,
+        rawRequest,
+        rawResponse,
         request: {
           systemInstruction,
           userPrompt: scenarioText,
@@ -156,10 +166,21 @@ export class GeminiProvider implements LLMProvider {
     } catch (error: any) {
       const duration = Date.now() - startTime;
       
+      // Create raw request object even in error case
+      const rawRequest = JSON.parse(JSON.stringify(request));
+      // For errors, create a simplified error response object
+      const rawResponse = {
+        error: true,
+        message: error?.message || "Unknown error",
+        status: error?.response?.status || 500
+      };
+      
       logEntry = {
         timestamp: new Date().toISOString(),
         provider: 'gemini',
         model,
+        rawRequest,
+        rawResponse,
         request: {
           systemInstruction,
           userPrompt: scenarioText,

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 import { apiLogger, APILogEntry } from "./llm_providers/api_logger";
+import { forceScreenshotWithRetries } from "./screenshot_helper";
 
 // ---------------------------------------------------------------------------
 // Robustly load the root-level Playwright config regardless of whether we are
@@ -1100,7 +1101,7 @@ export class AIUtilsEnhanced {
         if (minimalElements.length >= 40) break;
       }
 
-      const systemPrompt = `You generate Playwright code to take screenshots of the right UI container.
+      const systemPrompt = `You generate Playwright code to take screenshots of the correct UI container.
 
 Choose a single, meaningful container that contains the target element based on the following strict priority order:
 
@@ -1121,7 +1122,7 @@ IMPORTANT: For dropdown or search result containers, look SPECIFICALLY for:
 IMPORTANT ABOUT THE IMAGES:
 You will receive two images:
 1. The first image is the reference screenshot of what needs to be captured
-2. The second image (if available) shows the same UI with container elements highlighted using colored borders and numbered labels to help you choose the right container
+2. The second image (if available) shows the same UI with container elements highlighted using colored borders and numbered labels to help you choose the correct container
 
 The highlighted containers in the second image are color-coded and numbered. Each label shows:
 - Container number
@@ -1160,7 +1161,6 @@ Rules:
 1) Pick EXACTLY ONE best container that includes the target, following the priority order above.
 2) Always prefer [data-testid] selectors over any other type when available.
 3) For search dropdowns/dialogs, SPECIFICALLY use [data-testid="search-dialog"] if available.
-4) If role="listbox" is causing errors, look for other selectors like [data-testid] or classes.
 5) Use page.locator() with CSS selectors instead of getByRole() when taking screenshots.
 6) ALWAYS add a reasonable timeout (30000ms default).
 7) FORCE ALL SCREENSHOT COMMANDS by adding { force: true } to all locators.
@@ -1193,7 +1193,14 @@ BAD RESPONSES (DO NOT DO THESE):
 - Returning markdown code blocks
 - Returning explanations before or after the code
 
-JUST RETURN THE SINGLE LINE OF PLAYWRIGHT CODE AND NOTHING ELSE.`;
+OUTPUT FORMAT:
+Return ONLY a single line of Playwright code. No explanations, no markdown, no JSON, no additional text.
+
+Example correct output:
+await page.locator('[data-testid="container"]').screenshot({ path: './images/screenshot.png', timeout: 30000, force: true });
+
+JUST RETURN THE SINGLE LINE OF PLAYWRIGHT CODE AND NOTHING ELSE.
+`;
 
       const userTextPrompt = `This is the intent of the screenshot: 
 ${screenshotIntent ? `SCREENSHOT INTENT: ${screenshotIntent}` : ''}
@@ -1270,6 +1277,9 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
         let parsedResponse;
         let extractedCode = '';
         let extractedThinking = '';
+        
+        // Store raw response for thinking extraction
+        const rawResponse = aiContent;
 
         // Minimal debug logging
         if (process.env.VERBOSE_LLM === 'true') {
@@ -1285,6 +1295,8 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
           timestamp: new Date().toISOString(),
           provider: 'openai',
           model: 'gpt-5-chat',
+          rawRequest: requestPayload || {}, // Add missing field
+          rawResponse: response || {}, // Add missing field
           request: {
             systemInstruction: systemPrompt,
             userPrompt: userTextPrompt,
@@ -1357,7 +1369,15 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
               // Also extract thinking if available
               if (parsedResponse.thinking) {
                 extractedThinking = String(parsedResponse.thinking);
-                console.log('💭 THINKING: ' + extractedThinking);
+                console.log('💭 THINKING from JSON: ' + extractedThinking);
+              }
+              
+              // Extract screenshotIntent if available
+              if (parsedResponse.screenshotIntent) {
+                const extractedIntent = String(parsedResponse.screenshotIntent);
+                console.log('📸 SCREENSHOT INTENT from JSON: ' + extractedIntent);
+                // Store it for later use
+                screenshotIntent = extractedIntent;
               }
             }
           } catch (jsonError) {
@@ -1368,6 +1388,13 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
             if (codeBlockMatch && codeBlockMatch[1]) {
               extractedCode = codeBlockMatch[1].trim();
               console.log('📝 Extracted code from markdown code block');
+              
+              // Try to extract thinking from markdown format
+              const thinkingMatch = cleaned.match(/(?:THINKING|thinking|Thinking|THOUGHT|thought|Thought|ANALYSIS|analysis|Analysis)[:|\n]([\s\S]*?)(?:```|INSTRUCTIONS|instructions|Instructions|STEPS|steps|Steps)/i);
+              if (thinkingMatch && thinkingMatch[1]) {
+                extractedThinking = thinkingMatch[1].trim();
+                console.log('💭 THINKING from markdown: ' + extractedThinking);
+              }
             } else {
               console.log('⚠️ Using raw response as code');
             }
@@ -1383,6 +1410,37 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
             extractedCode = screenshotMatch[0].trim();
             if (!extractedCode.endsWith(';')) extractedCode += ';';
             console.log('🔧 Extracted screenshot command from raw response');
+          }
+        }
+        
+        // If we still don't have thinking, try to extract it from the raw response
+        if (!extractedThinking && rawResponse) {
+          // Try to extract thinking from raw response using various patterns
+          const thinkingPatterns = [
+            // Common thinking section markers
+            /(?:THINKING|thinking|Thinking|THOUGHT|thought|Thought|ANALYSIS|analysis|Analysis)[:|\n]([\s\S]*?)(?:```|INSTRUCTIONS|instructions|Instructions|STEPS|steps|Steps|CODE|code|Code)/i,
+            // Current instruction pattern from the terminal output
+            /Current instruction:.*?(?=Previous instruction:|$)/s,
+            // Look for text that explains what the user wants to capture
+            /The user wants to capture.*?(?=\.)/s,
+            // Look for text that describes what's being captured
+            /This ensures.*?(?=\.)/s,
+            // Look for any explanatory text before code blocks
+            /.*?(?=```)/s
+          ];
+          
+          for (const pattern of thinkingPatterns) {
+            const match = rawResponse.match(pattern);
+            if (match && match[0]) {
+              // If the pattern has a capture group, use that, otherwise use the whole match
+              const thinkingText = match[1] || match[0];
+              if (thinkingText && thinkingText.trim().length > 10) { // Ensure it's not just a few characters
+                extractedThinking = thinkingText.trim();
+                console.log('💭 Extracted thinking from raw response using pattern:', pattern);
+                console.log('💭 THINKING from raw response:', extractedThinking);
+                break;
+              }
+            }
           }
         }
 
@@ -1407,6 +1465,8 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
           timestamp: new Date().toISOString(),
           provider: 'openai',
           model: 'gpt-5-chat',
+          rawRequest: requestPayload || {}, // Add missing field
+          rawResponse: err?.response || {}, // Add missing field for error case
           request: {
             systemInstruction: systemPrompt,
             userPrompt: userTextPrompt,
@@ -1590,13 +1650,57 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
       // Check if there's a screenshot intent available in the code context
       let extractedScreenshotIntent = screenshotIntent || '';
       
-      // If no explicit screenshot intent was provided, try to extract it from the thinking
-      if (!extractedScreenshotIntent && thinking) {
-        const intentMatches = thinking.match(/screenshot.*(of|to capture|showing|displaying|for|to verify).*?[.?!]/i);
-        if (intentMatches && intentMatches[0]) {
-          extractedScreenshotIntent = intentMatches[0].trim();
-          console.log(`📝 Extracted screenshot intent from thinking: ${extractedScreenshotIntent}`);
+      // Log if we already have a screenshot intent from JSON
+      if (extractedScreenshotIntent) {
+        console.log(`✅ Using screenshot intent from JSON response: ${extractedScreenshotIntent}`);
+      } else {
+        // Only use regex extraction if no JSON-based intent was provided
+        console.log(`⚠️ No screenshot intent found in JSON response, falling back to regex extraction`);
+        
+        const patterns = [
+          // Standard pattern with prepositions
+          /screenshot.*(of|to capture|showing|displaying|for|to verify).*?[.?!]/i,
+          // Capture "take a screenshot" followed by any content until punctuation
+          /take a screenshot.*?[.?!]/i,
+          // Capture "screenshot" followed by any content until punctuation
+          /screenshot.*?[.?!]/i,
+          // Capture "save as" followed by filename
+          /save as .*?\.png/i,
+          // Capture comments that describe the screenshot
+          /\/\/\s*.*?(screenshot|capture).*$/im
+        ];
+        
+        // First try to extract from thinking if available
+        if (!extractedScreenshotIntent && thinking) {
+          for (const pattern of patterns) {
+            const intentMatches = thinking.match(pattern);
+            if (intentMatches && intentMatches[0]) {
+              extractedScreenshotIntent = intentMatches[0].trim();
+              console.log(`📝 Extracted screenshot intent from thinking using pattern: ${pattern}`);
+              console.log(`📝 Extracted intent: ${extractedScreenshotIntent}`);
+              break;
+            }
+          }
         }
+        
+        // If still not found, try to extract from the code block itself
+        if (!extractedScreenshotIntent) {
+          for (const pattern of patterns) {
+            const intentMatches = originalCodeBlock.match(pattern);
+            if (intentMatches && intentMatches[0]) {
+              extractedScreenshotIntent = intentMatches[0].trim();
+              console.log(`📝 Extracted screenshot intent from code using pattern: ${pattern}`);
+              console.log(`📝 Extracted intent: ${extractedScreenshotIntent}`);
+              break;
+            }
+          }
+        }
+      }
+      
+      // If we still don't have an intent and we have a filename, use that as a fallback
+      if (!extractedScreenshotIntent && origFileName) {
+        extractedScreenshotIntent = `Screenshot of ${origFileName.replace(/\.[^/.]+$/, "").replace(/_/g, " ")}`;
+        console.log(`📝 Generated fallback intent from filename: ${extractedScreenshotIntent}`);
       }
       
       if (extractedScreenshotIntent) {
@@ -2143,210 +2247,66 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
   }
   
   /**
-   * Executes screenshot code with enhanced stability
+   * Executes screenshot code with simplified retry logic
    * @param code The screenshot code to execute
    * @returns The result of the execution
    */
   async executeScreenshotWithStability(code: string): Promise<any> {
-    // Always wait for network idle before screenshot commands
-    console.log('⏳ Ensuring network idle before screenshot command...');
-    await this.page.waitForLoadState('networkidle')
-      .catch((e: Error) => console.log('⚠️ Network idle wait failed:', e.message));
-      
+    // Ensure directories exist first (extract and run that part safely)
+    if (code.includes('fs.mkdirSync')) {
+      try {
+        // Execute just the directory creation part
+        const dirSetupCode = code.split(/\/\/\s*(Stock|Enhanced)\s*version/)[0];
+        const dirSetupFunc = new Function('page', `return (async () => { ${dirSetupCode} })()`);
+        await dirSetupFunc(this.page);
+        console.log('✅ Directory setup completed');
+      } catch (e) {
+        console.log('⚠️ Directory setup failed, will continue anyway:', e.message);
+      }
+    }
+    
     // Check if this is a complex multi-statement screenshot block
     if (code.includes('// Stock version') || code.includes('// Enhanced version')) {
-      console.log('📦 Detected complex multi-statement screenshot block, processing individually');
+      console.log('📦 Detected complex multi-statement screenshot block, executing both stock and enhanced versions');
       
-      // Extract individual screenshot commands
       const lines = code.split('\n');
-      let enhancedCmd = '';
       let stockCmd = '';
+      let enhancedCmd = '';
       
-      // Find the stock and enhanced commands
+      // Find the stock command
       for (const line of lines) {
         if (line.includes('// Stock version') && lines.indexOf(line) + 1 < lines.length) {
           stockCmd = lines[lines.indexOf(line) + 1].trim();
+          break;
         }
+      }
+      
+      // Find the enhanced command
+      for (const line of lines) {
         if (line.includes('// Enhanced version') && lines.indexOf(line) + 1 < lines.length) {
           enhancedCmd = lines[lines.indexOf(line) + 1].trim();
+          break;
         }
       }
       
-      // Ensure directories exist first (extract and run that part safely)
-      if (code.includes('fs.mkdirSync')) {
-        try {
-          // Execute just the directory creation part
-          const dirSetupCode = code.split('// Stock version')[0];
-          const dirSetupFunc = new Function('page', `return (async () => { ${dirSetupCode} })()`);
-          await dirSetupFunc(this.page);
-          console.log('✅ Directory setup completed');
-        } catch (e) {
-          console.log('⚠️ Directory setup failed, will continue anyway:', e.message);
-        }
-      }
-      
-      // Try the enhanced version first, then fall back to stock if needed
-      if (enhancedCmd) {
-        try {
-          console.log('🔍 Trying enhanced screenshot first:', enhancedCmd);
-          
-          // Add explicit waiting for element visibility
-          const enhancedLocator = enhancedCmd.split('.screenshot')[0].trim();
-          
-          // Create a safer execution block with explicit visibility check and short timeout
-          const safeEnhancedCmd = `
-            try {
-              // Check if element exists at all
-              const count = await ${enhancedLocator}.count();
-              if (count === 0) {
-                console.log('⚠️ Enhanced locator not found in DOM, taking page screenshot');
-                await page.waitForLoadState('networkidle').catch(e => console.log('Network idle wait skipped:', e.message));
-                await page.screenshot({ path: ${enhancedCmd.match(/path: ['"]([^'"]+)['"]/)?.[1] ? 
-                  `'${enhancedCmd.match(/path: ['"]([^'"]+)['"]/)?.[1]}'` : 
-                  "'fallback.png'"} });
-                return;
-              }
-              
-              // Try to wait for visibility with shorter timeout
-              await ${enhancedLocator}.waitFor({ state: 'visible', timeout: 5000 })
-                .catch(() => console.log('Element not visible, continuing anyway'));
-                
-              // Wait for network idle before taking screenshot
-              await page.waitForLoadState('networkidle').catch(e => console.log('Network idle wait skipped:', e.message));
-              
-              // Take the screenshot
-              ${enhancedCmd}
-            } catch (e) {
-              console.log('Enhanced screenshot failed:', e.message);
-              // Take page screenshot as fallback with network idle wait
-              await page.waitForLoadState('networkidle').catch(e => console.log('Network idle wait skipped:', e.message));
-              await page.screenshot({ path: ${enhancedCmd.match(/path: ['"]([^'"]+)['"]/)?.[1] ? 
-                `'${enhancedCmd.match(/path: ['"]([^'"]+)['"]/)?.[1]}'` : 
-                "'fallback.png'"} });
-            }
-          `;
-          
-          const enhancedFunc = new Function('page', `return (async () => { ${safeEnhancedCmd} })()`);
-          await enhancedFunc(this.page);
-          console.log('✅ Enhanced screenshot completed');
-          return; // Success with enhanced version
-        } catch (error) {
-          console.log('❌ Enhanced screenshot execution failed:', error.message);
-          // Continue to try stock version
-        }
-      }
-      
-      // Try the stock version if enhanced failed or wasn't available
+      // Execute both commands if found
       if (stockCmd) {
-        try {
-          console.log('🔍 Trying stock screenshot as fallback');
-          
-          // Add explicit waiting for element visibility
-          const stockLocator = stockCmd.split('.screenshot')[0].trim();
-          
-          // Create a safer execution block with explicit visibility check and short timeout
-          const safeStockCmd = `
-            try {
-              // Check if element exists at all
-              const count = await ${stockLocator}.count();
-              if (count === 0) {
-                console.log('⚠️ Stock locator not found in DOM, taking page screenshot');
-                await page.waitForLoadState('networkidle').catch(e => console.log('Network idle wait skipped:', e.message));
-                await page.screenshot({ path: ${stockCmd.match(/path: ['"]([^'"]+)['"]/)?.[1] ? 
-                  `'${stockCmd.match(/path: ['"]([^'"]+)['"]/)?.[1]}'` : 
-                  "'fallback.png'"} });
-                return;
-              }
-              
-              // Try to wait for visibility with shorter timeout
-              await ${stockLocator}.waitFor({ state: 'visible', timeout: 5000 })
-                .catch(() => console.log('Element not visible, continuing anyway'));
-                
-              // Wait for network idle before taking screenshot
-              await page.waitForLoadState('networkidle').catch(e => console.log('Network idle wait skipped:', e.message));
-              
-              // Take the screenshot
-              ${stockCmd}
-            } catch (e) {
-              console.log('Stock screenshot failed:', e.message);
-              // Take page screenshot as fallback with network idle wait
-              await page.waitForLoadState('networkidle').catch(e => console.log('Network idle wait skipped:', e.message));
-              await page.screenshot({ path: ${stockCmd.match(/path: ['"]([^'"]+)['"]/)?.[1] ? 
-                `'${stockCmd.match(/path: ['"]([^'"]+)['"]/)?.[1]}'` : 
-                "'fallback.png'"} });
-            }
-          `;
-          
-          const stockFunc = new Function('page', `return (async () => { ${safeStockCmd} })()`);
-          await stockFunc(this.page);
-          console.log('✅ Stock screenshot completed');
-          return; // Success with stock version
-        } catch (error) {
-          console.log('❌ Stock screenshot execution failed:', error.message);
-        }
+        console.log('🔍 Executing stock screenshot command with retries:', stockCmd);
+        await forceScreenshotWithRetries(stockCmd, this.page, this);
       }
       
-      // If we got here, both attempts failed or weren't available
-      // Try a page screenshot as absolute fallback
-      try {
-        console.log('🔄 Both screenshot attempts failed, taking page screenshot as fallback');
-        // Wait for network idle before taking final fallback screenshot
-        await this.page.waitForLoadState('networkidle')
-          .catch(e => console.log('Network idle wait failed:', e.message));
-        await this.page.screenshot({ path: 'fallback.png' });
-        return;
-      } catch (finalError) {
-        console.error('💥 All screenshot attempts failed:', finalError);
-        throw finalError;
-      }
-    }
-    
-    // For simple screenshot commands, parse and enhance
-    const parsed = this.parseScreenshotCode(code);
-    if (!parsed) {
-      console.log('⚠️ Failed to parse screenshot code, executing original code');
-      try {
-        const func = new Function('page', `return (async () => { ${code} })()`);
-        return await func(this.page);
-      } catch (error) {
-        console.error('❌ Error during fallback execution:', error);
-        throw error;
-      }
-    }
-    
-    const { selectorExpr, selector, selectorType, options } = parsed;
-    console.log(`🔍 Detected ${selectorType} selector in screenshot code: ${selector || selectorExpr}`);
-    
-    try {
-      // Get the locator
-      let locator;
-      try {
-        // We need to wrap the selector expression in an async function context
-        const func = new Function('page', `
-          return (async () => { 
-            return ${selectorExpr}; 
-          })();
-        `);
-        locator = await func(this.page);
-      } catch (e) {
-        console.error('❌ Error evaluating selector:', e);
-        // If we can't get the locator, execute original code
-        const func = new Function('page', `return (async () => { ${code} })()`);
-        return await func(this.page);
+      if (enhancedCmd) {
+        console.log('🔍 Executing enhanced screenshot command with retries:', enhancedCmd);
+        await forceScreenshotWithRetries(enhancedCmd, this.page, this);
       }
       
-      // Take stable screenshot with enhanced function
-      return await this.takeStableScreenshot(locator, {
-        path: options.path,
-        timeout: options.timeout || 30000,
-        fullPage: options.fullPage || false
-      });
-    } catch (error) {
-      console.error('❌ Error during stable screenshot execution:', error);
-      // If stable execution fails, try original code
-      const func = new Function('page', `return (async () => { ${code} })()`);
-      return await func(this.page);
+      return;
     }
+    
+    // For simple screenshot commands, just execute directly with retries
+    console.log('🔍 Executing simple screenshot command with retries');
+    await forceScreenshotWithRetries(code, this.page, this);
+    return;
   }
 
   /**
@@ -2375,7 +2335,7 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       
       // Always wait for network idle before screenshots
       console.log('⏳ Waiting for network idle before taking screenshot...');
-      await this.page.waitForLoadState('networkidle')
+      await this.page.waitForLoadState('networkidle', { timeout: 5000 })
         .catch((e: Error) => console.log('❌ Network idle wait failed:', e.message));
       
       // 2. Count matching elements to detect potential issues
@@ -2583,6 +2543,7 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
   private getCurrentMdFilePath(): string | null {
     try {
       // First check if we have a stored path from setCurrentMdFilePath
+      console.log(`🔍 Checking for stored markdown path: ${this.currentMdPath || 'not set'}`);
       if (this.currentMdPath) {
         // If this is already a directory, return it directly
         if (fs.existsSync(this.currentMdPath) && fs.lstatSync(this.currentMdPath).isDirectory()) {
@@ -2690,11 +2651,22 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         console.log(`📄 Using markdown path as reference: ${mdFilePath}`);
         
         // Check for 'img', 'image', or 'images' folder in the markdown directory
+        // Prioritize the directory structure: if mdFilePath is a directory, look there first
+        // If mdFilePath is a file, look in its parent directory
+        const mdDir = fs.existsSync(mdFilePath) && fs.lstatSync(mdFilePath).isDirectory() 
+          ? mdFilePath 
+          : path.dirname(mdFilePath);
+          
+        console.log(`📂 Using markdown directory for image lookup: ${mdDir}`);
+        
         const relatedImgDirs = [
+          // First priority: img folder in the exact markdown directory
+          path.join(mdDir, 'img'),
+          path.join(mdDir, 'image'),
+          path.join(mdDir, 'images'),
+          path.join(mdDir, 'Images'),
+          // Lower priority: other common locations
           path.join(mdFilePath, 'img'),
-          path.join(mdFilePath, 'image'),
-          path.join(mdFilePath, 'images'),
-          path.join(mdFilePath, 'Images'),
           path.join(path.dirname(mdFilePath), 'img'),
           path.join(path.dirname(mdFilePath), 'image'),
           path.join(path.dirname(mdFilePath), 'images'),
@@ -2704,18 +2676,45 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         // Try the md-related directories first
         for (const imgDir of relatedImgDirs) {
           if (fs.existsSync(imgDir)) {
+            // First try exact match with the filename
             const candidatePath = path.join(imgDir, imageFileName);
             if (fs.existsSync(candidatePath)) {
-              console.log(`✅ Found reference image in markdown-related directory: ${imgDir}`);
+              console.log(`✅ Found exact reference image in markdown-related directory: ${imgDir}`);
               return fs.readFileSync(candidatePath).toString('base64');
+            }
+            
+            // If exact match not found, try to find the file without any suffix
+            try {
+              const files = fs.readdirSync(imgDir);
+              const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "").replace(/_[es]$/i, "");
+              const exactMatch = files.find(file => 
+                file.toLowerCase().replace(/\.[^/.]+$/, "") === baseName
+              );
+              
+              if (exactMatch) {
+                console.log(`✅ Found base reference image: ${exactMatch} in markdown-related directory: ${imgDir}`);
+                return fs.readFileSync(path.join(imgDir, exactMatch)).toString('base64');
+              }
+            } catch (e) {
+              console.warn(`⚠️ Error checking for base filename in ${imgDir}:`, e);
             }
             
             // Try to find an image with a similar name in this directory
             try {
               const files = fs.readdirSync(imgDir);
-              const similarFile = files.find(file => 
-                file.toLowerCase().includes(imageFileName.toLowerCase().replace(/\.[^/.]+$/, ""))
-              );
+              // First try to find exact match without _E or _S suffix
+              let similarFile = files.find(file => {
+                const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "");
+                const fileBase = file.toLowerCase().replace(/\.[^/.]+$/, "");
+                return fileBase === baseName || fileBase === baseName.replace(/_[es]$/i, "");
+              });
+              
+              // If not found, fall back to partial match
+              if (!similarFile) {
+                similarFile = files.find(file => 
+                  file.toLowerCase().includes(imageFileName.toLowerCase().replace(/\.[^/.]+$/, ""))
+                );
+              }
               if (similarFile) {
                 console.log(`✅ Found similar reference image: ${similarFile} in markdown-related directory: ${imgDir}`);
                 return fs.readFileSync(path.join(imgDir, similarFile)).toString('base64');
@@ -2729,9 +2728,14 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       
       // Define other potential image directory paths as fallbacks
       const possibleImageDirs = [
-        path.resolve(process.cwd(), 'img'),
-        path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'img'),
+        // Prioritize the Document-Viewer img directory with both absolute and relative paths
+        'C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest\\docs\\5-Document-Viewer\\img',
         path.resolve(process.cwd(), 'docs', '5-Document-Viewer', 'img'),
+        // Also check if we're working with a file from that directory
+        ...(mdFilePath && mdFilePath.includes('5-Document-Viewer') ? 
+          [path.resolve(path.dirname(mdFilePath), 'img')] : []),
+        path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'img'),
+        path.resolve(process.cwd(), 'img'),
         path.resolve(process.cwd(), 'docs', 'Images'),
         path.resolve(process.cwd(), 'AutoSnap', 'img'),
         path.resolve(process.cwd(), 'AutoSnap', 'img1'),
@@ -2741,10 +2745,29 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       
       // Try to find the image in any of the fallback directories
       for (const imgDir of possibleImageDirs) {
+        // First try exact match with the filename
         const candidatePath = path.join(imgDir, imageFileName);
         if (fs.existsSync(candidatePath)) {
-          console.log(`✅ Found reference image in fallback directory: ${imgDir}`);
+          console.log(`✅ Found exact reference image in fallback directory: ${imgDir}`);
           return fs.readFileSync(candidatePath).toString('base64');
+        }
+        
+        // If exact match not found, try to find the file without any suffix
+        try {
+          if (fs.existsSync(imgDir)) {
+            const files = fs.readdirSync(imgDir);
+            const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "").replace(/_[es]$/i, "");
+            const exactMatch = files.find(file => 
+              file.toLowerCase().replace(/\.[^/.]+$/, "") === baseName
+            );
+            
+            if (exactMatch) {
+              console.log(`✅ Found base reference image: ${exactMatch} in fallback directory: ${imgDir}`);
+              return fs.readFileSync(path.join(imgDir, exactMatch)).toString('base64');
+            }
+          }
+        } catch (e) {
+          console.warn(`⚠️ Error checking for base filename in ${imgDir}:`, e);
         }
       }
       
@@ -2753,9 +2776,19 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         if (fs.existsSync(imgDir)) {
           try {
             const files = fs.readdirSync(imgDir);
-            const similarFile = files.find(file => 
-              file.toLowerCase().includes(imageFileName.toLowerCase().replace(/\.[^/.]+$/, ""))
-            );
+            // First try to find exact match without _E or _S suffix
+            let similarFile = files.find(file => {
+              const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "");
+              const fileBase = file.toLowerCase().replace(/\.[^/.]+$/, "");
+              return fileBase === baseName || fileBase === baseName.replace(/_[es]$/i, "");
+            });
+            
+            // If not found, fall back to partial match
+            if (!similarFile) {
+              similarFile = files.find(file => 
+                file.toLowerCase().includes(imageFileName.toLowerCase().replace(/\.[^/.]+$/, ""))
+              );
+            }
             if (similarFile) {
               console.log(`✅ Found similar reference image: ${similarFile} in fallback directory: ${imgDir}`);
               return fs.readFileSync(path.join(imgDir, similarFile)).toString('base64');

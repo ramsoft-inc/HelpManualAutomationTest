@@ -55,36 +55,44 @@ export const executeCode = async (
   console.log('📋 Logger available:', !!logger);
   
   try {
-    // Create AIUtilsEnhanced instance for screenshot interception
-    console.log('🤖 Creating AIUtilsEnhanced instance...');
-    const aiUtils = new AIUtilsEnhanced(page);
-    
-    // If a markdown file path is provided, set it
-    if (mdFilePath) {
-      console.log('📄 Using markdown path for image reference:', mdFilePath);
-      aiUtils.setCurrentMdFilePath(mdFilePath);
-    }
-    
-    console.log('✅ AIUtilsEnhanced instance created successfully');
-    
     // Check if the code is a screenshot command to add special handling
     const isScreenshotCommand = /\.screenshot\s*\(/i.test(codeResponse.code);
     if (isScreenshotCommand && codeResponse.screenshotIntent) {
       console.log('🎯 Special handling for screenshot command with intent');
     }
-    
-    // Use AIUtilsEnhanced to execute code with screenshot interception (pass thinking, markdown path, and screenshot intent)
-    console.log('⚡ Executing code with AIUtilsEnhanced...');
-    await aiUtils.executeWithEnhancedScreenshotInterception(
-      codeResponse.code, 
-      false, 
-      logger, 
-      stepNumber, 
-      codeResponse.thinking,
-      mdFilePath,
-      codeResponse.screenshotIntent
-    );
-    console.log('✅ Code execution completed successfully');
+
+    if (isScreenshotCommand) {
+      // Create AIUtilsEnhanced instance only for screenshot interception
+      console.log('🤖 Creating AIUtilsEnhanced instance (screenshot detected)...');
+      const aiUtils = new AIUtilsEnhanced(page);
+
+      // If a markdown file path is provided, set it
+      if (mdFilePath) {
+        console.log('📄 Using markdown path for image reference:', mdFilePath);
+        aiUtils.setCurrentMdFilePath(mdFilePath);
+      }
+
+      console.log('✅ AIUtilsEnhanced instance created successfully');
+
+      // Use AIUtilsEnhanced to execute code with screenshot interception (pass thinking, markdown path, and screenshot intent)
+      console.log('⚡ Executing code with AIUtilsEnhanced...');
+      await aiUtils.executeWithEnhancedScreenshotInterception(
+        codeResponse.code,
+        false,
+        logger,
+        stepNumber,
+        codeResponse.thinking,
+        mdFilePath,
+        codeResponse.screenshotIntent
+      );
+      console.log('✅ Code execution completed successfully');
+    } else {
+      // Execute non-screenshot code directly without AIUtilsEnhanced wrapper
+      console.log('⚡ Executing code without AIUtilsEnhanced (no screenshot detected)...');
+      const func = new Function('page', `return (async () => { ${codeResponse.code} })()`);
+      await func(page);
+      console.log('✅ Code execution completed successfully');
+    }
     
   } catch (error: any) {
     console.error('❌ Code execution failed:', error.message);
@@ -120,27 +128,33 @@ export const executeCode = async (
         // logger.logRetryAttempt(stepNumber, codeResponse.code, modifiedCode, error.message, 1, page.url());
       }
       
-      // Use AIUtilsEnhanced for the retry as well
-      console.log('🤖 Creating AIUtilsEnhanced instance for retry...');
+    // Decide retry path based on whether the modified code contains screenshot
+    const isRetryScreenshotCommand = /\.screenshot\s*\(/i.test(modifiedCode);
+    if (isRetryScreenshotCommand) {
+      console.log('🤖 Creating AIUtilsEnhanced instance for retry (screenshot detected)...');
       const retryAiUtils = new AIUtilsEnhanced(page);
-      
       // Reuse the markdown path if available
       if (mdFilePath) {
         console.log('📄 Using markdown path for retry:', mdFilePath);
         retryAiUtils.setCurrentMdFilePath(mdFilePath);
       }
-      
       console.log('⚡ Executing retry with AIUtilsEnhanced...');
       await retryAiUtils.executeWithEnhancedScreenshotInterception(
-        modifiedCode, 
-        true, 
-        logger, 
-        stepNumber, 
+        modifiedCode,
+        true,
+        logger,
+        stepNumber,
         codeResponse.thinking,
         mdFilePath,
         codeResponse.screenshotIntent
       );
       console.log('✅ Retry execution completed successfully');
+    } else {
+      console.log('⚡ Executing retry without AIUtilsEnhanced (no screenshot detected)...');
+      const retryFunc = new Function('page', `return (async () => { ${modifiedCode} })()`);
+      await retryFunc(page);
+      console.log('✅ Retry execution completed successfully');
+    }
     } else {
       console.error('❌ Non-retryable error, re-throwing:', error.message);
       throw error;

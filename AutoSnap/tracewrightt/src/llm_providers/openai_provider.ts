@@ -75,7 +75,13 @@ export class OpenAIProvider implements LLMProvider {
     let logEntry: APILogEntry;
 
     try {
+      // Store the raw request payload
+      const rawRequest = JSON.parse(JSON.stringify(requestPayload));
+      
       response = await this.openai.chat.completions.create(requestPayload);
+      
+      // Store the raw response
+      const rawResponse = JSON.parse(JSON.stringify(response));
 
       const answer = response.choices[0]?.message?.content;
       const inputTokenCount = response.usage?.prompt_tokens || 0;
@@ -87,6 +93,8 @@ export class OpenAIProvider implements LLMProvider {
           timestamp: new Date().toISOString(),
           provider: 'openai',
           model,
+          rawRequest,
+          rawResponse,
           request: {
             systemInstruction,
             userPrompt: scenarioText,
@@ -158,6 +166,8 @@ export class OpenAIProvider implements LLMProvider {
         timestamp: new Date().toISOString(),
         provider: 'openai',
         model,
+        rawRequest,
+        rawResponse,
         request: {
           systemInstruction,
           userPrompt: scenarioText,
@@ -195,10 +205,21 @@ export class OpenAIProvider implements LLMProvider {
     } catch (error: any) {
       const duration = Date.now() - startTime;
       
+      // Create raw request object even in error case
+      const rawRequest = JSON.parse(JSON.stringify(requestPayload));
+      // For errors, create a simplified error response object
+      const rawResponse = {
+        error: true,
+        message: error?.message || "Unknown error",
+        status: error?.response?.status || 500
+      };
+      
       logEntry = {
         timestamp: new Date().toISOString(),
         provider: 'openai',
         model,
+        rawRequest,
+        rawResponse,
         request: {
           systemInstruction,
           userPrompt: scenarioText,

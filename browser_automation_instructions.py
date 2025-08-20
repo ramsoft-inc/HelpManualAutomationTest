@@ -399,7 +399,7 @@ Scope and constraints:
 - You are already at the homepage (Worklist). Do not include login steps.
 - Ignore any command to open a pop‑out window.
 - Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
-
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
 Example (format only):
 THINKING
 - Navigation: Worklist → click a patient name → wheel interface → Document Viewer

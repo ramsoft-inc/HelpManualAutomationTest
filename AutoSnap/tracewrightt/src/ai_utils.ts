@@ -569,6 +569,8 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
           timestamp: new Date().toISOString(),
           provider: 'openai',
           model: 'gpt-4o-mini', // Assuming this is the model being used
+          rawRequest: requestPayload || {}, // Add missing field
+          rawResponse: response || {}, // Add missing field
           request: {
             systemInstruction: systemPrompt,
             userPrompt: userTextPrompt,
@@ -612,6 +614,8 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
           timestamp: new Date().toISOString(),
           provider: 'openai',
           model: 'gpt-4o-mini',
+          rawRequest: requestPayload || {}, // Add missing field
+          rawResponse: error?.response || {}, // Add missing field for error case
           request: {
             systemInstruction: systemPrompt,
             userPrompt: userTextPrompt,
