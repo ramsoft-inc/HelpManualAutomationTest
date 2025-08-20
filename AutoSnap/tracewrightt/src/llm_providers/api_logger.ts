@@ -1,10 +1,61 @@
 import * as fs from 'fs';
 import * as path from 'path';
+/**
+ * Custom JSON serializer that handles circular references
+ * @param obj The object to serialize
+ * @returns A string representation of the object
+ */
+function safeStringify(obj: any, indent?: number): string {
+  const cache = new Set();
+  
+  return JSON.stringify(obj, function(key, value) {
+    // Handle null and undefined
+    if (value === null || value === undefined) {
+      return value;
+    }
+    
+    // Handle circular references
+    if (typeof value === 'object') {
+      if (cache.has(value)) {
+        // Return a simplified representation for circular references
+        return '[Circular Reference]';
+      }
+      cache.add(value);
+    }
+    
+    // Handle special objects that can't be serialized
+    if (value instanceof Error) {
+      const error: Record<string, any> = {};
+      Object.getOwnPropertyNames(value).forEach(prop => {
+        error[prop] = (value as any)[prop];
+      });
+      return error;
+    }
+    
+    // Handle request/response objects
+    if (
+      value && 
+      typeof value === 'object' && 
+      (
+        (value.constructor && value.constructor.name === 'ClientRequest') ||
+        (value.constructor && value.constructor.name === 'IncomingMessage') ||
+        (key === 'socket' && typeof value === 'object') ||
+        (key === 'client' && typeof value === 'object')
+      )
+    ) {
+      return '[HTTP Object]';
+    }
+    
+    return value;
+  }, indent);
+}
 
 export interface APILogEntry {
   timestamp: string;
   provider: 'gemini' | 'openai';
   model: string;
+  rawRequest: any; // Store the exact JSON payload sent to the model
+  rawResponse: any; // Store the exact JSON response received from the model
   request: {
     systemInstruction: string;
     userPrompt: string;
@@ -36,57 +87,151 @@ export interface APILogEntry {
 }
 
 export class APILogger {
-  private logDir: string;
-  private logFile: string;
-  private geminiLogFile: string;
-  private openaiLogFile: string;
+  private logDir: string = '';
+  private logFile: string = '';
+  private geminiLogFile: string = '';
+  private openaiLogFile: string = '';
 
   constructor() {
-    this.logDir = path.join(process.cwd(), 'api_logs');
-    this.logFile = path.join(this.logDir, 'all_api_calls.json');
-    this.geminiLogFile = path.join(this.logDir, 'gemini_calls.json');
-    this.openaiLogFile = path.join(this.logDir, 'openai_calls.json');
+    console.log(`🔧 Initializing API Logger`);
     
-    // Ensure log directory exists
-    if (!fs.existsSync(this.logDir)) {
-      fs.mkdirSync(this.logDir, { recursive: true });
+    try {
+      // Use absolute paths to avoid any working directory issues
+      const rootDir = process.cwd();
+      console.log(`📂 Current working directory: ${rootDir}`);
+      
+      this.logDir = path.resolve(rootDir, 'api_logs');
+      console.log(`📂 Log directory path: ${this.logDir}`);
+      
+      this.logFile = path.join(this.logDir, 'all_api_calls.json');
+      this.geminiLogFile = path.join(this.logDir, 'gemini_calls.json');
+      this.openaiLogFile = path.join(this.logDir, 'openai_calls.json');
+      
+      // Ensure log directory exists with proper permissions
+      if (!fs.existsSync(this.logDir)) {
+        console.log(`📁 Creating log directory: ${this.logDir}`);
+        fs.mkdirSync(this.logDir, { recursive: true, mode: 0o755 });
+        console.log(`✅ Log directory created successfully`);
+      } else {
+        console.log(`✅ Log directory already exists`);
+        
+        // Check if directory is writable
+        try {
+          const testFile = path.join(this.logDir, '.write_test');
+          fs.writeFileSync(testFile, 'test', 'utf8');
+          fs.unlinkSync(testFile);
+          console.log(`✅ Log directory is writable`);
+        } catch (e) {
+          console.warn(`⚠️ Log directory exists but may not be writable: ${e.message}`);
+        }
+      }
+      
+      // Log initialization success
+      console.log(`✅ API Logger initialized successfully`);
+    } catch (error) {
+      console.error(`💥 Error initializing API Logger:`, error);
     }
   }
 
   private logToFile(filePath: string, entry: APILogEntry) {
     try {
+      console.log(`📝 Attempting to log API call to ${filePath}`);
       let logs: APILogEntry[] = [];
+      
+      // Ensure directory exists
+      const dirPath = path.dirname(filePath);
+      if (!fs.existsSync(dirPath)) {
+        console.log(`📁 Creating log directory: ${dirPath}`);
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
       
       // Read existing logs if file exists
       if (fs.existsSync(filePath)) {
-        const existingContent = fs.readFileSync(filePath, 'utf8');
+        console.log(`📄 Reading existing log file: ${filePath}`);
         try {
-          logs = JSON.parse(existingContent);
+          const existingContent = fs.readFileSync(filePath, 'utf8');
+          if (existingContent && existingContent.trim()) {
+            logs = JSON.parse(existingContent);
+            console.log(`✅ Successfully parsed existing logs (${logs.length} entries)`);
+          } else {
+            console.log(`⚠️ Log file exists but is empty or contains only whitespace`);
+            logs = [];
+          }
         } catch (e) {
+          console.warn(`⚠️ Failed to parse existing log file (${e.message}), starting fresh`);
           // If file is corrupted, start fresh
           logs = [];
         }
+      } else {
+        console.log(`📄 Log file doesn't exist yet, will create: ${filePath}`);
       }
       
       // Add new entry
       logs.push(entry);
+      console.log(`➕ Added new log entry (total: ${logs.length})`);
       
-      // Write back to file
-      fs.writeFileSync(filePath, JSON.stringify(logs, null, 2));
+      // Write back to file - use a temporary file first to avoid corruption
+      const tempFilePath = `${filePath}.tmp`;
+      console.log(`📝 Writing to temporary file: ${tempFilePath}`);
+      // Use safeStringify to handle circular references
+      fs.writeFileSync(tempFilePath, safeStringify(logs, 2), 'utf8');
+      
+      // Rename temp file to target file (atomic operation)
+      console.log(`📝 Renaming temporary file to target file`);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath); // Delete existing file first on Windows
+      }
+      fs.renameSync(tempFilePath, filePath);
+      
+      console.log(`✅ Successfully saved API log to ${filePath}`);
     } catch (error) {
       console.warn('⚠️ Failed to write API log:', error);
+      // Try a more direct approach as fallback
+      try {
+        const backupPath = path.join(process.cwd(), 'api_log_backup.json');
+        console.log(`🔄 Attempting to write to backup location: ${backupPath}`);
+        // Use safeStringify for backup location too
+        fs.writeFileSync(backupPath, safeStringify([entry], 2), 'utf8');
+        console.log(`✅ Successfully wrote backup log to ${backupPath}`);
+      } catch (backupError) {
+        console.error('💥 Critical: Failed to write even to backup location:', backupError);
+      }
     }
   }
 
   logAPICall(entry: APILogEntry) {
-    // Log to main file
-    this.logToFile(this.logFile, entry);
+    console.log(`🔍 Logging API call from ${entry.provider} provider`);
     
-    // Log to provider-specific file
-    if (entry.provider === 'gemini') {
-      this.logToFile(this.geminiLogFile, entry);
-    } else if (entry.provider === 'openai') {
-      this.logToFile(this.openaiLogFile, entry);
+    try {
+      // Ensure entry has all required fields
+      if (!entry.timestamp) {
+        entry.timestamp = new Date().toISOString();
+      }
+      
+      // Log to main file
+      this.logToFile(this.logFile, entry);
+      
+      // Log to provider-specific file
+      if (entry.provider === 'gemini') {
+        this.logToFile(this.geminiLogFile, entry);
+      } else if (entry.provider === 'openai') {
+        this.logToFile(this.openaiLogFile, entry);
+      } else {
+        console.warn(`⚠️ Unknown provider: ${entry.provider}, logging only to main file`);
+      }
+      
+      console.log(`✅ Successfully logged API call from ${entry.provider}`);
+    } catch (error) {
+      console.error(`💥 Critical error in logAPICall:`, error);
+      
+      // Last resort - try to write to a simple file in the current directory
+      try {
+        const emergencyPath = path.join(process.cwd(), 'emergency_api_log.json');
+        fs.writeFileSync(emergencyPath, JSON.stringify(entry, null, 2), 'utf8');
+        console.log(`🚨 Wrote emergency log to ${emergencyPath}`);
+      } catch (e) {
+        console.error(`💥 Complete failure to log API call:`, e);
+      }
     }
   }
 

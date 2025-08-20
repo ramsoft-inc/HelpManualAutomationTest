@@ -296,139 +296,217 @@ def build_playbook_hints_for_changed_files(file_to_content: dict[str, str]) -> s
     return "\n---\n## Contextual First Steps (auto-detected)\n" + "\n\n".join(sections) + "\n---\n"
 
 def _extract_instructions_only(text: str) -> str:
-    """Extract only numbered instruction lines from the LLM output.
+    """Extract instruction lines from the LLM output within an INSTRUCTIONS section.
+    
+    Also attempts to parse the instructions as JSON if possible and logs both formats.
+    If the response is in JSON format with "instructions" field, returns just that field.
 
     Strategy:
-    - Prefer lines within an optional INSTRUCTIONS section if present.
-    - Otherwise, collect all lines that look like numbered steps (e.g., "1.", "2) ").
-    - If nothing matches, return the original text trimmed.
-    
-    Importantly, ensures that ALL screenshot instructions are included.
+    - First try to parse the entire response as JSON and extract the "instructions" field
+    - If not JSON, look for an explicit INSTRUCTIONS section
+    - Include all lines within the INSTRUCTIONS section, not just numbered steps
+    - If no INSTRUCTIONS section is found, return the original text trimmed
+    - Try to parse instructions as JSON and log both formats
     """
     import re
+    import json
+    
+    # First try to parse the entire text as JSON
+    try:
+        # Check if the entire text is valid JSON
+        parsed_json = json.loads(text)
+        if isinstance(parsed_json, dict) and "instructions" in parsed_json:
+            print("Successfully parsed response as JSON with instructions field")
+            print("\n--- PARSED JSON ---")
+            print(json.dumps(parsed_json, indent=2))
+            return parsed_json["instructions"]
+    except json.JSONDecodeError:
+        # Not a valid JSON, continue with section-based extraction
+        pass
+    except Exception as e:
+        print(f"Error while processing initial JSON: {e}")
+    
     lines = text.splitlines()
 
-    # First: validate that all screenshot instructions from the text are present
-    screenshot_count = 0
-    for line in lines:
-        if re.search(r"take\s+a\s+screenshot", line, flags=re.IGNORECASE):
-            screenshot_count += 1
+    # Check if there's an INSTRUCTIONS section
+    instructions_start_idx = -1
+    instructions_end_idx = -1
     
-    print(f"Found {screenshot_count} screenshot instructions in the LLM response")
-    
-    # First pass: if there is an explicit INSTRUCTIONS section, prefer numbered lines after it
-    saw_instructions_header = False
-    collected: list[str] = []
-    for line in lines:
+    # Find the start of the INSTRUCTIONS section
+    for i, line in enumerate(lines):
         if re.match(r"^\s*INSTRUCTIONS\s*$", line, flags=re.IGNORECASE):
-            saw_instructions_header = True
-            continue
-        if saw_instructions_header:
-            if re.match(r"^\s*\d+[\.|\)]\s*\S", line):
-                collected.append(line.strip())
-            # Ignore non-numbered lines to keep output strictly steps
+            instructions_start_idx = i + 1  # Start from the line after "INSTRUCTIONS"
+            break
     
-    # Check if all screenshot instructions are in the collected lines
-    if collected:
-        collected_screenshot_count = sum(1 for line in collected if re.search(r"take\s+a\s+screenshot", line, flags=re.IGNORECASE))
-        if collected_screenshot_count < screenshot_count:
-            print(f"WARNING: Only {collected_screenshot_count}/{screenshot_count} screenshot instructions found in the INSTRUCTIONS section!")
-            # Fall through to fallback approach
+    # If no INSTRUCTIONS section found, return original text
+    if instructions_start_idx == -1:
+        print("WARNING: No INSTRUCTIONS section found in the LLM response")
+        return text.strip()
+    
+    # Find the end of the INSTRUCTIONS section (next section or end of text)
+    for i in range(instructions_start_idx, len(lines)):
+        # Look for the next section header (all caps with no lowercase)
+        if i > instructions_start_idx and re.match(r"^\s*[A-Z][A-Z\s]+$", lines[i].strip()):
+            instructions_end_idx = i - 1
+            break
+    
+    # If no end found, instructions continue to the end of the text
+    if instructions_end_idx == -1:
+        instructions_end_idx = len(lines) - 1
+    
+    # Extract the instructions
+    instructions = lines[instructions_start_idx:instructions_end_idx + 1]
+    
+    # Remove empty lines at the beginning and end
+    while instructions and not instructions[0].strip():
+        instructions.pop(0)
+    while instructions and not instructions[-1].strip():
+        instructions.pop()
+    
+    # Count screenshot instructions for logging
+    screenshot_count = sum(1 for line in lines if re.search(r"take\s+a\s+screenshot", line, flags=re.IGNORECASE))
+    instructions_screenshot_count = sum(1 for line in instructions if re.search(r"take\s+a\s+screenshot", line, flags=re.IGNORECASE))
+    
+    print(f"Found {screenshot_count} total screenshot instructions in the LLM response")
+    print(f"Found {instructions_screenshot_count} screenshot instructions in the INSTRUCTIONS section")
+    
+    # If no instructions found, return original text
+    if not instructions:
+        print("WARNING: INSTRUCTIONS section was empty")
+        return text.strip()
+    
+    # Get the plain text instructions
+    plain_instructions = "\n".join(instructions).strip()
+    
+    # Try to parse as JSON
+    try:
+        # First check if the entire instructions section is valid JSON
+        json_instructions = None
+        try:
+            json_instructions = json.loads(plain_instructions)
+            print("Successfully parsed instructions as JSON")
+            # If the JSON has an "instructions" field, use that
+            if isinstance(json_instructions, dict) and "instructions" in json_instructions:
+                print("Found instructions field in JSON")
+                return json_instructions["instructions"]
+        except json.JSONDecodeError:
+            # If not, look for JSON within the instructions
+            json_pattern = r'\{[\s\S]*\}'
+            json_match = re.search(json_pattern, plain_instructions)
+            if json_match:
+                try:
+                    json_instructions = json.loads(json_match.group(0))
+                    print("Found and parsed JSON within instructions")
+                    # If the JSON has an "instructions" field, use that
+                    if isinstance(json_instructions, dict) and "instructions" in json_instructions:
+                        print("Found instructions field in JSON")
+                        return json_instructions["instructions"]
+                except json.JSONDecodeError:
+                    print("Found JSON-like content but failed to parse it")
+            else:
+                print("No JSON content found in instructions")
+        
+        # Log both formats
+        print("\n--- ORIGINAL INSTRUCTIONS ---")
+        print(plain_instructions)
+        print("\n--- PARSED JSON (if available) ---")
+        if json_instructions:
+            print(json.dumps(json_instructions, indent=2))
         else:
-            return "\n".join(collected).strip()
-
-    # Fallback: collect any numbered lines anywhere
-    collected = [ln.strip() for ln in lines if re.match(r"^\s*\d+[\.|\)]\s*\S", ln)]
-    if collected:
-        collected_screenshot_count = sum(1 for line in collected if re.search(r"take\s+a\s+screenshot", line, flags=re.IGNORECASE))
-        if collected_screenshot_count < screenshot_count:
-            print(f"WARNING: Only {collected_screenshot_count}/{screenshot_count} screenshot instructions found in numbered lines!")
-            # As last resort, add any line with "take a screenshot" that wasn't already included
-            screenshot_lines = [ln.strip() for ln in lines 
-                              if re.search(r"take\s+a\s+screenshot", ln, flags=re.IGNORECASE) 
-                              and not any(ln.strip() in c for c in collected)]
-            if screenshot_lines:
-                print(f"Adding {len(screenshot_lines)} missing screenshot instructions")
-                collected.extend(screenshot_lines)
-        return "\n".join(collected).strip()
-
-    # Nothing detected; include any line with screenshot instruction as last resort
-    screenshot_lines = [ln.strip() for ln in lines if re.search(r"take\s+a\s+screenshot", ln, flags=re.IGNORECASE)]
-    if screenshot_lines:
-        print(f"Fallback: Using {len(screenshot_lines)} raw screenshot instructions")
-        return "\n".join(screenshot_lines).strip()
-    
-    # Nothing detected; return original trimmed
-    return text.strip()
+            print("No valid JSON found")
+            
+        # Return the original instructions
+        return plain_instructions
+    except Exception as e:
+        print(f"Error while processing JSON: {e}")
+        return plain_instructions
 
 def get_prompt_for_ui_change(doc_content):
     """
     Generates a prompt for replacing a screenshot due to a UI element change.
+    Requests response in JSON format.
     """
     return f"""
-Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+Goal: Generate a single, comprehensive set of step-by-step browser actions to retake ALL documentation screenshots where UI elements changed (selector, appearance, or structure).
 
-Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+Analyze the entire document to identify ALL screenshots (shown as ![name](./path/to/image)) and create ONE sequential instruction set that captures every single screenshot in the most efficient navigation order.
 
 Output format (strict):
-1) THINKING — A short planning block with:
-   - think of how the isntructions should be structuted what the point of each step is.
-   - Navigation plan from the Worklist to each target screen.
-   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
-2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+1) THINKING — A brief planning block that:
+   - Lists every single screenshot found in the document with exact filenames (![name](./path))
+   - Plans the most efficient navigation route to capture all screenshots
+   - Notes the expected UI state and purpose for each screenshot
+2) INSTRUCTIONS — One numbered sequence starting at 1, covering the entire document. Each step is exactly one browser action.
 
-Before any screenshot, ensure the UI is fully visible and in the correct state:
-- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
-- If the element is already visible, do not click it unnecessarily; proceed to capture.
+Before capturing any screenshot:
+- Navigate to the correct screen/state
+- Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+- Verify all required elements are visible before taking the screenshot
 
 Rules for INSTRUCTIONS:
-- Use imperative voice.
-- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
-- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
-- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
-- For each screenshot step, include a DETAILED description that explains:
-  * WHAT specific UI elements should be visible in the screenshot
-  * WHY this screenshot is important (what it's documenting)
-  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
-  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
-- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
-- Output only the steps. No headings or summaries.
-Scope and constraints:
-- Include only steps required to reach and capture the screenshots.
-- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
-- You are already at the homepage (Worklist). Do not include login steps.
-- Ignore any command to open a pop‑out window.
-- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- Use imperative voice for each step
+- Each step = exactly one action ("click", "type", "open", "hover", "wait until visible", "take a screenshot")
+- For every interacted element, include its English name plus brief visual/positional cues (color, icon, "top-right", etc.)
+- For screenshot steps, use exact filename from document and include detailed description:
+  * WHAT specific UI elements should be visible
+  * WHAT the screenshot documents (its purpose)
+  * HOW the UI should be configured
+  * WHAT the screenshot likely shows (whole page vs partial, main focus area, layout description)
+Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose and user benefit]. Save as [filename]"
 
-Example (format only):
+Example format:
 THINKING
-- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
-- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+Screenshots to capture:
+- main-dashboard.png: Overview of primary interface with navigation menu and data panels
+
+Navigation plan: Homepage → Dashboard (capture main-dashboard.png)
 
 INSTRUCTIONS
-1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
-2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
-3. wait until the "Document Viewer" page is visible
-4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
-5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
-6. when writing instructions make it as detailed as possible based on the information you know so be more descriptive of what is where adn what is need to be done.
-Notes about navigation in this product:
-- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+1. locate the main data table in the center of the screen displaying patient records with columns for names, dates, and status indicators
+2. click on the third patient name from the top in the leftmost column to navigate to the dashboard interface
+3. wait until the dashboard loads completely with the top navigation bar, left sidebar menu, and main content area visible
+4. take a screenshot of the complete dashboard showing the navigation bar with logo and user menu, left sidebar with menu options, and main content area with data widgets and charts, to document the primary user interface and navigation structure. Save as main-dashboard.png
+
+
+Critical requirements:
+- Include every single screenshot found in the document - do not miss any
+- Organize navigation efficiently (group screenshots from same screens together)  
+- Ensure each screenshot instruction is extremely detailed and specific
+- Every screenshot step must include "screenshot" as the action followed by comprehensive description and exact filename
+- You start at homepage (Worklist) - no login steps needed
+- If choosing among similar items, pick the 3rd in the list
+- Ignore pop-out window commands
+
+Navigation notes for this product:
+- Standard flow: Worklist → click patient name → wheel interface → select feature
+- Make instructions extremely detailed and descriptive with specific visual cues, element positions, colors, icons, and contextual information
+- Include precise descriptions of where elements are located (top-left corner, center panel, right sidebar, etc.)
+- Describe visual characteristics of elements (button colors, icon shapes, text labels, panel sizes)
+- Provide context about what should be visible before and after each action
 
 Document to process:
 ---
 {doc_content}
 ---
+
+Important: Scan the entire document for all images shown as ![name](./path/to/image) and ensure every single one is included in your instruction sequence. Create one comprehensive set of instructions that captures everything.
+
+Remember: Format your THOUGHT and INSTRUCTIONS as a valid JSON object with the structure shown in the example.
+{{
+  "thinking": "text string of your thought",
+  "instructions": "one text string which has the whole set of detailed instructions (not a list)"
+}}
 """
 
-def get_prompt_for_new_feature( doc_content):
+def get_prompt_for_new_feature(doc_content):
     """
     Generates a prompt for filling a screenshot placeholder for a new document or feature.
+    Requests response in JSON format.
     """
                       
     import re
     doc_content = re.sub(r'!\[.*?\]\(.*?\)', '', doc_content)
-    print("2/n/n/n/n/n")
+    print("\n\n\n\n\n2")
     print(doc_content)
     print("have used the get_prompt_for_new_feature function")
     return f"""
@@ -440,7 +518,7 @@ If no such placeholders exist in the provided content, generate nothing (NO INST
 
 Output format (strict):
 1) THINKING — A short planning block with:
-   - think of how the isntructions should be structuted what the point of each step is.
+   - think of how the instructions should be structured and what the point of each step is.
    - Navigation plan from the Worklist to each target screen related to each placeholder.
    - For each placeholder (and filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions) to match the placeholder context.
 2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action, grouped in the same order as the placeholders appear in the document. Stop after the last placeholder.
@@ -451,24 +529,22 @@ Before any screenshot, ensure the UI is fully visible and in the correct state:
 
 Rules for INSTRUCTIONS:
 - Use imperative voice.
-- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- Each step = exactly one action ("locate", "click", "type", "open", "hover", "wait", "screenshot")
 - For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
-- When capturing, say "take a screenshot" and, if a filename/path is specified next to the placeholder, save using that exact name. Do not invent filenames if none are provided.
-- For each screenshot step, include a DETAILED description that explains:
+- When capturing, use "screenshot" as the action and, if a filename/path is specified next to the placeholder, save using that exact name. Do not invent filenames if none are provided.
+- For each screenshot step, include a detailed description that explains:
   * WHAT specific UI elements should be visible in the screenshot
   * WHY this screenshot is important (what it's documenting)
   * HOW the UI should be configured (expanded panels, selected tabs, visible data)
-  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
-- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured?
 - Preserve the order of placeholders in the document. Stop after the last placeholder.
-- Output only the steps. No headings or summaries.
 
 Scope and constraints:
 - Include only steps required to reach and capture the placeholder screenshot(s).
-- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- If choosing among similar rows/buttons, pick the 3rd item in the list.
 - You are already at the homepage (Worklist). Do not include login steps.
 - Ignore any command to open a pop‑out window.
-- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- Add a final step with action "note" and target "quality check" with a description about redoing any screenshots that don't look right.
 
 Example (format only):
 THINKING
@@ -490,6 +566,8 @@ Document to process:
 ---
 {doc_content}
 ---
+
+Remember: Format your INSTRUCTIONS as a valid JSON object with the structure shown in the example.
 """
 
 def extract_image_paths_from_md(file_content):
@@ -554,7 +632,7 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     document_instructions = "Default: No document content was processed or an error occurred during instruction generation."
     if content and content.strip():  # Check if content is not empty or just whitespace
         # Select the appropriate prompt based on scenario type
-        print("1/n/n/n/n/n/n")
+        print("\n\n\n\n\n\n1")
         
         # Default to UI change mode
         if scenario_type == "default":

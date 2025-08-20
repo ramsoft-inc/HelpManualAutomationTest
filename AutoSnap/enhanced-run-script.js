@@ -438,7 +438,7 @@ if (
             console.log('='.repeat(80) + '\n');
         }
         
-w        // Auto-close browser in CI environments, keep open locally for inspection
+        // Auto-close browser in CI environments, keep open locally for inspection
         if (process.env.CI || process.env.GITHUB_ACTIONS) {
             console.log('🤖 CI environment detected - automatically closing browser...');
             await browser.close();
