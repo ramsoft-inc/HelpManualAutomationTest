@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 import { ChatCompletionCreateParamsNonStreaming } from "openai/resources";
-import { GenerateCodeResponse } from "../llm_request";
-import { ClickableDomResult } from "../page_helpers";
-import { LLMProvider } from "./base_provider";
-import { apiLogger, APILogEntry } from "./api_logger";
+import { GenerateCodeResponse } from "../llm_request.js";
+import { ClickableDomResult } from "../page_helpers.js";
+import { LLMProvider } from "./base_provider.js";
+import { apiLogger, APILogEntry } from "./api_logger.js";
 
 export class OpenAIProvider implements LLMProvider {
   private openai: OpenAI;

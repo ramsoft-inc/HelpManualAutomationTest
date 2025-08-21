@@ -1,10 +1,10 @@
 import { Page } from "@playwright/test";
 import fs from "fs";
-import { CODE_GENERATION_PROMPT, CODE_SYSTEM_INSTRUCTION } from "./llm_providers/base_provider";
-import { GeminiProvider } from "./llm_providers/gemini_provider";
-import { OpenAIProvider } from "./llm_providers/openai_provider";
-import { GenerateCodeResponse, LLMRequestHandler } from "./llm_request";
-import { executeCode, getInteractiveHTML } from "./page_helpers";
+import { CODE_GENERATION_PROMPT, CODE_SYSTEM_INSTRUCTION } from "./llm_providers/base_provider.js";
+import { GeminiProvider } from "./llm_providers/gemini_provider.js";
+import { OpenAIProvider } from "./llm_providers/openai_provider.js";
+import { GenerateCodeResponse, LLMRequestHandler } from "./llm_request.js";
+import { executeCode, getInteractiveHTML } from "./page_helpers.js";
 
 // Allow runtime switch:  LLM_PROVIDER=openai  or gemini (default)
 const providerName = (process.env.LLM_PROVIDER || "gemini").toLowerCase();

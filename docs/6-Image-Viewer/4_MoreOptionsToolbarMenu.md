@@ -52,7 +52,7 @@ below features:
 
 - **Overlay:** Allows you to overlay different image layers.
 
-![image1](./img/image1.png)
+![image1](./img/mo3.png)
 
 - **Scout Lines:** Enables you to view scout lines on the image.
 

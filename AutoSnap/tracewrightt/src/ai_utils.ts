@@ -2,7 +2,7 @@ import { Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
-import { apiLogger, APILogEntry } from "./llm_providers/api_logger";
+import { apiLogger, APILogEntry } from "./llm_providers/api_logger.js";
 
 // ---------------------------------------------------------------------------
 // Robustly load the root-level Playwright config regardless of whether we are
@@ -658,22 +658,56 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
   // ... (rest of AIUtils class methods) ...
   private getReferenceImageBase64(imageFileName: string): string {
     try {
+      console.log(`🔍 Looking for reference image: '${imageFileName}' in docs directory`);
+      
+      // Only search in docs directory
       const docsRoot = path.join(process.cwd(), 'docs');
-      if (!fs.existsSync(docsRoot)) return '';
+      if (!fs.existsSync(docsRoot)) {
+        console.warn('⚠️ Docs directory not found');
+        return '';
+      }
+      
+      // Use depth-first search to find the image in any subdirectory
       const stack: string[] = [docsRoot];
+      let directoriesSearched = 0;
+      
+      console.log(`📂 Starting depth-first search in docs directory`);
+      
       while (stack.length) {
         const dir = stack.pop();
         if (!dir) break;
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          const fullPath = path.join(dir, entry.name);
-          if (entry.isDirectory()) stack.push(fullPath);
-          else if (entry.isFile() && entry.name === imageFileName) return fs.readFileSync(fullPath).toString('base64');
+        directoriesSearched++;
+        
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          
+          // First push all directories to the stack
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              stack.push(fullPath);
+            }
+          }
+          
+          // Then check all files in this directory
+          for (const entry of entries) {
+            if (!entry.isFile()) continue;
+            
+            const fullPath = path.join(dir, entry.name);
+            if (entry.name === imageFileName) {
+              console.log(`✅ Found exact image match: ${fullPath}`);
+              return fs.readFileSync(fullPath).toString('base64');
+            }
+          }
+        } catch (e) {
+          console.warn(`⚠️ Error reading directory ${dir}: ${e instanceof Error ? e.message : String(e)}`);
         }
       }
+      
+      console.log(`📊 Searched ${directoriesSearched} directories in docs, but image '${imageFileName}' was not found`);
       return '';
     } catch (err: any) {
-      console.warn('⚠️  Failed to load reference image:', err.message);
+      console.warn('⚠️ Failed to load reference image:', err.message);
       return '';
     }
   }
@@ -704,7 +738,7 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
         }
         return null;
       }
-      const preferredMd = path.join(process.cwd(), 'docs', '6-Image-Viewer', '4_MoreOptionsToolbarMenu.md');
+      const preferredMd = path.join(process.cwd(), 'docs');
       if (fs.existsSync(preferredMd)) {
         const lines = fs.readFileSync(preferredMd, 'utf-8').split('\n');
         for (let i = 0; i < lines.length; i++) {

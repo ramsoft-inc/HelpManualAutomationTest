@@ -1,4 +1,4 @@
-import { apiLogger, APILogEntry } from './api_logger';
+import { apiLogger, APILogEntry } from "./api_logger.js";
 import * as fs from 'fs';
 import * as path from 'path';
 

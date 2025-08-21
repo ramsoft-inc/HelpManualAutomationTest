@@ -13,20 +13,24 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "Node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
+    "outDir": "./dist/esm",
+    "rootDir": "./src",
     "useUnknownInCatchVariables": false,
     "declaration": true,
-    "declarationDir": "types/index.d.ts"
+    "declarationDir": "./dist/esm"
   },
   "include": [
-    "src/**/*.ts", // Include all TypeScript files in the src directory
-    "types/**/*" // Include custom types from the types folder
+    "src/**/*.ts",
+    "types/**/*"
   ],
   "exclude": [
-    "node_modules", // Exclude node_modules from compilation
-    "dist" // Exclude the dist folder from compilation
+    "node_modules",
+    "dist",
+    "../../docs",
+    "../../blog",
+    "../../src"
   ]
 }

@@ -1,5 +1,5 @@
-import { LLMProvider, GenerateCodeResponse } from "./llm_providers/base_provider";
-import { ClickableDomResult } from "./page_helpers";
+import { LLMProvider, GenerateCodeResponse } from "./llm_providers/base_provider.js";
+import { ClickableDomResult } from "./page_helpers.js";
 
 export type { GenerateCodeResponse };
 

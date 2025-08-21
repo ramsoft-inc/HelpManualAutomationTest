@@ -77,3 +77,14 @@ AutoSnap/test_workflow.py
 
 # Allow images in specific image folders
 !static/img/**
+
+# API logs
+api_logs/
+**/api_logs/
+api_logs/**
+/api_logs/
+/api_logs/**
+AutoSnap/api_logs/
+AutoSnap/api_logs/**
+api_logs/*.json
+**/api_logs/*.json

@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
-import { AIUtilsEnhanced } from "./ai_utils_enhanced";
-import { GenerateCodeResponse } from "./llm_request";
+import { AIUtilsEnhanced } from "./ai_utils_enhanced.js";
+import { GenerateCodeResponse } from "./llm_request.js";
 
 export type ClickableDomResult = {
   visibleElements: string;
@@ -76,6 +76,7 @@ export const executeCode = async (
 
       // Use AIUtilsEnhanced to execute code with screenshot interception (pass thinking, markdown path, and screenshot intent)
       console.log('⚡ Executing code with AIUtilsEnhanced...');
+      // Pass the entire codeResponse JSON object instead of extracting individual fields
       await aiUtils.executeWithEnhancedScreenshotInterception(
         codeResponse.code,
         false,
@@ -83,7 +84,8 @@ export const executeCode = async (
         stepNumber,
         codeResponse.thinking,
         mdFilePath,
-        codeResponse.screenshotIntent
+        codeResponse.screenshotIntent,
+        JSON.stringify(codeResponse) // Pass the whole JSON response
       );
       console.log('✅ Code execution completed successfully');
     } else {
@@ -139,6 +141,7 @@ export const executeCode = async (
         retryAiUtils.setCurrentMdFilePath(mdFilePath);
       }
       console.log('⚡ Executing retry with AIUtilsEnhanced...');
+      // Pass the entire codeResponse JSON object for retry as well
       await retryAiUtils.executeWithEnhancedScreenshotInterception(
         modifiedCode,
         true,
@@ -146,7 +149,8 @@ export const executeCode = async (
         stepNumber,
         codeResponse.thinking,
         mdFilePath,
-        codeResponse.screenshotIntent
+        codeResponse.screenshotIntent,
+        JSON.stringify(codeResponse) // Pass the whole JSON response
       );
       console.log('✅ Retry execution completed successfully');
     } else {
