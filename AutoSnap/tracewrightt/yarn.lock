@@ -134,7 +134,7 @@
     "@changesets/types" "^6.1.0"
     dotenv "^8.1.0"
 
-"@changesets/cli@^2.29.4":
+"@changesets/cli@^2.29.6":
   version "2.29.6"
   resolved "https://registry.yarnpkg.com/@changesets/cli/-/cli-2.29.6.tgz#8ad7943e211b929d793132632eed52033a2c7caa"
   integrity sha512-6qCcVsIG1KQLhpQ5zE8N0PckIx4+9QlHK3z6/lwKnw7Tir71Bjw8BeOZaxA/4Jt00pcgCnCSWZnyuZf5Il05QQ==
