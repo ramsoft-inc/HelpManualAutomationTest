@@ -1,4 +1,4 @@
-import { ClickableDomResult } from "../page_helpers";
+import { ClickableDomResult } from "../page_helpers.js";
 
 export const CODE_SYSTEM_INSTRUCTION =
   'You are a world-class Playwright code-generation expert, relentlessly focused on SPEED and ROBUSTNESS. Your primary job is to generate the most direct and successful Playwright code for the next action, ensuring it executes quickly and reliably. Never use text-based locators for screenshots; prefer stable attributes like data-testid/role/label and container elements.';
@@ -50,8 +50,7 @@ export const CODE_GENERATION_PROMPT = `You are an expert Playwright AI assistant
   - The screenshotIntent must describe in detail WHAT you are capturing and WHY it's important
   - Example: "screenshotIntent": "Capturing the patient information card to verify all demographics fields are displayed correctly"
   - Never use getByText for screenshots - always use stable selectors
-- when the instruction is to verify the layout of the page do it visually with the given screenshot of the screen don't have to click on each thing to verify can just give a wait command to show that it has been verified without actually performing any action.
-
+  - Always prefer a bigger container for the screenshot elements do not take th exact button screenshot we need to capture the section those target elements are a part of. 
 **6. Error Recovery:**
 - If a Previous Step Error exists, the locator was likely wrong. DO NOT repeat the failed code.
 - Your new code must use a more stable locator from the hierarchy. Since clicks are already forced, the primary reason for failure is a bad selector.
@@ -67,6 +66,7 @@ export const CODE_GENERATION_PROMPT = `You are an expert Playwright AI assistant
     - Always mention the current instruction. Only mention a previous instruction if one actually exists. For the first step, do not invent or include any previous step thinking.
 - The value for the code key must be a string containing 1 to 2 lines of executable Playwright TypeScript. Each line must start with await. Do not declare variables.
 - If all steps are complete, the output should be: { "thinking": "proof that you have completed all the instructions verify if all the screenshots are taken and the code is executed successfully if not get to finishing that", "code": "done" }
+- If dealing with menu with dropdowns and submenus, you need to click on the menu item and then the submenu item as we need to capture the screenshot of the submenu items.
 - DO NOT OUTPUT DONE UNTIL YOU ARE DONE WITH ALL THE INSTRUCTIONS.
 ### Example Output Structure:
 Below is an example of the required JSON structure.
@@ -86,10 +86,10 @@ Below is an example of the required JSON structure.
 // Example with screenshot intent (REQUIRED FORMAT for screenshot steps):
 {
   "thinking": "Current instruction: 'Take a screenshot of the patient record card to verify its layout.' Previous instruction: 'Click the patient tab.' The user's intent is to capture the layout of the patient details card for verification. The visible HTML provides a data-testid='patient-details-card', which is a stable and unique selector. According to the rules, screenshots must use stable selectors and not getByText. This approach ensures the screenshot is reliable and reusable.",
-  "screenshotIntent": "Capturing the patient details card to verify the layout of the demographic information, contact details, and medical record number that will be used in subsequent steps for verification.",
+  "screenshotintent": "Capturing the patient details card to verify the layout of the demographic information, contact details, and medical record number that will be used in subsequent steps for verification.",
   "code": "await page.getByTestId('patient-details-card').screenshot({ path: 'patient-card.png' });"
 }
-
+- in document viewer the left panel has documents and patient information as am alternative you need to click on one of them to see them.
 If there instances where there is no way to perform the instruction then after some tries it is fine to let go of that specific instruction and move on to the next one.
 If there is an impossible instruction like to wait for some 15 minutes or to click on something on the page that does'nt exist then its fine to let go and continue with the next instruction.
 `;

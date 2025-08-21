@@ -561,7 +561,7 @@ INSTRUCTIONS
 7. do not add verify steps u can verify with the screenshot while performing the nxt step anyways just add why the step is being done.
 Notes about navigation in this product:
 - To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
-
+- in document viewer the left panel has documents and patient information as am alternative you need to click on one of them to see them. 
 Document to process:
 ---
 {doc_content}

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LLMProvider } from "./llm_providers/base_provider";
-import { GenerateCodeResponse, LLMRequestHandler } from "./llm_request";
-import { ClickableDomResult } from "./page_helpers";
+import { LLMProvider } from "./llm_providers/base_provider.js";
+import { GenerateCodeResponse, LLMRequestHandler } from "./llm_request.js";
+import { ClickableDomResult } from "./page_helpers.js";
 
 // Mock the LLMProvider
 const mockGenerateWithContext = vi.fn();

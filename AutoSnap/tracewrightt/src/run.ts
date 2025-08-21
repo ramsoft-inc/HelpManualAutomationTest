@@ -1,9 +1,9 @@
 import { Page } from "@playwright/test";
 import chalk from "chalk";
-import { GenerateCodeResponse } from "./llm_request";
-import { clearElementHighlights } from "./page_helpers";
-import { cleanStepFiles, generateStep, performStep } from "./step";
-import { TracewrightOptions } from "./types";
+import { GenerateCodeResponse } from "./llm_request.js";
+import { clearElementHighlights } from "./page_helpers.js";
+import { cleanStepFiles, generateStep, performStep } from "./step.js";
+import { TracewrightOptions } from "./types.js";
 
 export const run = async (page: Page, options: TracewrightOptions) => {
   const { script, alternateDoneString, beforeEach } = options;
@@ -129,7 +129,7 @@ export const run = async (page: Page, options: TracewrightOptions) => {
     
     console.info(chalk.blue("*** Token usage statistics written to:"), tokenLogPath);
   } catch (e) {
-    console.warn(chalk.yellow("Could not write token usage statistics:"), e.message);
+    console.warn(chalk.yellow("Could not write token usage statistics:"), e instanceof Error ? e.message : String(e));
   }
 
 };

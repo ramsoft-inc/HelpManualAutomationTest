@@ -5,6 +5,7 @@
   "typings": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
+  "type": "module",
   "files": [
     "src",
     "dist",
@@ -29,6 +30,7 @@
   "scripts": {
     "test": "vitest",
     "build": "rimraf dist && rollup -c --bundleConfigAsCjs",
+    "build:tsc": "rimraf dist && tsc",
     "bump": "changeset version && npm install",
     "release": "npm run build && changeset publish",
     "logs:summary": "npx ts-node src/llm_providers/log_viewer.ts summary",
@@ -37,7 +39,8 @@
     "logs:export": "npx ts-node src/llm_providers/log_viewer.ts export",
     "logs:clear": "npx ts-node src/llm_providers/log_viewer.ts clear",
     "logs:test": "node test_logging.js",
-    "logs:test-api": "node test_api_logging.js"
+    "logs:test-api": "node test_api_logging.js",
+    "start": "ts-node src/run.ts"
   },
   "dependencies": {
     "@google/genai": "^1.0.1",

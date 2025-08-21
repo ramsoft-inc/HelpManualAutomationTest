@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "ts-node": {
+    "transpileOnly": true,
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  },
+  "compilerOptions": {
+    "moduleResolution": "Node",
+    "module": "ESNext",
+    "allowImportingTsExtensions": true
+  }
+}

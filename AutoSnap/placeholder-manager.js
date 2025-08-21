@@ -181,22 +181,7 @@ async function main() {
     const args = process.argv.slice(2);
     
     if (args.length === 0) {
-        console.log(`
-🎯 Placeholder Manager for MD Files
 
-Usage:
-  node placeholder-manager.js <file-or-directory-path>
-
-Commands:
-  node placeholder-manager.js path/to/file.md          # Process single MD file
-  node placeholder-manager.js path/to/directory        # Process all MD files in directory
-  node placeholder-manager.js --replace file.md image1.png  # Replace placeholder with image
-
-Examples:
-  node placeholder-manager.js ../docs/6-Image-Viewer/4_MoreOptionsToolbarMenu.md
-  node placeholder-manager.js ../docs/6-Image-Viewer/
-  node placeholder-manager.js --replace ../docs/6-Image-Viewer/4_MoreOptionsToolbarMenu.md image1.png
-        `);
         process.exit(1);
     }
     

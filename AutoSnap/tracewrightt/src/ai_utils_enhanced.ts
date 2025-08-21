@@ -2,8 +2,8 @@ import { Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
-import { apiLogger, APILogEntry } from "./llm_providers/api_logger";
-import { forceScreenshotWithRetries } from "./screenshot_helper";
+import { apiLogger, APILogEntry } from "./llm_providers/api_logger.js";
+import { forceScreenshotWithRetries } from "./screenshot_helper.js";
 
 // ---------------------------------------------------------------------------
 // Robustly load the root-level Playwright config regardless of whether we are
@@ -136,7 +136,7 @@ export class AIUtilsEnhanced {
         console.log(`🧠 AI thinking log written to ${thinkingLogPath}`);
       }
     } catch (error) {
-      console.error(`❌ Failed to write logs: ${error.message}`);
+      console.error(`❌ Failed to write logs: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -966,596 +966,590 @@ export class AIUtilsEnhanced {
       return uniqueRanked;
     }, hints);
   }
-
-  /**
+/**
    * Enhanced prompt generation with container information
    */
-  async generateEnhancedPrompt(
-    base64Screenshot: string,
-    codeContext: string,
-    imgFileName: string | null,
-    refinementContext?: RefinementContext,
-    thinking?: string,
-    screenshotIntent?: string
-  ): Promise<string> {
+async generateEnhancedPrompt(
+  base64Screenshot: string,
+  codeContext: string,
+  imgFileName: string | null,
+  refinementContext?: RefinementContext,
+  thinking?: string,
+  screenshotIntent?: string,
+  fullJsonResponse?: string
+): Promise<string> {
+  try {
+    const { aiConfig } = playwrightConfig;
+    // Prefer explicit override via env or hardcoded endpoint provided by user
+    const overrideEndpoint = process.env.AZURE_OPENAI_ENDPOINT || 'https://dhanu-m7k6n5e0-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat/chat/completions?api-version=2025-01-01-preview';
+    const endpoint = overrideEndpoint || `${aiConfig.apiUrl}/openai/deployments/${aiConfig.ivModel}/chat/completions?api-version=${aiConfig.apiVersion}`;
+    const apiKey = process.env.AZURE_OPENAI_API_KEY || aiConfig.apiKey;
+
+    // Take a screenshot with container highlighting
+    let enhancedScreenshotBase64 = '';
     try {
-      const { aiConfig } = playwrightConfig;
-      // Prefer explicit override via env or hardcoded endpoint provided by user
-      const overrideEndpoint = process.env.AZURE_OPENAI_ENDPOINT || 'https://dhanu-m7k6n5e0-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat/chat/completions?api-version=2025-01-01-preview';
-      const endpoint = overrideEndpoint || `${aiConfig.apiUrl}/openai/deployments/${aiConfig.ivModel}/chat/completions?api-version=${aiConfig.apiVersion}`;
-      const apiKey = process.env.AZURE_OPENAI_API_KEY || aiConfig.apiKey;
+      console.log('📸 Taking screenshot with highlighted containers...');
+      enhancedScreenshotBase64 = await this.takeHighlightedScreenshot();
+      console.log('✅ Container-highlighted screenshot captured successfully');
+    } catch (error) {
+      console.warn('⚠️ Failed to take highlighted screenshot:', error);
+      // If we failed to take a highlighted screenshot, use the provided screenshot
+      enhancedScreenshotBase64 = base64Screenshot;
+    }
 
-      // Take a screenshot with container highlighting
-      let enhancedScreenshotBase64 = '';
-      try {
-        console.log('📸 Taking screenshot with highlighted containers...');
-        enhancedScreenshotBase64 = await this.takeHighlightedScreenshot();
-        console.log('✅ Container-highlighted screenshot captured successfully');
-      } catch (error) {
-        console.warn('⚠️ Failed to take highlighted screenshot:', error);
-        // If we failed to take a highlighted screenshot, use the provided screenshot
-        enhancedScreenshotBase64 = base64Screenshot;
+    // Build a rich, hierarchical summary of containers and elements
+    const smartSummary = await this.getSmartVisibleContainersSummary();
+    const pageUrl = smartSummary.url;
+    const condensedContainers = smartSummary.containers
+      .slice(0, 50) // Increased from 30 to 50 for more comprehensive container information
+      .map(c => ({
+        uid: c.uid,
+        type: c.type,
+        selector: c.selector,
+        role: c.role,
+        testId: c.testId,
+        bbox: c.bbox,
+        keywords: c.keywords?.slice(0, 10) || [], // Increased from 5 to 10 for more comprehensive keyword information
+        headerText: c.headerText,
+        interactiveCount: c.interactiveCount,
+        isLandmark: c.isLandmark,
+        isModalLike: c.isModalLike
+      }));
+
+    // Also collect a compact element listing grouped by container
+    const compactElements = smartSummary.elements
+      .slice(0, 500) // Increased from 300 to 500 for even more comprehensive element information
+      .map(e => ({
+        uid: e.uid,
+        containerUid: e.containerUid,
+        tag: e.tag,
+        role: e.role,
+        testId: e.testId,
+        id: e.id,
+        text: e.text?.substring(0, 80),
+      }));
+
+    // Keep page-level compact context
+    const viewport = smartSummary.viewport;
+    
+    // Get page content with better element extraction (for minimal compatibility info)
+    const pageContent = await this.page.evaluate(() => {
+      function isVisible(el: HTMLElement): boolean {
+        if (!el || !el.offsetParent) return false;
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
       }
 
-      // Build a rich, hierarchical summary of containers and elements
-      const smartSummary = await this.getSmartVisibleContainersSummary();
-      const pageUrl = smartSummary.url;
-      const condensedContainers = smartSummary.containers
-        .slice(0, 50) // Increased from 30 to 50 for more comprehensive container information
-        .map(c => ({
-          uid: c.uid,
-          type: c.type,
-          selector: c.selector,
-          role: c.role,
-          testId: c.testId,
-          bbox: c.bbox,
-          keywords: c.keywords?.slice(0, 5) || [],
-          headerText: c.headerText,
-          interactiveCount: c.interactiveCount,
-          isLandmark: c.isLandmark,
-          isModalLike: c.isModalLike
-        }));
+      function getAttrs(el: HTMLElement) {
+        const parent = el.parentElement;
+        const parentIdentifier = parent ? {
+          id: parent.id || undefined,
+          'data-testid': parent.getAttribute('data-testid') || undefined,
+          'data-cy': parent.getAttribute('data-cy') || undefined,
+          role: parent.getAttribute('role') || undefined,
+        } : undefined;
 
-      // Also collect a compact element listing grouped by container
-      const compactElements = smartSummary.elements
-        .slice(0, 300) // Increased from 200 to 300 for more comprehensive element information
-        .map(e => ({
-          uid: e.uid,
-          containerUid: e.containerUid,
-          tag: e.tag,
-          role: e.role,
-          testId: e.testId,
-          id: e.id,
-          text: e.text?.substring(0, 80),
-        }));
+        const hasParentIdentifier = parentIdentifier && 
+          (Object.values(parentIdentifier).some(val => val !== undefined));
 
-      // Keep page-level compact context
-      const viewport = smartSummary.viewport;
-      
-      // Get page content with better element extraction (for minimal compatibility info)
-      const pageContent = await this.page.evaluate(() => {
-        function isVisible(el: HTMLElement): boolean {
-          if (!el || !el.offsetParent) return false;
-          const style = window.getComputedStyle(el);
-          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
-          const rect = el.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        }
+        return {
+          tag: el.tagName.toLowerCase(),
+          id: el.id || undefined,
+          'data-testid': el.getAttribute('data-testid') || undefined,
+          'data-cy': el.getAttribute('data-cy') || undefined,
+          role: el.getAttribute('role') || undefined,
+          name: el.getAttribute('name') || undefined,
+          text: el.textContent?.trim()?.substring(0, 30) || undefined,
+          parent: hasParentIdentifier ? parentIdentifier : undefined
+        };
+      }
 
-        function getAttrs(el: HTMLElement) {
-          const parent = el.parentElement;
-          const parentIdentifier = parent ? {
-            id: parent.id || undefined,
-            'data-testid': parent.getAttribute('data-testid') || undefined,
-            'data-cy': parent.getAttribute('data-cy') || undefined,
-            role: parent.getAttribute('role') || undefined,
-          } : undefined;
-
-          const hasParentIdentifier = parentIdentifier && 
-            (Object.values(parentIdentifier).some(val => val !== undefined));
-
-          return {
-            tag: el.tagName.toLowerCase(),
-            id: el.id || undefined,
-            'data-testid': el.getAttribute('data-testid') || undefined,
-            'data-cy': el.getAttribute('data-cy') || undefined,
-            role: el.getAttribute('role') || undefined,
-            name: el.getAttribute('name') || undefined,
-            text: el.textContent?.trim()?.substring(0, 30) || undefined,
-            parent: hasParentIdentifier ? parentIdentifier : undefined
-          };
-        }
-
-        const elements = Array.from(
-          document.querySelectorAll(
-            'button, input, select, [role="button"], [role="link"], [role="menuitem"], [data-cy], [data-testid], [contenteditable="true"]'
-          )
+      const elements = Array.from(
+        document.querySelectorAll(
+          'button, input, select, [role="button"], [role="link"], [role="menuitem"], [data-cy], [data-testid], [contenteditable="true"]'
         )
-        .filter((el): el is HTMLElement => el instanceof HTMLElement && isVisible(el))
-        .map(el => getAttrs(el))
-        .filter(attrs => 
-          attrs.id || 
-          attrs['data-testid'] || 
-          attrs['data-cy'] || 
-          attrs.text || 
-          attrs.parent
-        );
+      )
+      .filter((el): el is HTMLElement => el instanceof HTMLElement && isVisible(el))
+      .map(el => getAttrs(el))
+      .filter(attrs => 
+        attrs.id || 
+        attrs['data-testid'] || 
+        attrs['data-cy'] || 
+        attrs.text || 
+        attrs.parent
+      );
 
-        return { elements, url: window.location.href };
+      return { elements, url: window.location.href };
+    });
+
+    // Reduce and dedupe element list for compatibility section
+    const seenElemKeys = new Set<string>();
+    const minimalElements: Array<{ id?: string; testId?: string; role?: string; text?: string; parent?: { testId?: string; role?: string; id?: string } }> = [];
+    for (const e of (pageContent.elements as any[])) {
+      const key = `${e.id || ''}|${e['data-testid'] || ''}|${e.role || ''}|${(e.text || '').toLowerCase()}`;
+      if (seenElemKeys.has(key)) continue;
+      seenElemKeys.add(key);
+      minimalElements.push({
+        id: e.id,
+        testId: e['data-testid'],
+        role: e.role,
+        text: e.text ? String(e.text).substring(0, 24) : undefined,
+        parent: e.parent ? { testId: e.parent['data-testid'], role: e.parent.role, id: e.parent.id } : undefined,
       });
+      if (minimalElements.length >= 40) break;
+    }
+    const systemPrompt = `You generate Playwright code to take screenshots of the correct UI container.
 
-      // Reduce and dedupe element list for compatibility section
-      const seenElemKeys = new Set<string>();
-      const minimalElements: Array<{ id?: string; testId?: string; role?: string; text?: string; parent?: { testId?: string; role?: string; id?: string } }> = [];
-      for (const e of (pageContent.elements as any[])) {
-        const key = `${e.id || ''}|${e['data-testid'] || ''}|${e.role || ''}|${(e.text || '').toLowerCase()}`;
-        if (seenElemKeys.has(key)) continue;
-        seenElemKeys.add(key);
-        minimalElements.push({
-          id: e.id,
-          testId: e['data-testid'],
-          role: e.role,
-          text: e.text ? String(e.text).substring(0, 24) : undefined,
-          parent: e.parent ? { testId: e.parent['data-testid'], role: e.parent.role, id: e.parent.id } : undefined,
-        });
-        if (minimalElements.length >= 40) break;
-      }
+    Choose a single, meaningful container that contains the target element based on the following strict priority order:
+    
+    **PRIORITY ORDER:**
+    1. HIGHEST: Elements with [data-testid] that are most specific to the screenshot intent (e.g., if screenshotting a modal, prefer data-testids containing "modal", "dialog"; if screenshotting a table, prefer "table", "grid", "list")
+    2. Elements with any [data-testid] attribute (critical for stable automation)
+    3. Elements with stable semantic roles using CSS selectors: [role="dialog"], [role="listbox"], [role="menu"], [role="combobox"]
+    4. Elements with stable, non-auto-generated IDs
+    5. Semantic containers (main, section, article, nav) that contain the target
+    6. Elements with CSS classes that clearly indicate their purpose
+    7. Container elements with sensible dimensions (width > 100px and height > 50px)
+    
+    **USING THE PROVIDED CONTAINER INFORMATION:**
+    You will receive detailed container information in this format:
+    \`\`\`
+    DETAILED CONTAINER INFORMATION:
+    1. [1] ELEMENT: [data-testid="layout-view-root"]
+      Attributes: no role, data-testid="layout-view-root"
+      Position: x:64, y:61, w:1176, h:708
+      Interactive elements: 1
+      Keywords: ramsoft, ordered, test, study, corrupti, voluptatem
+      Elements: div[data-testid="layout-view-root"]: "Omega.ai Default..."
+    \`\`\`
+    
+    **DECISION PROCESS:**
+    1. **Read the screenshot intent** - Understand what needs to be captured
+    2. **Analyze each numbered container** [1], [2], [3], etc. from the provided data
+    3. **Match keywords to intent** - Look for relevant terms in the container keywords
+    4. **Check interactive elements count** - Higher counts may indicate more relevant containers
+    5. **Review container dimensions** - Prefer containers that provide spatial context (bigger is better for context)
+    6. **Extract the exact data-testid** - Use the precise value from the ELEMENT field
+    7. **Generate the locator** - Create Playwright code with \`[data-testid="exact-value"]\`
+    
+    **TECHNICAL REQUIREMENTS:**
+    1. Pick EXACTLY ONE best container that includes the target and shows where the target is located
+    2. Always prefer [data-testid] selectors over any other type when available
+    3. Use page.locator() with CSS selectors - never use getByRole(), getByText(), or similar methods
+    4. ALWAYS add a reasonable timeout (30000ms default, 60000ms for complex UI)
+    5. NEVER use .first(), .nth(), or chained filters in screenshot locators - use more specific selectors instead
+    6. ALWAYS include a "thinking" section in your response that explains your reasoning process
+    7. Return the exact Playwright screenshot command after your thinking section
+    8. **FORCE ALL SCREENSHOT COMMANDS by adding { force: true } to all locators**
+    
+    **RECOMMENDED SELECTOR PATTERNS (in order of preference):**
+    - Data attributes: \`[data-testid="element-name"]\`
+    - Compound selectors with parent-child: \`div:has([data-testid="child-element"])\`
+    - Specific classes: \`.unique-container-class\`
+    - Text content with data attributes: \`div:has-text("Title"):has([data-testid="content"])\`
+    - Parent with multiple identifiers: \`div:has(.title):has(.content)\`
+    - Elements with ARIA attributes: \`[aria-label="Description"]\`
+    - Elements with semantic roles: \`[role="dialog"]\`
+    
+    **EXAMPLES USING PROVIDED CONTAINER DATA:**
+    
+    Given this container information:
+    \`\`\`
+    5. [5] CONTAINER: [data-testid="data-grid-table-container"]
+      Position: x:88, y:129, w:1152, h:640
+      Interactive elements: 1
+    \`\`\`
+    
+    Good response:
+    \`\`\`
+    await page.locator('[data-testid="data-grid-table-container"]', { force: true }).screenshot({ path: './images/container.png', timeout: 30000 });
+    \`\`\`
+    
+    Given this container information:
+    \`\`\`
+    7. [7] ELEMENT: [data-testid="worklist-data-grid-table-header"]
+      Position: x:88, y:129, w:1990, h:93
+      Interactive elements: 36
+    \`\`\`
+    
+    Good response:
+    \`\`\`
+    await page.locator('[data-testid="worklist-data-grid-table-header"]', { force: true }).screenshot({ path: './images/header.png', timeout: 30000 });
+    \`\`\`
+    
+    **BAD RESPONSES (DO NOT DO THESE):**
+    - Using getBy methods: \`await page.getByRole('listbox').screenshot()\`
+    - Using .first() on locators: \`await page.locator('.container').first().screenshot()\`
+    - Using generic text locators: \`await page.getByText('Some text').screenshot()\`
+    - Using complex chained locators: \`await page.locator('div').filter({ has: page.getByText('text') }).screenshot()\`
+    - Missing timeout: \`await page.locator('.selector').screenshot({ path: 'file.png' })\`
+    - Missing force option: \`await page.locator('.selector').screenshot({ path: 'file.png', timeout: 30000 })\`
+    - Returning JSON objects, markdown code blocks, or explanations
+    
+    **TIMEOUT GUIDELINES:**
+    - Use 30000ms (30 seconds) for standard UI elements
+    - Use 60000ms (60 seconds) for:
+    - Complex data grids with many rows
+    - Dynamic content that loads asynchronously
+    - Elements that require network requests to render
+    - Containers with heavy JavaScript interactions
+    
+    DETAILED CONTAINER INFORMATION:
+    ${condensedContainers.map((c, i) => {
+    // Format bbox to be more readable
+    const bbox = c.bbox ? `x:${c.bbox.x}, y:${c.bbox.y}, w:${c.bbox.width}, h:${c.bbox.height}` : 'unknown';
+    
+    // Get container elements if available
+    const containerElements = compactElements.filter(e => e.containerUid === c.uid).slice(0, 10);
+    const elementsList = containerElements.length > 0 
+      ? `\n    Elements: ${containerElements.map(e => 
+          `${e.tag}${e.testId ? `[data-testid="${e.testId}"]` : ''}${e.role ? `[role="${e.role}"]` : ''}${e.text ? `: "${e.text}"` : ''}`
+        ).join(', ')}`
+      : '';
+    
+    return `${i + 1}. [${c.uid}] ${c.type.toUpperCase()}: ${c.selector}
+      Attributes: ${c.role ? `role="${c.role}"` : 'no role'}${c.testId ? `, data-testid="${c.testId}"` : ''}
+      Position: ${bbox}
+      Interactive elements: ${c.interactiveCount || 0}${(c.keywords && c.keywords.length) ? `\n    Keywords: ${c.keywords.join(', ')}` : ''}${c.headerText ? `\n    Header: "${c.headerText}"` : ''}${c.isModalLike ? '\n    Type: modal-like container' : ''}${elementsList}`;
+    }).join('\n\n')}
+    
+    URL: ${pageUrl}, Viewport: ${JSON.stringify(viewport)}
+    
+    **RESPONSE FORMAT:**
+    Your response should be a strict JSON format with a thinking field and a code field:
+    
+    {{
+      "thinking": "Detailed explanation of your reasoning process, which container you chose and why, how it relates to the screenshot intent, and why this selector is the most appropriate choice.",
+      "code": "await page.locator('[data-testid=\"example-container\"]', { force: true }).screenshot({ path: './images/screenshot.png', timeout: 30000 });"
+    }}
+    `;
 
-      const systemPrompt = `You generate Playwright code to take screenshots of the correct UI container.
-
-Choose a single, meaningful container that contains the target element based on the following strict priority order:
-
-1. HIGHEST: Elements with [data-testid="search-dialog"], [data-testid="search-results"], or any [data-testid] that contains "search" or "dropdown"
-2. Elements with any [data-testid] attribute (critical for stable automation)
-3. Elements with stable [role] attributes like "dialog", "listbox", "menu", "combobox" that match the intent
-4. Elements with stable IDs (not auto-generated ones)
-5. Semantic containers (main, section, article, nav) that contain the search results
-6. Elements with CSS classes that clearly indicate their purpose (.search-results, .dropdown, etc.)
-7. Container elements with sensible dimensions (width > 100px and height > 50px)
-
-IMPORTANT: For dropdown or search result containers, look SPECIFICALLY for:
-- Elements that appeared after clicking a search input
-- Elements containing results in a structured list
-- Elements with visible borders or shadows indicating they're a dropdown
-- Elements positioned below a search input
-
-IMPORTANT ABOUT THE IMAGES:
-You will receive two images:
-1. The first image is the reference screenshot of what needs to be captured
-2. The second image (if available) shows the same UI with container elements highlighted using colored borders and numbered labels to help you choose the correct container
-
-The highlighted containers in the second image are color-coded and numbered. Each label shows:
-- Container number
-- Container type
-- Test ID (if available)
-
-Hover information (shown in tooltips) includes:
-- Full selector information
-- Selector type (data-testid, id, class, etc.)
-- Additional attributes
-
-Based on the described intent and reference image, choose the appropriate container using the highlighted containers in the second image.
-
-DETAILED CONTAINER INFORMATION:
-${condensedContainers.map((c, i) => {
-  // Format bbox to be more readable
-  const bbox = c.bbox ? `x:${c.bbox.x}, y:${c.bbox.y}, w:${c.bbox.width}, h:${c.bbox.height}` : 'unknown';
-  
-  // Get container elements if available
-  const containerElements = compactElements.filter(e => e.containerUid === c.uid).slice(0, 5);
-  const elementsList = containerElements.length > 0 
-    ? `\n    Elements: ${containerElements.map(e => 
-        `${e.tag}${e.testId ? `[data-testid="${e.testId}"]` : ''}${e.role ? `[role="${e.role}"]` : ''}${e.text ? `: "${e.text}"` : ''}`
-      ).join(', ')}`
-    : '';
-  
-  return `${i + 1}. [${c.uid}] ${c.type.toUpperCase()}: ${c.selector}
-    Attributes: ${c.role ? `role="${c.role}"` : 'no role'}${c.testId ? `, data-testid="${c.testId}"` : ''}
-    Position: ${bbox}
-    Interactive elements: ${c.interactiveCount || 0}${(c.keywords && c.keywords.length) ? `\n    Keywords: ${c.keywords.join(', ')}` : ''}${c.headerText ? `\n    Header: "${c.headerText}"` : ''}${c.isModalLike ? '\n    Type: modal-like container' : ''}${elementsList}`;
-}).join('\n\n')}
-
-URL: ${pageUrl}, Viewport: ${JSON.stringify(viewport)}
-
-Rules:
-1) Pick EXACTLY ONE best container that includes the target, following the priority order above.
-2) Always prefer [data-testid] selectors over any other type when available.
-3) For search dropdowns/dialogs, SPECIFICALLY use [data-testid="search-dialog"] if available.
-5) Use page.locator() with CSS selectors instead of getByRole() when taking screenshots.
-6) ALWAYS add a reasonable timeout (30000ms default).
-7) FORCE ALL SCREENSHOT COMMANDS by adding { force: true } to all locators.
-8) NEVER use .first() or .nth() in screenshot locators - use more specific selectors instead.
-9) Return ONLY the exact Playwright screenshot command, no additional formatting or text.
-
-RECOMMENDED SELECTOR PATTERNS (in order of preference):
-- Data attributes: '[data-testid="element-name"]'
-- Compound selectors with parent-child: 'div:has([data-testid="child-element"])'
-- Specific classes: '.unique-container-class'
-- Text content with data attributes: 'div:has-text("Title"):has([data-testid="content"])'
-- Parent with multiple identifiers: 'div:has(.title):has(.content)'
-- Elements with ARIA attributes: '[aria-label="Description"]'
-- Elements with specific semantic roles: '[role="dialog"]'
-
-EXAMPLES OF GOOD RESPONSES:
-await page.locator('[data-testid="container-element"]').screenshot({ path: 'screenshots/element.png', timeout: 30000, force: true });
-await page.locator('div:has([data-testid="child-element"])').screenshot({ path: './images/container.png', timeout: 30000, force: true });
-await page.locator('.container-class').screenshot({ path: './output/screenshot.png', timeout: 30000, force: true });
-await page.locator('div:has-text("Container Title"):has([data-testid="content"])').screenshot({ path: './screenshots/dialog.png', timeout: 30000, force: true });
-
-if you suspect the finding the locator takes long then increase the timeout if not keep 30000 as default.
-BAD RESPONSES (DO NOT DO THESE):
-- Using non-specific role locators: await page.getByRole('listbox').screenshot()
-- Using .first() on locators: await page.locator('.container').first().screenshot()
-- Using generic text locators: await page.getByText('Some text').screenshot()
-- Using complex chained locators: await page.locator('div').filter({ has: page.getByText('text') }).screenshot()
-- Missing the force: true option: await page.locator('.selector').screenshot({ timeout: 30000 })
-- Returning JSON objects
-- Returning markdown code blocks
-- Returning explanations before or after the code
-
-OUTPUT FORMAT:
-Return ONLY a single line of Playwright code. No explanations, no markdown, no JSON, no additional text.
-
-Example correct output:
-await page.locator('[data-testid="container"]').screenshot({ path: './images/screenshot.png', timeout: 30000, force: true });
-
-JUST RETURN THE SINGLE LINE OF PLAYWRIGHT CODE AND NOTHING ELSE.
-`;
-
-      const userTextPrompt = `This is the intent of the screenshot: 
-${screenshotIntent ? `SCREENSHOT INTENT: ${screenshotIntent}` : ''}
-      this is what another agent came up with: ${codeContext}
-      maybe its right or maybe its wrong.
-${refinementContext ? `Previous attempt failed: ${refinementContext.errorMessage}` : ''}
-${thinking ? `this is what the agent thought before generating the code: ${thinking}` : ''}`;
-
-      const userMessageContent: Array<{ type: string; text?: string; image_url?: { url: string, detail?: string } }> =
-        [{ type: "text", text: userTextPrompt }];
+    // Get image description from LLM and add context
+    let imageDescription = '';
+    if (imgFileName && base64Screenshot) {
+      // Extract image path information
+      const imgDir = imgFileName.includes('/') ? imgFileName.substring(0, imgFileName.lastIndexOf('/')) : 
+                    (imgFileName.includes('\\') ? imgFileName.substring(0, imgFileName.lastIndexOf('\\')) : '');
+      const baseName = imgFileName.split('/').pop()?.split('\\').pop() || imgFileName;
       
-      // Add original reference screenshot if available
-      if (base64Screenshot) {
-        userMessageContent.push({
-          type: "image_url",
-          image_url: { url: `data:image/png;base64,${base64Screenshot}`, detail: "auto" }
-        });
-      }
+      // Set up image description section
+      imageDescription = `This is how the image should look\n`;
       
-      // Add container-highlighted screenshot if available
-      if (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) {
-        userMessageContent.push({
-          type: "image_url",
-          image_url: { url: `data:image/png;base64,${enhancedScreenshotBase64}`, detail: "auto" }
-        });
-      }
-
-      // Prompt logging removed as requested by user
-      // Only log minimal stats when verbose mode is enabled
-      if (process.env.VERBOSE_LLM === 'true') {
-        console.log('📊 Making API call with images:', 
-          base64Screenshot ? 'Original reference ✓' : 'Original reference ✗',
-          enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot ? 'Container-highlighted ✓' : 'Container-highlighted ✗');
-      }
-
-      const requestPayload = {
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessageContent }
-        ],
-        temperature: 0.3,
-        top_p: 0.8,
-        max_tokens: 220,
-      };
-
-      const startTime = Date.now();
-
-      if (process.env.VERBOSE_LLM === 'true') {
-        console.log(`🔗 Azure OpenAI request -> ${endpoint}`);
-        console.log(`   prompt tokens approx (user text prompt only): ${userTextPrompt.split(/\s+/).length}`);
-      }
-      
-      let response;
-
+      // Try to get AI description of the image
       try {
-        // Increment API call counter
-        globalStats.totalApiCalls++;
-        console.log(`📡 Making API call #${globalStats.totalApiCalls} to model`);
+        console.log(`🔍 Getting AI description for image: ${baseName}`);
+        const aiDescription = await this.getImageDescription(base64Screenshot);
         
-        response = await axios.post(endpoint, requestPayload, {
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': apiKey, 
-          },
-        });
-
-        const duration = Date.now() - startTime;
-        const aiContent: string = response.data.choices?.[0]?.message?.content || '';
-        const inputTokenCount = response.data.usage?.prompt_tokens || 0;
-        const outputTokenCount = response.data.usage?.completion_tokens || 0;
-        
-        // Declare variables for extracted content
-        let cleaned = '';
-        let parsedResponse;
-        let extractedCode = '';
-        let extractedThinking = '';
-        
-        // Store raw response for thinking extraction
-        const rawResponse = aiContent;
-
-        // Minimal debug logging
-        if (process.env.VERBOSE_LLM === 'true') {
-          console.log('🔍 AI response received, length:', aiContent.length);
+        if (aiDescription) {
+          // Format the description nicely
+          imageDescription += `\nThis is the description of how the screenshot looks:\n\n${aiDescription}\n`;
+          console.log(`✅ Successfully added AI description for image: ${baseName}`);
+        } else {
+          console.warn(`⚠️ No AI description was generated for image: ${baseName}`);
         }
+      } catch (error) {
+        console.warn(`⚠️ Failed to get AI description of the image: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    
+    const userTextPrompt = `You are supposed to take a screenshot of the container that contains the target element and to do that consider the image description, the screenshot intent and the container highlighted image shared with you.
+
+The following JSON contains the full previous response with all the details:
+${fullJsonResponse ? `${fullJsonResponse}` : ''}
+this is how the ideal screenshot should look like:
+${imageDescription ? `\n\n${imageDescription}` : ''}`;
+
+    const userMessageContent: Array<{ type: string; text?: string; image_url?: { url: string, detail?: string } }> =
+      [{ type: "text", text: userTextPrompt }];
+    
+
+    
+    // Add container-highlighted screenshot if available
+    if (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) {
+      // Send the container-highlighted screenshot without additional description
+      userMessageContent.push({
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${enhancedScreenshotBase64}`, detail: "auto" }
+      });
+    }
+
+    // Prompt logging removed as requested by user
+    // Only log minimal stats when verbose mode is enabled
+    if (process.env.VERBOSE_LLM === 'true') {
+      console.log('📊 Making API call with images:', 
+        base64Screenshot ? 'Original reference ✓' : 'Original reference ✗',
+        enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot ? 'Container-highlighted ✓' : 'Container-highlighted ✗');
+    }
+
+    const requestPayload = {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessageContent }
+      ],
+      temperature: 0.4,
+      top_p: 0.8,
+    };
+
+    const startTime = Date.now();
+
+    if (process.env.VERBOSE_LLM === 'true') {
+      console.log(`🔗 Azure OpenAI request -> ${endpoint}`);
+      console.log(`   prompt tokens approx (user text prompt only): ${userTextPrompt.split(/\s+/).length}`);
+    }
+    
+    let response;
+
+    try {
+      // Increment API call counter
+      globalStats.totalApiCalls++;
+      console.log(`📡 Making API call #${globalStats.totalApiCalls} to model`);
       
+      response = await axios.post(endpoint, requestPayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': apiKey, 
+        },
+      });
+      console.log('🔍 Response from ai utils enhanced: ' + response.data);
+      const duration = Date.now() - startTime;
+      const aiContent: string = response.data.choices?.[0]?.message?.content || '';
+      const inputTokenCount = response.data.usage?.prompt_tokens || 0;
+      const outputTokenCount = response.data.usage?.completion_tokens || 0;
+      
+      // Declare variables for extracted content
+      let cleaned = '';
+      let parsedResponse;
+      let extractedCode = '';
+      let extractedThinking = '';
+      
+      // Store raw response for thinking extraction
+      const rawResponse = aiContent;
+
+      // Minimal debug logging
+      if (process.env.VERBOSE_LLM === 'true') {
+        console.log('🔍 AI response received, length:', aiContent.length);
+      }
+    
+      // Try to extract thinking from the response
+      try {
+        // Look for JSON structure with thinking field
+        const thinkingMatch = aiContent.match(/\{[\s\S]*?"thinking"\s*:\s*"([^"]+)"[\s\S]*?\}/);
+        if (thinkingMatch && thinkingMatch[1]) {
+          extractedThinking = thinkingMatch[1];
+          console.log('\n💭 THINKING: ' + extractedThinking + '\n');
+        } else {
+          // Try to find thinking section with markdown-style formatting
+          const markdownThinkingMatch = aiContent.match(/(?:thinking|reasoning|analysis):\s*([^\n]+(?:\n(?!\n)[^\n]+)*)/i);
+          if (markdownThinkingMatch && markdownThinkingMatch[1]) {
+            extractedThinking = markdownThinkingMatch[1].trim();
+            console.log('\n💭 THINKING: ' + extractedThinking + '\n');
+          }
+        }
+      } catch (thinkingError) {
+        console.warn('⚠️ Error extracting thinking:', thinkingError instanceof Error ? thinkingError.message : String(thinkingError));
+      }
+    
       // Update global token counters silently (without logging)
       globalStats.totalInputTokens += inputTokenCount;
       globalStats.totalOutputTokens += outputTokenCount;
 
-      // Create log entry
-      const logEntry: APILogEntry = {
-          timestamp: new Date().toISOString(),
-          provider: 'openai',
-          model: 'gpt-5-chat',
-          rawRequest: requestPayload || {}, // Add missing field
-          rawResponse: response || {}, // Add missing field
-          request: {
-            systemInstruction: systemPrompt,
-            userPrompt: userTextPrompt,
-            hasImage: !!base64Screenshot,
-            imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
-            hasHighlightedImage: !!(enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot),
-            highlightedImageSize: (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
-              ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
-              : undefined,
-            pageUrl: await this.page.url(),
-            visibleElementsLength: userTextPrompt.length,
-            previouslyExecutedCode: codeContext,
-            currentStepErrorCode: refinementContext?.errorMessage || ''
-          },
-          response: {
-            status: response.status,
-            content: aiContent,
-            inputTokenCount,
-            outputTokenCount,
-            totalTokens: inputTokenCount + outputTokenCount,
-            thinking: extractedThinking || 'Enhanced container-based screenshot generation',
-            code: extractedCode || aiContent,
-          },
-          metadata: {
-            temperature: refinementContext ? 0.2 : 0.3,
-            maxTokens: 1000,
-            topP: 1,
-          },
-          duration,
-        };
-        apiLogger.logAPICall(logEntry);
-
-        if (process.env.VERBOSE_LLM === 'true') {
-          console.log(`✅ Azure response status: ${response.status}`);
-        }
-
-        // Clean potential fenced code and try to parse as JSON
-        cleaned = aiContent
-          .replace(/^```[a-zA-Z]*\s*/g, '')
-          .replace(/```\s*$/g, '')
-          .trim();
-
-        // Default to using cleaned content as code
-        extractedCode = cleaned;
-        
-        // First, try to extract the actual Playwright code if it's wrapped in code blocks or JSON
-        // Look for patterns like: await page.locator(...).screenshot(...)
-        const playwrightCodePattern = /(await\s+page\s*\.\s*\w+\s*\([^)]*\)\s*\.\s*screenshot\s*\([^;]*\)\s*;|page\s*\.\s*\w+\s*\([^)]*\)\s*\.\s*screenshot\s*\([^;]*\)\s*;)/;
-        const codeMatch = cleaned.match(playwrightCodePattern);
-
-        if (codeMatch && codeMatch[0]) {
-          extractedCode = codeMatch[0].trim();
-          console.log('✅ Successfully extracted Playwright screenshot code');
-        } else {
-          // If we couldn't find a direct Playwright code match, try to parse as JSON
-          try {
-            parsedResponse = JSON.parse(cleaned);
-            if (parsedResponse && typeof parsedResponse === 'object' && parsedResponse.code && typeof parsedResponse.code === 'string') {
-              // Extract just the code part from the JSON
-              const codeStr = parsedResponse.code;
-              const codeMatch = codeStr.match(playwrightCodePattern);
-              if (codeMatch && codeMatch[0]) {
-                extractedCode = codeMatch[0].trim();
-                console.log('✅ Extracted Playwright code from JSON code field');
-              } else {
-                extractedCode = codeStr.trim();
-                console.log('✅ Using code field from JSON response');
-              }
-              
-              // Also extract thinking if available
-              if (parsedResponse.thinking) {
-                extractedThinking = String(parsedResponse.thinking);
-                console.log('💭 THINKING from JSON: ' + extractedThinking);
-              }
-              
-              // Extract screenshotIntent if available
-              if (parsedResponse.screenshotIntent) {
-                const extractedIntent = String(parsedResponse.screenshotIntent);
-                console.log('📸 SCREENSHOT INTENT from JSON: ' + extractedIntent);
-                // Store it for later use
-                screenshotIntent = extractedIntent;
-              }
-            }
-          } catch (jsonError) {
-            console.warn('⚠️ Could not parse as JSON: ' + jsonError.message);
-            
-            // Try to find code blocks
-            const codeBlockMatch = cleaned.match(/```[a-z]*\s*([\s\S]*?)```/);
-            if (codeBlockMatch && codeBlockMatch[1]) {
-              extractedCode = codeBlockMatch[1].trim();
-              console.log('📝 Extracted code from markdown code block');
-              
-              // Try to extract thinking from markdown format
-              const thinkingMatch = cleaned.match(/(?:THINKING|thinking|Thinking|THOUGHT|thought|Thought|ANALYSIS|analysis|Analysis)[:|\n]([\s\S]*?)(?:```|INSTRUCTIONS|instructions|Instructions|STEPS|steps|Steps)/i);
-              if (thinkingMatch && thinkingMatch[1]) {
-                extractedThinking = thinkingMatch[1].trim();
-                console.log('💭 THINKING from markdown: ' + extractedThinking);
-              }
-            } else {
-              console.log('⚠️ Using raw response as code');
-            }
-          }
-        }
-        
-        // Final validation - make sure it contains a screenshot command
-        if (!extractedCode.includes('screenshot')) {
-          console.warn('⚠️ Extracted code does not contain a screenshot command');
-          // Try one more time to find a screenshot command in the raw response
-          const screenshotMatch = cleaned.match(/await\s+page.*\.screenshot\s*\(.*\)/s);
-          if (screenshotMatch) {
-            extractedCode = screenshotMatch[0].trim();
-            if (!extractedCode.endsWith(';')) extractedCode += ';';
-            console.log('🔧 Extracted screenshot command from raw response');
-          }
-        }
-        
-        // If we still don't have thinking, try to extract it from the raw response
-        if (!extractedThinking && rawResponse) {
-          // Try to extract thinking from raw response using various patterns
-          const thinkingPatterns = [
-            // Common thinking section markers
-            /(?:THINKING|thinking|Thinking|THOUGHT|thought|Thought|ANALYSIS|analysis|Analysis)[:|\n]([\s\S]*?)(?:```|INSTRUCTIONS|instructions|Instructions|STEPS|steps|Steps|CODE|code|Code)/i,
-            // Current instruction pattern from the terminal output
-            /Current instruction:.*?(?=Previous instruction:|$)/s,
-            // Look for text that explains what the user wants to capture
-            /The user wants to capture.*?(?=\.)/s,
-            // Look for text that describes what's being captured
-            /This ensures.*?(?=\.)/s,
-            // Look for any explanatory text before code blocks
-            /.*?(?=```)/s
-          ];
-          
-          for (const pattern of thinkingPatterns) {
-            const match = rawResponse.match(pattern);
-            if (match && match[0]) {
-              // If the pattern has a capture group, use that, otherwise use the whole match
-              const thinkingText = match[1] || match[0];
-              if (thinkingText && thinkingText.trim().length > 10) { // Ensure it's not just a few characters
-                extractedThinking = thinkingText.trim();
-                console.log('💭 Extracted thinking from raw response using pattern:', pattern);
-                console.log('💭 THINKING from raw response:', extractedThinking);
-                break;
-              }
-            }
-          }
-        }
-
-        // Debug logging
-        console.log('🔍 CLEANED AI RESPONSE:', JSON.stringify(extractedCode));
-
-        // Add semicolon if needed for proper JS/TS syntax
-        return (!extractedCode || extractedCode.endsWith(';') || extractedCode.endsWith('}')) 
-          ? (extractedCode || codeContext) 
-          : `${extractedCode};`;
-      } catch (err: any) {
-        const duration = Date.now() - startTime;
-        
-        // Log image information even in error case
-        console.log('📸 Base screenshot size:', base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : 'none');
-        console.log('📸 Highlighted screenshot size:', 
-          (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
+    // Create log entry
+    const logEntry: APILogEntry = {
+        timestamp: new Date().toISOString(),
+        provider: 'openai',
+        model: 'gpt-5-chat',
+        rawRequest: requestPayload || {}, // Add missing field
+        rawResponse: response || {}, // Add missing field
+        request: {
+          systemInstruction: systemPrompt,
+          userPrompt: userTextPrompt,
+          hasImage: !!base64Screenshot,
+          imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
+          hasHighlightedImage: !!(enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot),
+          highlightedImageSize: (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
             ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
-            : 'none');
-            
-        const logEntry: APILogEntry = {
-          timestamp: new Date().toISOString(),
-          provider: 'openai',
-          model: 'gpt-5-chat',
-          rawRequest: requestPayload || {}, // Add missing field
-          rawResponse: err?.response || {}, // Add missing field for error case
-          request: {
-            systemInstruction: systemPrompt,
-            userPrompt: userTextPrompt,
-            hasImage: !!base64Screenshot,
-            imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
-            hasHighlightedImage: !!(enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot),
-            highlightedImageSize: (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
-              ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
-              : undefined,
-            pageUrl: await this.page.url(),
-            visibleElementsLength: userTextPrompt.length,
-            previouslyExecutedCode: codeContext,
-            currentStepErrorCode: refinementContext?.errorMessage || ''
-          },
-          response: {
-            status: err?.response?.status || 500,
-            content: err?.message || 'Unknown error',
-            inputTokenCount: 0,
-            outputTokenCount: 0,
-            totalTokens: 0,
-            thinking: 'Error occurred',
-            code: 'error',
-          },
-          metadata: {
-            temperature: refinementContext ? 0.2 : 0.3,
-            maxTokens: 1000,
-            topP: 1,
-          },
-          duration,
-        };
-        apiLogger.logAPICall(logEntry);
+            : undefined,
+          pageUrl: await this.page.url(),
+          visibleElementsLength: userTextPrompt.length,
+          previouslyExecutedCode: codeContext,
+          currentStepErrorCode: refinementContext?.errorMessage || ''
+        },
+        response: {
+          status: response.status,
+          content: aiContent,
+          inputTokenCount,
+          outputTokenCount,
+          totalTokens: inputTokenCount + outputTokenCount,
+          thinking: extractedThinking || 'Enhanced container-based screenshot generation',
+          code: extractedCode || aiContent,
+        },
+        metadata: {
+          temperature: refinementContext ? 0.2 : 0.3,
+          maxTokens: 1000,
+          topP: 1,
+        },
+        duration,
+      };
+      apiLogger.logAPICall(logEntry);
 
-        // Surface error and fall back
-        throw err;
+      if (process.env.VERBOSE_LLM === 'true') {
+        console.log(`✅ Azure response status: ${response.status}`);
       }
-    } catch (error: any) {
-      const reason = error?.message || 'unknown error';
-      if (error?.response?.data) {
-        console.warn('🔍 Azure error body:', JSON.stringify(error.response.data));
+
+      // Clean potential fenced code and try to parse as JSON
+      cleaned = aiContent
+        .replace(/^```(?:json|javascript|typescript|js|ts)?\s*/g, '')  // Handle various code block language tags
+        .replace(/```\s*$/g, '')
+        .trim();
+
+      // Default to using cleaned content as code
+      extractedCode = cleaned;
+      
+        
+        // Fallback: Look for Playwright code pattern directly
+        console.log('💭 Response from ai utils enhanced: ' + aiContent);
+        const playwrightCodePattern = /(await\s+page\s*\.\s*\w+\s*\([^)]*\)\s*\.\s*screenshot\s*\([^;]*\)\s*;|page\s*\.\s*\w+\s*\([^)]*\)\s*\.\s*screenshot\s*\([^;]*\)\s*;)/;
+      const codeMatch = cleaned.match(playwrightCodePattern);
+      
+      if (codeMatch && codeMatch[0]) {
+        extractedCode = codeMatch[0].trim();
+        console.log('✅ Extracted Playwright screenshot code directly from response');
+      } else {
+        // Try to find code blocks
+        const codeBlockMatch = cleaned.match(/```[a-z]*\s*([\s\S]*?)```/);
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          extractedCode = codeBlockMatch[1].trim();
+          console.log('📝 Extracted code from markdown code block');
+          
+          // Check if the extracted code contains a Playwright screenshot command
+          const codeMatch = extractedCode.match(playwrightCodePattern);
+          if (codeMatch && codeMatch[0]) {
+            extractedCode = codeMatch[0].trim();
+            console.log('✅ Found Playwright screenshot code in code block');
+          }
+        }
       }
-      console.warn(`⚠️  Enhanced AI screenshot generation failed (${reason}); falling back to original/previous code`);
-      return codeContext;
+      
+      // Try to extract thinking from markdown format
+      const thinkingMatch = cleaned.match(/(?:THINKING|thinking|Thinking|THOUGHT|thought|Thought|ANALYSIS|analysis|Analysis)[:|\n]([\s\S]*?)(?:```|INSTRUCTIONS|instructions|Instructions|STEPS|steps|Steps)/i);
+      if (thinkingMatch && thinkingMatch[1]) {
+        extractedThinking = thinkingMatch[1].trim();
+        console.log('💭 THINKING from markdown: ' + extractedThinking );
+      }
+      
+      
+      // Final validation - make sure it contains a screenshot command
+      if (!extractedCode.includes('screenshot')) {
+        console.warn('⚠️ Extracted code does not contain a screenshot command');
+        // Try one more time to find a screenshot command in the raw response
+        const screenshotMatch = cleaned.match(/await\s+page.*\.screenshot\s*\(.*\)/s);
+        if (screenshotMatch) {
+          extractedCode = screenshotMatch[0].trim();
+          if (!extractedCode.endsWith(';')) extractedCode += ';';
+          console.log('🔧 Extracted screenshot command from raw response');
+        }
+      }
+      
+      // If we still don't have thinking, try to extract it from the raw response
+      if (!extractedThinking && rawResponse) {
+        // Try to extract thinking from raw response using various patterns
+        const thinkingPatterns = [
+          // Common thinking section markers
+          /(?:THINKING|thinking|Thinking|THOUGHT|thought|Thought|ANALYSIS|analysis|Analysis)[:|\n]([\s\S]*?)(?:```|INSTRUCTIONS|instructions|Instructions|STEPS|steps|Steps|CODE|code|Code)/i,
+          // Current instruction pattern from the terminal output
+          /Current instruction:.*?(?=Previous instruction:|$)/s,
+          // Look for text that explains what the user wants to capture
+          /The user wants to capture.*?(?=\.)/s,
+          // Look for text that describes what's being captured
+          /This ensures.*?(?=\.)/s,
+          // Look for any explanatory text before code blocks
+          /.*?(?=```)/s
+        ];
+        
+        for (const pattern of thinkingPatterns) {
+          const match = rawResponse.match(pattern);
+          if (match && match[0]) {
+            // If the pattern has a capture group, use that, otherwise use the whole match
+            const thinkingText = match[1] || match[0];
+            if (thinkingText && thinkingText.trim().length > 10) { // Ensure it's not just a few characters
+              extractedThinking = thinkingText.trim();
+              console.log('💭 Extracted thinking from raw response using pattern:', pattern);
+              console.log('💭 THINKING from raw response:', extractedThinking);
+              break;
+            }
+          }
+        }
+      }
+
+      // Debug logging
+      console.log('🔍 CLEANED AI RESPONSE:', JSON.stringify(extractedCode));
+
+      // Add semicolon if needed for proper JS/TS syntax
+      return (!extractedCode || extractedCode.endsWith(';') || extractedCode.endsWith('}')) 
+        ? (extractedCode || codeContext) 
+        : `${extractedCode};`;
+    } catch (err: any) {
+      const duration = Date.now() - startTime;
+      
+      // Log image information even in error case
+      console.log('📸 Base screenshot size:', base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : 'none');
+      console.log('📸 Highlighted screenshot size:', 
+        (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
+          ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
+          : 'none');
+          
+      const logEntry: APILogEntry = {
+        timestamp: new Date().toISOString(),
+        provider: 'openai',
+        model: 'gpt-5-chat',
+        rawRequest: requestPayload || {}, // Add missing field
+        rawResponse: err?.response || {}, // Add missing field for error case
+        request: {
+          systemInstruction: systemPrompt,
+          userPrompt: userTextPrompt,
+          hasImage: !!base64Screenshot,
+          imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
+          hasHighlightedImage: !!(enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot),
+          highlightedImageSize: (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
+            ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
+            : undefined,
+          pageUrl: await this.page.url(),
+          visibleElementsLength: userTextPrompt.length,
+          previouslyExecutedCode: codeContext,
+          currentStepErrorCode: refinementContext?.errorMessage || ''
+        },
+        response: {
+          status: err?.response?.status || 500,
+          content: err?.message || 'Unknown error',
+          inputTokenCount: 0,
+          outputTokenCount: 0,
+          totalTokens: 0,
+          thinking: 'Error occurred',
+          code: 'error',
+        },
+        metadata: {
+          temperature: refinementContext ? 0.2 : 0.3,
+          maxTokens: 1000,
+          topP: 1,
+        },
+        duration,
+      };
+      apiLogger.logAPICall(logEntry);
+
+      // Surface error and fall back
+      throw err;
     }
+  } catch (error: any) {
+    const reason = error?.message || 'unknown error';
+    if (error?.response?.data) {
+      console.warn('🔍 Azure error body:', JSON.stringify(error.response.data));
+    }
+    console.warn(`⚠️  Enhanced AI screenshot generation failed (${reason}); falling back to original/previous code`);
+    return codeContext;
   }
-
-  // Extracts minimal hints from the existing code to bias container selection.
-  private extractHintsFromCode(codeContext: string): { texts?: string[]; testIds?: string[]; roles?: string[] } {
-    const texts: string[] = [];
-    const testIds: string[] = [];
-    const roles: string[] = [];
-
-    // getByRole('role', { name: 'Text' })
-    const roleRegex = /getByRole\(\s*['"]([^'"]+)['"][^)]*?\{\s*name:\s*['"]([^'"]+)['"]/g;
-    let m: RegExpExecArray | null;
-    while ((m = roleRegex.exec(codeContext)) !== null) {
-      if (m[1]) roles.push(m[1]);
-      if (m[2]) texts.push(m[2]);
-    }
-
-    // getByText('Some text') / locator(':has-text("...")')
-    const textRegexes = [
-      /getByText\(\s*['"]([^'"]{2,80})['"]/g,
-      /:has-text\(\s*['"]([^'"]{2,80})['"]/g,
-    ];
-    for (const rx of textRegexes) {
-      while ((m = rx.exec(codeContext)) !== null) {
-        if (m[1]) texts.push(m[1]);
-      }
-    }
-
-    // getByTestId('id') or [data-testid="id"]
-    const testIdRegexes = [
-      /getByTestId\(\s*['"]([^'"]{1,80})['"]/g,
-      /\[data-testid=\"([^\"]{1,80})\"\]/g,
-    ];
-    for (const rx of testIdRegexes) {
-      while ((m = rx.exec(codeContext)) !== null) {
-        if (m[1]) testIds.push(m[1]);
-      }
-    }
-
-    // Deduplicate and trim
-    const dedupe = (arr: string[]) => Array.from(new Set(arr.map(s => s.trim()))).filter(Boolean).slice(0, 10);
-    return {
-      texts: dedupe(texts),
-      testIds: dedupe(testIds),
-      roles: dedupe(roles),
-    };
-  }
+}
 
   /**
    * Extract image path and directory from a screenshot command
@@ -1596,7 +1590,8 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
     isRefinementCycle: boolean = false, 
     refinementContext?: RefinementContext,
     thinking?: string,
-    screenshotIntent?: string
+    screenshotIntent?: string,
+    fullJsonResponse?: string
   ): Promise<string> {
     const screenshotCommandRegex = /(\bawait\s+)?(page\.screenshot\s*\(.*?\)|[^;]+\.screenshot\s*\(.*?\));?/i;
     const match = originalCodeBlock.match(screenshotCommandRegex);
@@ -1646,69 +1641,9 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
       } else {
         console.warn(`⚠️ Could not extract image filename from: ${originalScreenshotCommand.substring(0, 100)}...`);
       }
-      
-      // Check if there's a screenshot intent available in the code context
-      let extractedScreenshotIntent = screenshotIntent || '';
-      
-      // Log if we already have a screenshot intent from JSON
-      if (extractedScreenshotIntent) {
-        console.log(`✅ Using screenshot intent from JSON response: ${extractedScreenshotIntent}`);
-      } else {
-        // Only use regex extraction if no JSON-based intent was provided
-        console.log(`⚠️ No screenshot intent found in JSON response, falling back to regex extraction`);
-        
-        const patterns = [
-          // Standard pattern with prepositions
-          /screenshot.*(of|to capture|showing|displaying|for|to verify).*?[.?!]/i,
-          // Capture "take a screenshot" followed by any content until punctuation
-          /take a screenshot.*?[.?!]/i,
-          // Capture "screenshot" followed by any content until punctuation
-          /screenshot.*?[.?!]/i,
-          // Capture "save as" followed by filename
-          /save as .*?\.png/i,
-          // Capture comments that describe the screenshot
-          /\/\/\s*.*?(screenshot|capture).*$/im
-        ];
-        
-        // First try to extract from thinking if available
-        if (!extractedScreenshotIntent && thinking) {
-          for (const pattern of patterns) {
-            const intentMatches = thinking.match(pattern);
-            if (intentMatches && intentMatches[0]) {
-              extractedScreenshotIntent = intentMatches[0].trim();
-              console.log(`📝 Extracted screenshot intent from thinking using pattern: ${pattern}`);
-              console.log(`📝 Extracted intent: ${extractedScreenshotIntent}`);
-              break;
-            }
-          }
-        }
-        
-        // If still not found, try to extract from the code block itself
-        if (!extractedScreenshotIntent) {
-          for (const pattern of patterns) {
-            const intentMatches = originalCodeBlock.match(pattern);
-            if (intentMatches && intentMatches[0]) {
-              extractedScreenshotIntent = intentMatches[0].trim();
-              console.log(`📝 Extracted screenshot intent from code using pattern: ${pattern}`);
-              console.log(`📝 Extracted intent: ${extractedScreenshotIntent}`);
-              break;
-            }
-          }
-        }
-      }
-      
-      // If we still don't have an intent and we have a filename, use that as a fallback
-      if (!extractedScreenshotIntent && origFileName) {
-        extractedScreenshotIntent = `Screenshot of ${origFileName.replace(/\.[^/.]+$/, "").replace(/_/g, " ")}`;
-        console.log(`📝 Generated fallback intent from filename: ${extractedScreenshotIntent}`);
-      }
-      
-      if (extractedScreenshotIntent) {
-        console.log(`🎯 Using screenshot intent: ${extractedScreenshotIntent}`);
-      } else {
-        console.log(`⚠️ No screenshot intent found - will rely solely on container detection`);
-      }
-      
+
+
+          
       // Generate enhanced prompt with all available context
       const aiGeneratedCommand = await this.generateEnhancedPrompt(
         base64Screenshot,
@@ -1716,7 +1651,7 @@ ${thinking ? `this is what the agent thought before generating the code: ${think
         origFileName,
         refinementContext,
         thinking,
-        extractedScreenshotIntent
+        fullJsonResponse // Pass the full JSON response
       );
 
       if (aiGeneratedCommand === originalScreenshotCommand || !aiGeneratedCommand.includes('.screenshot')) {
@@ -1921,13 +1856,40 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         return colors[index % colors.length];
       }
       
+      // Sort containers by size (largest first) to prevent small containers from being obscured
+      const sortedContainers = [...containersToHighlight].sort((a, b) => {
+        // Try to get elements
+        const elemA = document.querySelector(a.selector);
+        const elemB = document.querySelector(b.selector);
+        
+        if (!elemA || !elemB) return 0;
+        
+        const rectA = elemA.getBoundingClientRect();
+        const rectB = elemB.getBoundingClientRect();
+        
+        // Calculate area
+        const areaA = rectA.width * rectA.height;
+        const areaB = rectB.width * rectB.height;
+        
+        // Sort by area (largest first)
+        return areaB - areaA;
+      });
+      
+      // Store badge positions to prevent overlap
+      const usedPositions = new Set();
+      
       // Create a highlight overlay for each container
-      containersToHighlight.forEach((container, index) => {
+      sortedContainers.forEach((container, index) => {
         try {
           const element = document.querySelector(container.selector);
           if (!element) return;
           
           const rect = element.getBoundingClientRect();
+          
+          // Skip tiny elements
+          if (rect.width < 10 || rect.height < 10) return;
+          
+          // Create highlight element
           const highlight = document.createElement('div');
           highlight.className = 'container-highlight-overlay';
           highlight.style.position = 'absolute';
@@ -1940,15 +1902,53 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
           highlight.style.border = `3px solid ${color}`;
           highlight.style.boxSizing = 'border-box';
           highlight.style.backgroundColor = 'transparent';
-          highlight.style.zIndex = '9999';
+          highlight.style.zIndex = (10000 - index).toString(); // Larger containers get lower z-index
           highlight.style.pointerEvents = 'none';
           
-          // Add container number badge in corner
+          // Find a good position for the badge that doesn't overlap with others
+          // Define position types
+          type BadgePosition = {
+            top?: number;
+            right?: number;
+            bottom?: number;
+            left?: number;
+          };
+          
+          let badgePosition: BadgePosition = { top: -15, right: -15 }; // Default position
+          
+          // Try different positions if the default is already used
+          const positions: BadgePosition[] = [
+            { top: -15, right: -15 }, // Top right (default)
+            { top: -15, right: 15 },  // Top middle-right
+            { top: -15, right: 45 },  // Top far-right
+            { top: 15, right: -15 },  // Middle right
+            { top: 45, right: -15 },  // Far right
+            { top: rect.height - 15, right: -15 }, // Bottom right
+            { top: rect.height - 15, left: -15 },  // Bottom left
+            { top: -15, left: -15 }     // Top left
+          ];
+          
+          // Find first unused position
+          for (const pos of positions) {
+            const posKey = JSON.stringify(pos);
+            if (!usedPositions.has(posKey)) {
+              badgePosition = pos;
+              usedPositions.add(posKey);
+              break;
+            }
+          }
+          
+          // Add container number badge
           const badge = document.createElement('div');
           badge.className = 'container-highlight-badge';
           badge.style.position = 'absolute';
-          badge.style.top = '-15px';
-          badge.style.right = '-15px';
+          
+          // Apply the position
+          if (badgePosition.top !== undefined) badge.style.top = `${badgePosition.top}px`;
+          if (badgePosition.right !== undefined) badge.style.right = `${badgePosition.right}px`;
+          if (badgePosition.bottom !== undefined) badge.style.bottom = `${badgePosition.bottom}px`;
+          if (badgePosition.left !== undefined) badge.style.left = `${badgePosition.left}px`;
+          
           badge.style.backgroundColor = color;
           badge.style.color = 'white';
           badge.style.borderRadius = '50%';
@@ -1976,6 +1976,91 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
   /**
    * Take a screenshot with container highlighting
    */
+  /**
+   * Get a description of an image using LLM
+   */
+  private async getImageDescription(base64Image: string): Promise<string> {
+    try {
+      const { aiConfig } = playwrightConfig;
+      
+      // Check if we have a valid base64 image
+      if (!base64Image || base64Image.length < 100) {
+        console.warn('⚠️ Invalid or empty base64 image provided');
+        return '';
+      }
+      
+      // Prefer explicit override via env or hardcoded endpoint provided by user
+      const overrideEndpoint = process.env.AZURE_OPENAI_ENDPOINT || 'https://dhanu-m7k6n5e0-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat/chat/completions?api-version=2025-01-01-preview';
+      const endpoint = overrideEndpoint || `${aiConfig.apiUrl}/openai/deployments/${aiConfig.ivModel}/chat/completions?api-version=${aiConfig.apiVersion}`;
+      const apiKey = process.env.AZURE_OPENAI_API_KEY || aiConfig.apiKey;
+
+      console.log('🖼️ Getting image description from LLM...');
+      
+      // Enhanced prompt for better UI descriptions
+      const userMessageContent = [
+        {
+          type: "text",
+          text: "Please describe this UI screenshot in detail. Focus on:\n\n1. The main UI components visible (toolbars, panels, buttons, etc.)\n2. Text content and labels visible in the interface\n3. The layout and organization of elements\n4. Any highlighted or selected elements\n5. The overall purpose of this screen based on what's visible\n\nProvide a structured description that would help someone understand what they're looking at. most importatntly mention if it looks like the whol escreen or a part or a panel is ebign shown or somehtign taht way and stress on thins part also keep the whole description compact and dont make it a single paraghaph."
+        },
+        {
+          type: "image_url",
+          image_url: { url: `data:image/png;base64,${base64Image}`, detail: "high" }
+        }
+      ];
+      
+      const requestPayload = {
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are an expert UI analyst that provides clear, structured descriptions of user interface screenshots. Focus on identifying key UI elements, their arrangement, and the purpose of the screen. Be precise and thorough but concise. Organize your description logically.' 
+          },
+          { role: 'user', content: userMessageContent }
+        ],
+        temperature: 0.6,
+        max_tokens: 1000
+      };
+
+      const startTime = Date.now();
+      try {
+        console.log(`📤 Sending API request to ${endpoint.split('/').slice(0, 3).join('/')}...`);
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': apiKey,
+          },
+          body: JSON.stringify(requestPayload),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`LLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        const description = data.choices?.[0]?.message?.content?.trim();
+        
+        if (!description) {
+          throw new Error('No description returned from API');
+        }
+        
+        console.log(`✅ Got image description (${Date.now() - startTime}ms)`);
+        console.log(`📝 Description preview: ${description.substring(0, 100)}...`);
+        
+        return description;
+      } catch (apiError) {
+        console.error(`❌ API error: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
+        
+        // Return a basic fallback description so the process can continue
+        return "The image shows a user interface screen from the application.";
+      }
+    } catch (error) {
+      console.error('❌ Error getting image description:', error);
+      return '';
+    }
+  }
+
   private async takeHighlightedScreenshot(): Promise<string> {
     // Get container info based on the current page content
     const containers = await this.getScreenshotContainers();
@@ -2006,7 +2091,7 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       fs.writeFileSync(filePath, buffer);
       console.log('📸 Saved highlighted container screenshot to:', filePath);
     } catch (error) {
-      console.error('⚠️ Failed to save highlighted container screenshot:', error.message);
+      console.error('⚠️ Failed to save highlighted container screenshot:', error instanceof Error ? error.message : String(error));
     }
     
     // Remove highlights
@@ -2027,7 +2112,8 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     stepNumber?: number, 
     thinking?: string,
     mdFilePath?: string,
-    screenshotIntent?: string
+    screenshotIntent?: string,
+    fullJsonResponse?: string // Add parameter for the full JSON response
   ): Promise<void> {
     console.log('🚀 Starting enhanced code execution...');
     console.log('📍 Page URL:', this.page.url());
@@ -2035,6 +2121,9 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     console.log('🧠 LLM thinking:', thinking);
     if (screenshotIntent) {
       console.log('📸 Screenshot intent:', screenshotIntent);
+    }
+    if (fullJsonResponse) {
+      console.log('📋 Full JSON response:', fullJsonResponse);
     }
     console.log('📊 Step number:', stepNumber);
     
@@ -2058,10 +2147,10 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         const thinkingLog = `\n--- Step ${stepNumber || this.thinkingHistory.length} (${timestamp}) ---\n${thinking || 'No thinking provided'}\n`;
         fs.appendFileSync(thinkingLogPath, thinkingLog);
       } catch (writeError) {
-        console.warn('⚠️ Could not write thinking to log file:', writeError.message);
+        console.warn('⚠️ Could not write thinking to log file:', writeError instanceof Error ? writeError.message : String(writeError));
       }
     } catch (e) {
-      console.warn('⚠️ Failed to process thinking:', e.message);
+      console.warn('⚠️ Failed to process thinking:', e instanceof Error ? e.message : String(e));
     }
     console.log('📋 Logger available:', !!logger);
     
@@ -2092,7 +2181,8 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         isInternalRetry, 
         undefined, 
         thinking,
-        screenshotIntent
+        screenshotIntent,
+        fullJsonResponse
       );
       
       // Execute the enhanced code using Function constructor
@@ -2112,7 +2202,7 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
           console.log('✅ Enhanced code execution completed successfully');
         }
       } catch (execError) {
-        console.error('⚠️ Error during code execution:', execError.message);
+        console.error('⚠️ Error during code execution:', execError instanceof Error ? execError.message : String(execError));
         console.error('⚠️ Problem with code:', enhancedCode);
         
         // If execution failed and it's a screenshot command, try with standard execution
@@ -2153,99 +2243,8 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       /\.screenshot\(\s*\)/g,
       '.screenshot({ timeout: 30000 })'
     );
-  }
-  
-  /**
-   * Analyzes screenshot code to extract the selector and options
-   * @param code The screenshot code to analyze
-   * @returns Object with parsed selector and options, or null if parsing failed
-   */
-  private parseScreenshotCode(code: string): { 
-    selectorExpr: string; 
-    selector: string | null; 
-    selectorType: string; 
-    options: {
-      path?: string;
-      timeout?: number;
-      fullPage?: boolean;
-      [key: string]: any;
-    };
-    fullCode: string;
-  } | null {
-    try {
-      // Check if this is a screenshot command
-      if (!code.includes('.screenshot(')) {
-        return null;
-      }
-      
-      // Detect the selector expression and type
-      let selectorType = 'unknown';
-      let selectorExpr = '';
-      let selector = null;
-      
-      // Extract the part before .screenshot()
-      const parts = code.split('.screenshot');
-      if (!parts || parts.length < 2) return null;
-      
-      selectorExpr = parts[0].trim();
-      
-      // Detect selector pattern
-      if (code.includes('page.locator(')) {
-        selectorType = 'locator';
-        const match = selectorExpr.match(/page\.locator\(['"]([^'"]+)['"]\)/);
-        if (match) selector = match[1];
-      } 
-      else if (code.includes('page.getByRole(')) {
-        selectorType = 'role';
-        const match = selectorExpr.match(/page\.getByRole\(['"]([^'"]+)['"](?:,\s*{[^}]+})?\)/);
-        if (match) selector = match[1];
-      }
-      else if (code.includes('page.getByText(')) {
-        selectorType = 'text';
-        const match = selectorExpr.match(/page\.getByText\(['"]([^'"]+)['"](?:,\s*{[^}]+})?\)/);
-        if (match) selector = match[1];
-      }
-      else if (code.includes('page.getByTestId(')) {
-        selectorType = 'testId';
-        const match = selectorExpr.match(/page\.getByTestId\(['"]([^'"]+)['"]\)/);
-        if (match) selector = match[1];
-      }
-      
-      // Extract screenshot options
-      let options: {
-        path?: string;
-        timeout?: number;
-        fullPage?: boolean;
-        [key: string]: any;
-      } = {};
-      const optionsMatch = code.match(/\.screenshot\(\s*({[^}]*})\s*\)/);
-      if (optionsMatch && optionsMatch[1]) {
-        try {
-          // Convert the options string to a real object by evaluating it
-          // This is safe because we're in a controlled environment
-          const optionsStr = optionsMatch[1]
-            .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')  // Quote unquoted keys
-            .replace(/'/g, '"');  // Replace single quotes with double quotes
-            
-          options = JSON.parse(optionsStr);
-        } catch (e) {
-          console.warn('Failed to parse screenshot options:', e);
-        }
-      }
-      
-      return { 
-        selectorExpr, 
-        selector, 
-        selectorType,
-        options,
-        fullCode: code
-      };
-    } catch (e) {
-      console.error('Error parsing screenshot code:', e);
-      return null;
     }
-  }
-  
+
   /**
    * Executes screenshot code with simplified retry logic
    * @param code The screenshot code to execute
@@ -2261,7 +2260,7 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         await dirSetupFunc(this.page);
         console.log('✅ Directory setup completed');
       } catch (e) {
-        console.log('⚠️ Directory setup failed, will continue anyway:', e.message);
+        console.log('⚠️ Directory setup failed, will continue anyway:', e instanceof Error ? e.message : String(e));
       }
     }
     
@@ -2309,501 +2308,103 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     return;
   }
 
-  /**
-   * Takes a stable screenshot by ensuring the element is visible and stable before capturing
-   * @param selector Playwright locator or selector string
-   * @param options Screenshot options
-   * @returns Buffer containing the screenshot image
-   */
-  async takeStableScreenshot(
-    selector: string | any, // Can be a string selector or a Playwright Locator
-    options: {
-      path?: string;
-      timeout?: number;
-      fullPage?: boolean;
-    } = {}
-  ): Promise<Buffer> {
-    const { path: screenshotPath, timeout = 30000, fullPage = false } = options;
-    
-    console.log(`📸 Taking stable screenshot${screenshotPath ? ` with path: ${screenshotPath}` : ''}`);
-    
-    try {
-      // Convert string selector to locator if needed
-      const locator = typeof selector === 'string' 
-        ? this.page.locator(selector) 
-        : selector;
-      
-      // Always wait for network idle before screenshots
-      console.log('⏳ Waiting for network idle before taking screenshot...');
-      await this.page.waitForLoadState('networkidle', { timeout: 5000 })
-        .catch((e: Error) => console.log('❌ Network idle wait failed:', e.message));
-      
-      // 2. Count matching elements to detect potential issues
-      const count = await locator.count();
-      
-      if (count === 0) {
-        console.log('⚠️ Warning: No elements match the selector, trying smart alternative detection');
-        
-        // Smart container detection fallback - try to find a relevant container
-        try {
-          // Get all potentially relevant containers by common attributes/classes
-          const containerInfo = await this.page.evaluate(() => {
-            const containers: {selector: string, area: number, text: string}[] = [];
-            
-            // Look for elements with specific attributes (much more generic approach)
-            const candidates = [
-              // Test attribute elements (highest priority)
-              ...Array.from(document.querySelectorAll('[data-testid], [data-test], [data-cy], [data-e2e], [data-automation-id], [data-qa], [data-ref]')),
-              
-              // Role-based elements (very common in accessible applications)
-              ...Array.from(document.querySelectorAll('[role]')),
-              
-              // Specific role-based elements that often contain important UI
-              ...Array.from(document.querySelectorAll('[role="dialog"], [role="listbox"], [role="menu"], [role="combobox"], [role="grid"], [role="tabpanel"], [role="search"], [role="alert"], [role="alertdialog"], [role="region"]')),
-              
-              // ARIA attributes that often mark important UI elements
-              ...Array.from(document.querySelectorAll('[aria-label], [aria-labelledby], [aria-describedby], [aria-expanded="true"]')),
-              
-              // Elements with IDs (often important structural elements)
-              ...Array.from(document.querySelectorAll('[id]')).filter(el => {
-                const id = el.getAttribute('id');
-                // Avoid auto-generated IDs with random strings/numbers
-                return id && !/^[a-z]+\d{1,3}$/.test(id) && !/^[0-9a-f]{8,}$/.test(id);
-              }),
-              
-              // Generic UI component class patterns (framework agnostic)
-              ...Array.from(document.querySelectorAll('[class*="container"], [class*="panel"], [class*="card"], [class*="dialog"], [class*="modal"], [class*="drawer"], [class*="menu"], [class*="dropdown"], [class*="popover"], [class*="result"], [class*="search"], [class*="list"], [class*="table"]')),
-              
-              // Framework-specific components
-              ...Array.from(document.querySelectorAll('.MuiDialog-paper, .MuiPopover-paper, .modal-content, .modal-dialog, .card, .panel')),
-              
-              // Semantic HTML elements
-              ...Array.from(document.querySelectorAll('main, section, article, aside, dialog, nav, header, footer')),
-              
-              // Recently shown elements that might be important UI components
-              ...Array.from(document.querySelectorAll('div:not([style*="display: none"])')).filter(el => {
-                const rect = el.getBoundingClientRect();
-                const style = window.getComputedStyle(el);
-                
-                // Consider visible elements with reasonable sizing and styling
-                return rect.width >= 100 && rect.height >= 50 && rect.width <= window.innerWidth && rect.height <= window.innerHeight &&
-                       (style.position === 'absolute' || style.position === 'fixed' || 
-                        style.boxShadow !== 'none' || 
-                        parseInt(style.zIndex, 10) > 1 ||
-                        el.className.includes('search') || 
-                        el.className.includes('result') ||
-                        el.className.includes('popup') ||
-                        el.className.includes('dialog') ||
-                        el.className.includes('dropdown'));
-              })
-            ];
-            
-            // Extract information from candidates
-            candidates.forEach(el => {
-              const rect = el.getBoundingClientRect();
-              if (rect.width > 0 && rect.height > 0) {
-                // Generate a CSS selector for this element
-                let selector = '';
-                if (el.id) {
-                  selector = `#${el.id}`;
-                } else if (el.getAttribute('data-testid')) {
-                  selector = `[data-testid="${el.getAttribute('data-testid')}"]`;
-                } else if (el.getAttribute('role')) {
-                  selector = `[role="${el.getAttribute('role')}"]`;
-                } else if (el.className && typeof el.className === 'string' && el.className.trim()) {
-                  // Get first class for simplicity
-                  const mainClass = el.className.trim().split(' ')[0];
-                  selector = `.${mainClass}`;
-                } else {
-                  // Last resort - tag and position
-                  selector = el.tagName.toLowerCase();
-                }
-                
-                containers.push({
-                  selector: selector,
-                  area: rect.width * rect.height,
-                  text: el.textContent?.slice(0, 100) || ''
-                });
-              }
-            });
-            
-            // Sort by largest area (likely to be a modal/dropdown) and return top 5
-            return containers
-              .sort((a, b) => b.area - a.area)
-              .slice(0, 5);
-          });
-          
-          console.log(`🔍 Found ${containerInfo.length} potential containers`);
-          
-          // Try each container until we find one that works
-          for (const container of containerInfo) {
-            try {
-              console.log(`Trying alternative selector: ${container.selector} (size: ${container.area})`);
-              const altLocator = this.page.locator(container.selector);
-              const isVisible = await altLocator.isVisible({ timeout: 3000 }).catch(() => false);
-              
-              if (isVisible) {
-                console.log(`✅ Found visible alternative container: ${container.selector}`);
-                console.log(`📝 Container text preview: ${container.text}`);
-                
-                await altLocator.scrollIntoViewIfNeeded().catch(() => {});
-                await this.page.waitForTimeout(300);
-                return await altLocator.screenshot({ path: screenshotPath });
-              }
-            } catch (e) {
-              console.log(`❌ Error with alternative selector ${container.selector}:`, e.message);
-            }
-          }
-        } catch (e) {
-          console.log('❌ Smart container detection failed:', e.message);
-        }
-        
-        // If all else fails, take a full page screenshot
-        console.log('⚠️ No suitable container found, taking full page screenshot');
-        return await this.page.screenshot({ path: screenshotPath, fullPage: true });
-      }
-      
-      if (count > 1) {
-        console.log(`⚠️ Warning: ${count} elements match the selector, using first match`);
-      }
-      
-      // Use first() for multiple matches to avoid strict mode violation
-      const targetLocator = count > 1 ? locator.first() : locator;
-      
-      // 3. Ensure element is in DOM and visible
-      const isVisible = await targetLocator.isVisible({ timeout: Math.min(5000, timeout / 3) })
-        .catch((_: Error) => false);
-      
-      if (!isVisible) {
-        console.log('⚠️ Element not visible, trying forced visibility...');
-        
-        // Try to make the element visible if it exists but is hidden
-        try {
-          await this.page.evaluate((selector) => {
-            // Try to get the element by selector
-            let element: HTMLElement | null = null;
-            if (selector.startsWith('#')) {
-              element = document.querySelector(selector) as HTMLElement;
-            } else if (selector.startsWith('.')) {
-              element = document.querySelector(selector) as HTMLElement;
-            } else if (selector.startsWith('[')) {
-              element = document.querySelector(selector) as HTMLElement;
-            } else {
-              // For complex selectors, let's not try to evaluate them
-              return false;
-            }
-            
-            if (element) {
-              // Force element to be visible
-              element.style.display = 'block';
-              element.style.visibility = 'visible';
-              element.style.opacity = '1';
-              return true;
-            }
-            return false;
-          }, typeof selector === 'string' ? selector : 'unknown');
-          
-          // Check again if it's visible
-          const nowVisible = await targetLocator.isVisible({ timeout: 2000 }).catch(() => false);
-          if (!nowVisible) {
-            console.log('⚠️ Element still not visible after forced visibility, taking full page screenshot');
-            return await this.page.screenshot({ path: screenshotPath, fullPage: true });
-          }
-        } catch (e) {
-          console.log('❌ Forced visibility failed:', e.message);
-          return await this.page.screenshot({ path: screenshotPath, fullPage: true });
-        }
-      }
-      
-      // 4. Ensure element is in viewport
-      await targetLocator.scrollIntoViewIfNeeded({ timeout: Math.min(5000, timeout / 3) })
-        .catch((e: Error) => console.log('Could not scroll into view:', e.message));
-      
-      // 5. Wait a moment for any animations to complete
-      await this.page.waitForTimeout(300);
-      
-      // 6. Take the element screenshot
-      console.log('✅ Element is stable, taking screenshot');
-      return await targetLocator.screenshot({ path: screenshotPath });
-      
-    } catch (error) {
-      console.error('❌ Error during stable screenshot:', error.message);
-      
-      // Fallback to full page screenshot
-      console.log('⚠️ Falling back to full page screenshot');
-      try {
-        return await this.page.screenshot({ path: screenshotPath, fullPage: true });
-      } catch (fallbackError) {
-        console.error('💥 Even fallback screenshot failed:', fallbackError.message);
-        throw error;
-      }
-    }
-  }
-
-  private getCurrentMdFilePath(): string | null {
-    try {
-      // First check if we have a stored path from setCurrentMdFilePath
-      console.log(`🔍 Checking for stored markdown path: ${this.currentMdPath || 'not set'}`);
-      if (this.currentMdPath) {
-        // If this is already a directory, return it directly
-        if (fs.existsSync(this.currentMdPath) && fs.lstatSync(this.currentMdPath).isDirectory()) {
-          return this.currentMdPath;
-        }
-        
-        // If this is a file path, return its directory
-        if (fs.existsSync(this.currentMdPath)) {
-          return path.dirname(this.currentMdPath);
-        }
-        
-        // Otherwise, try to find the directory
-        const dirPath = path.dirname(this.currentMdPath);
-        if (fs.existsSync(dirPath)) {
-          return dirPath;
-        }
-      }
-      
-      // Check if the environment has a markdown file path variable
-      if (process.env.CURRENT_MD_PATH) {
-        const envPath = process.env.CURRENT_MD_PATH;
-        
-        // If this is already a directory, return it directly
-        if (fs.existsSync(envPath) && fs.lstatSync(envPath).isDirectory()) {
-          return envPath;
-        }
-        
-        // If this is a file path, return its directory
-        if (fs.existsSync(envPath)) {
-          return path.dirname(envPath);
-        }
-        
-        // Otherwise, try to find the directory
-        const dirPath = path.dirname(envPath);
-        if (fs.existsSync(dirPath)) {
-          return dirPath;
-        }
-      }
-      
-      // Check if we're in a docs directory where we can determine the path
-      const currentUrl = this.page.url();
-      
-      // Try to match multiple doc path patterns
-      const patterns = [
-        // Standard /docs/{section} pattern
-        /\/docs\/([^\/]+)/i,
-        
-        // Handle numeric section prefixes like /docs/5-Document-Viewer/
-        /\/docs\/(\d+[\-_][^\/]+)/i,
-        
-        // Match any path segment after /docs/
-        /\/docs\/([^\/\.]+)/i
-      ];
-      
-      for (const pattern of patterns) {
-        const match = currentUrl.match(pattern);
-        if (match) {
-          const docSection = match[1];
-          
-          // Try to find the matching markdown directory with different formats
-          const possibleDirs = [
-            path.resolve(process.cwd(), 'docs', docSection),
-            path.resolve(process.cwd(), 'docs', docSection.replace(/-/g, ' ')),
-            path.resolve(process.cwd(), 'docs', docSection.replace(/-/g, '_')),
-            path.resolve(process.cwd(), 'docs', docSection.replace(/_/g, '-')),
-            // Handle numeric section prefixes
-            ...Array.from({ length: 20 }, (_, i) => 
-              path.resolve(process.cwd(), 'docs', `${i}-${docSection.replace(/^\d+[\-_]/, '')}`))
-          ];
-          
-          for (const dir of possibleDirs) {
-            if (fs.existsSync(dir)) {
-              return dir;
-            }
-          }
-        }
-      }
-      
-      // Fall back to looking for any docs directory
-      const docsDirs = [
-        path.resolve(process.cwd(), 'docs'),
-        path.resolve(process.cwd(), 'documentation')
-      ];
-      
-      for (const dir of docsDirs) {
-        if (fs.existsSync(dir)) {
-          return dir;
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      console.warn('⚠️ Failed to determine current markdown file path:', error);
-      return null;
-    }
-  }
-
   private getReferenceImageBase64(imageFileName: string): string {
     try {
-      console.log(`🔍 Looking for reference image: '${imageFileName}'`);
+      // Hardcode the exact absolute path to the docs directory
+      const docsDir = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs';
       
-      // First, try to find the image relative to the current markdown file
-      const mdFilePath = this.getCurrentMdFilePath();
-      if (mdFilePath) {
-        console.log(`📄 Using markdown path as reference: ${mdFilePath}`);
-        
-        // Check for 'img', 'image', or 'images' folder in the markdown directory
-        // Prioritize the directory structure: if mdFilePath is a directory, look there first
-        // If mdFilePath is a file, look in its parent directory
-        const mdDir = fs.existsSync(mdFilePath) && fs.lstatSync(mdFilePath).isDirectory() 
-          ? mdFilePath 
-          : path.dirname(mdFilePath);
-          
-        console.log(`📂 Using markdown directory for image lookup: ${mdDir}`);
-        
-        const relatedImgDirs = [
-          // First priority: img folder in the exact markdown directory
-          path.join(mdDir, 'img'),
-          path.join(mdDir, 'image'),
-          path.join(mdDir, 'images'),
-          path.join(mdDir, 'Images'),
-          // Lower priority: other common locations
-          path.join(mdFilePath, 'img'),
-          path.join(path.dirname(mdFilePath), 'img'),
-          path.join(path.dirname(mdFilePath), 'image'),
-          path.join(path.dirname(mdFilePath), 'images'),
-          path.join(path.dirname(mdFilePath), 'Images')
-        ];
-        
-        // Try the md-related directories first
-        for (const imgDir of relatedImgDirs) {
-          if (fs.existsSync(imgDir)) {
-            // First try exact match with the filename
-            const candidatePath = path.join(imgDir, imageFileName);
-            if (fs.existsSync(candidatePath)) {
-              console.log(`✅ Found exact reference image in markdown-related directory: ${imgDir}`);
-              return fs.readFileSync(candidatePath).toString('base64');
-            }
-            
-            // If exact match not found, try to find the file without any suffix
-            try {
-              const files = fs.readdirSync(imgDir);
-              const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "").replace(/_[es]$/i, "");
-              const exactMatch = files.find(file => 
-                file.toLowerCase().replace(/\.[^/.]+$/, "") === baseName
-              );
-              
-              if (exactMatch) {
-                console.log(`✅ Found base reference image: ${exactMatch} in markdown-related directory: ${imgDir}`);
-                return fs.readFileSync(path.join(imgDir, exactMatch)).toString('base64');
-              }
-            } catch (e) {
-              console.warn(`⚠️ Error checking for base filename in ${imgDir}:`, e);
-            }
-            
-            // Try to find an image with a similar name in this directory
-            try {
-              const files = fs.readdirSync(imgDir);
-              // First try to find exact match without _E or _S suffix
-              let similarFile = files.find(file => {
-                const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "");
-                const fileBase = file.toLowerCase().replace(/\.[^/.]+$/, "");
-                return fileBase === baseName || fileBase === baseName.replace(/_[es]$/i, "");
-              });
-              
-              // If not found, fall back to partial match
-              if (!similarFile) {
-                similarFile = files.find(file => 
-                  file.toLowerCase().includes(imageFileName.toLowerCase().replace(/\.[^/.]+$/, ""))
-                );
-              }
-              if (similarFile) {
-                console.log(`✅ Found similar reference image: ${similarFile} in markdown-related directory: ${imgDir}`);
-                return fs.readFileSync(path.join(imgDir, similarFile)).toString('base64');
-              }
-            } catch (e) {
-              console.warn(`⚠️ Error reading directory ${imgDir}:`, e);
-            }
-          }
+      if (!fs.existsSync(docsDir)) {
+        return '';
+      }
+      
+      // Get all subdirectories in the docs folder
+      const docSubdirs = fs.readdirSync(docsDir)
+        .filter(item => {
+          const itemPath = path.join(docsDir, item);
+          return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
+        })
+        .map(dir => path.join(docsDir, dir));
+      
+      // First check if there's an img directory directly in the docs folder
+      const docsImgDir = path.join(docsDir, 'img');
+      if (fs.existsSync(docsImgDir)) {
+        const exactPath = path.join(docsImgDir, imageFileName);
+        if (fs.existsSync(exactPath)) {
+          return fs.readFileSync(exactPath).toString('base64');
         }
       }
       
-      // Define other potential image directory paths as fallbacks
-      const possibleImageDirs = [
-        // Prioritize the Document-Viewer img directory with both absolute and relative paths
-        'C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest\\docs\\5-Document-Viewer\\img',
-        path.resolve(process.cwd(), 'docs', '5-Document-Viewer', 'img'),
-        // Also check if we're working with a file from that directory
-        ...(mdFilePath && mdFilePath.includes('5-Document-Viewer') ? 
-          [path.resolve(path.dirname(mdFilePath), 'img')] : []),
-        path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'img'),
-        path.resolve(process.cwd(), 'img'),
-        path.resolve(process.cwd(), 'docs', 'Images'),
-        path.resolve(process.cwd(), 'AutoSnap', 'img'),
-        path.resolve(process.cwd(), 'AutoSnap', 'img1'),
-        path.resolve(process.cwd(), 'screenshots'),
-        path.resolve(process.cwd(), 'images'),
-      ];
-      
-      // Try to find the image in any of the fallback directories
-      for (const imgDir of possibleImageDirs) {
-        // First try exact match with the filename
-        const candidatePath = path.join(imgDir, imageFileName);
-        if (fs.existsSync(candidatePath)) {
-          console.log(`✅ Found exact reference image in fallback directory: ${imgDir}`);
-          return fs.readFileSync(candidatePath).toString('base64');
+      // For each subdirectory, check if it has an img folder
+      for (const subdir of docSubdirs) {
+        // Check for img directory in this subdirectory
+        const imgDir = path.join(subdir, 'img');
+        if (fs.existsSync(imgDir)) {
+          // Try exact filename match
+          const exactPath = path.join(imgDir, imageFileName);
+          if (fs.existsSync(exactPath)) {
+            return fs.readFileSync(exactPath).toString('base64');
+          }
         }
         
-        // If exact match not found, try to find the file without any suffix
+        // Also check for Images directory (alternative spelling)
+        const imagesDir = path.join(subdir, 'Images');
+        if (fs.existsSync(imagesDir)) {
+          // Try exact filename match
+          const exactPath = path.join(imagesDir, imageFileName);
+          if (fs.existsSync(exactPath)) {
+            console.log(`✅ Found image at: ${exactPath}`);
+            return fs.readFileSync(exactPath).toString('base64');
+          }
+        }
+        
+        // Check for nested directories within this subdirectory
         try {
-          if (fs.existsSync(imgDir)) {
-            const files = fs.readdirSync(imgDir);
-            const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "").replace(/_[es]$/i, "");
-            const exactMatch = files.find(file => 
-              file.toLowerCase().replace(/\.[^/.]+$/, "") === baseName
-            );
+          const nestedDirs = fs.readdirSync(subdir)
+            .filter(item => {
+              const itemPath = path.join(subdir, item);
+              return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
+            })
+            .map(dir => path.join(subdir, dir));
+          
+          // Check each nested directory for img folders
+          for (const nestedDir of nestedDirs) {
+            // Skip img and Images directories as we already checked them
+            if (path.basename(nestedDir) === 'img' || path.basename(nestedDir) === 'Images') {
+              continue;
+            }
             
-            if (exactMatch) {
-              console.log(`✅ Found base reference image: ${exactMatch} in fallback directory: ${imgDir}`);
-              return fs.readFileSync(path.join(imgDir, exactMatch)).toString('base64');
+            // Check for img directory in this nested directory
+            const nestedImgDir = path.join(nestedDir, 'img');
+            if (fs.existsSync(nestedImgDir)) {
+              // Try exact filename match
+              const exactPath = path.join(nestedImgDir, imageFileName);
+              if (fs.existsSync(exactPath)) {
+                return fs.readFileSync(exactPath).toString('base64');
+              }
+            }
+            
+            // Also check for Images directory in this nested directory
+            const nestedImagesDir = path.join(nestedDir, 'Images');
+            if (fs.existsSync(nestedImagesDir)) {
+              // Try exact filename match
+              const exactPath = path.join(nestedImagesDir, imageFileName);
+              if (fs.existsSync(exactPath)) {
+                return fs.readFileSync(exactPath).toString('base64');
+              }
             }
           }
         } catch (e) {
-          console.warn(`⚠️ Error checking for base filename in ${imgDir}:`, e);
+          // Silent error
         }
       }
       
-      // If still not found, try to find an image with a similar name in fallback directories
-      for (const imgDir of possibleImageDirs) {
-        if (fs.existsSync(imgDir)) {
-          try {
-            const files = fs.readdirSync(imgDir);
-            // First try to find exact match without _E or _S suffix
-            let similarFile = files.find(file => {
-              const baseName = imageFileName.toLowerCase().replace(/\.[^/.]+$/, "");
-              const fileBase = file.toLowerCase().replace(/\.[^/.]+$/, "");
-              return fileBase === baseName || fileBase === baseName.replace(/_[es]$/i, "");
-            });
-            
-            // If not found, fall back to partial match
-            if (!similarFile) {
-              similarFile = files.find(file => 
-                file.toLowerCase().includes(imageFileName.toLowerCase().replace(/\.[^/.]+$/, ""))
-              );
-            }
-            if (similarFile) {
-              console.log(`✅ Found similar reference image: ${similarFile} in fallback directory: ${imgDir}`);
-              return fs.readFileSync(path.join(imgDir, similarFile)).toString('base64');
-            }
-          } catch (e) {
-            console.warn(`⚠️ Error reading directory ${imgDir}:`, e);
-          }
-        }
-      }
-      
-      console.warn(`⚠️ Reference image '${imageFileName}' not found in any directory.`);
+      // Silent failure when image not found
+      console.log(`❌ Image not found anywhere in docs: ${imageFileName}`);
+      return '';
     } catch (error: any) {
-      console.warn(`⚠️ Failed to load reference image '${imageFileName}':`, error.message);
+      // Silent error
+      return '';
     }
-    return '';
   }
 
 

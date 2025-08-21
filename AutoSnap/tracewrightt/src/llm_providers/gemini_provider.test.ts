@@ -1,7 +1,7 @@
 import { Content, GenerateContentParameters, GoogleGenAI, HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ClickableDomResult } from "../page_helpers";
-import { GeminiProvider } from "./gemini_provider";
+import { ClickableDomResult } from "../page_helpers.js";
+import { GeminiProvider } from "./gemini_provider.js";
 
 
 const mockGenerateContent = vi.fn();

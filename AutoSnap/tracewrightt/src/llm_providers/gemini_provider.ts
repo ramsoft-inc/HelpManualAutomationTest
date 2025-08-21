@@ -1,10 +1,10 @@
 import { Content, GenerateContentParameters, GoogleGenAI, HarmBlockThreshold, HarmCategory } from "@google/genai";
 import * as fs from 'fs';
 import * as path from 'path';
-import { GenerateCodeResponse } from "../llm_request";
-import { ClickableDomResult } from "../page_helpers";
-import { LLMProvider } from "./base_provider";
-import { apiLogger, APILogEntry } from "./api_logger";
+import { GenerateCodeResponse } from "../llm_request.js";
+import { ClickableDomResult } from "../page_helpers.js";
+import { LLMProvider } from "./base_provider.js";
+import { apiLogger, APILogEntry } from "./api_logger.js";
 import 'dotenv/config';
 export class GeminiProvider implements LLMProvider {
   private gemini: GoogleGenAI;
