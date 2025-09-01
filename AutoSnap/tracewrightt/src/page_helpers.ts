@@ -193,16 +193,12 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
   console.log('📊 Element index:', elementIndex);
   
   try {
-    // Enhanced version with intelligent promotion and smart bypasses
     console.log('⚡ Evaluating DOM elements in browser context...');
     const result = await page.evaluate(`
       (function() {
-        console.log('🔍 Starting DOM evaluation in browser context...');
-        var initialElementIndex = ${elementIndex};
+        var initialElementIndex = ${elementIndex}; // Use the passed elementIndex
         var highlightSettings = { outlineWidth: 3, labelTextColor: "white", labelPosition: "top-left", zIndex: 10000 };
         
-        // Enhanced debug counters and logs
-        var debugLog = [];
         var stats = {
           totalScanned: 0,
           duplicatesSkipped: 0,
@@ -215,7 +211,6 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           elementsPromoted: 0,
           intendedTargetsProcessed: 0,
           smartBypasses: 0,
-          // Enhanced tracking for new element types
           divsDetected: 0,
           spansDetected: 0,
           lisDetected: 0,
@@ -229,13 +224,25 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           dataTestIdDetected: 0,
           dataCyDetected: 0,
           roleBasedDetected: 0,
-          draggableDetected: 0
+          draggableDetected: 0,
+          checkedElements: 0,
+          selectedElements: 0,
+          expandedElements: 0,
+          collapsedElements: 0,
+          // Removed disabledElements: 0,
+          menuOpenedElements: 0,
+          currentPageElements: 0,
+          focusedElements: 0,        
+          // Removed readonlyElements: 0,      
+          requiredElements: 0,       
+          invalidElements: 0,        
+          pressedElements: 0,        
+          // Removed loadingElements: 0,        
+          indeterminateElements: 0   
         };
         
-        function log(message) {
-          debugLog.push(message);
-          console.log("🔍 DEBUG: " + message);
-        }
+        // Empty log function to remove console.log calls from browser context
+        function log(message) { /* No logging in browser context */ }
         
         function getElementId(element) {
           var id = element.id ? "#" + element.id : "";
@@ -262,15 +269,6 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           
           var visible = isDisplayed && isVisibilityVisible && isOpaque && hasDimensions;
           
-          if (!visible) {
-            var reasons = [];
-            if (!isDisplayed) reasons.push("display:none");
-            if (!isVisibilityVisible) reasons.push("visibility:hidden");
-            if (!isOpaque) reasons.push("opacity:0");
-            if (!hasDimensions) reasons.push("no dimensions");
-            log("❌ Element invisible: " + getElementId(element) + " (" + reasons.join(", ") + ")");
-          }
-          
           return visible;
         }
 
@@ -282,7 +280,6 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           var topElement = document.elementFromPoint(elementX, elementY);
           var isTop = !topElement ? false : (topElement === element || element.contains(topElement));
           
-          // Smart bypass: Allow meaningful elements even if covered by their own children
           if (!isTop && isMeaningfulClickable(element)) {
             var coveredByChild = topElement && element.contains(topElement);
             var coveredByIcon = topElement && (
@@ -298,18 +295,12 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
             );
             
             if (coveredByChild && coveredByIcon) {
-              log("✅ SMART BYPASS: Meaningful element covered by child icon - " + getElementId(element) + " (covered by child: " + getElementId(topElement) + ")");
               stats.smartBypasses++;
               return true;
             } else if (coveredByChild) {
-              log("✅ SMART BYPASS: Meaningful element covered by child - " + getElementId(element) + " (covered by child: " + getElementId(topElement) + ")");
               stats.smartBypasses++;
               return true;
             }
-          }
-          
-          if (!isTop) {
-            log("❌ Element not on top: " + getElementId(element) + " (covered by: " + (topElement ? getElementId(topElement) : "unknown") + ")");
           }
           
           return isTop;
@@ -381,12 +372,246 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
 
           highlight.appendChild(label);
           document.body.appendChild(highlight);
+        }
+        
+        // Helper to add state if not already present
+        function addState(statesArray, stateString) {
+          if (!statesArray.includes(stateString)) {
+            statesArray.push(stateString);
+          }
+        }
+
+        // Update stats helper
+        function updateStat(statName) {
+          if (stats[statName] !== undefined) {
+            stats[statName]++;
+          }
+        }
+
+        function getInteractiveState(element) {
+          var currentElementStates = [];
+
+          // Removed: 1. Disabled state (general)
+          // Removed: if (element.disabled || element.getAttribute("aria-disabled") === "true" || element.classList.contains("Mui-disabled")) { ... }
+
+          // 2. Checked/Unchecked/Indeterminate state (checkboxes, radios, switches)
+          var inputElement = element.tagName === "INPUT" ? element : element.querySelector("input[type='checkbox'], input[type='radio']");
+          if (!inputElement && element.classList.contains("MuiSwitch-switchBase")) { // For MuiSwitch's root part
+             inputElement = element.querySelector("input");
+          }
+          if (inputElement) {
+            if (inputElement.indeterminate || inputElement.getAttribute("aria-checked") === "mixed") {
+              addState(currentElementStates, "indeterminate");
+              updateStat("indeterminateElements");
+            } else if (inputElement.checked || inputElement.getAttribute("aria-checked") === "true") {
+              addState(currentElementStates, "checked");
+              updateStat("checkedElements");
+            } else if (inputElement.checked === false || inputElement.getAttribute("aria-checked") === "false") {
+              addState(currentElementStates, "unchecked");
+            }
+          } else if (element.getAttribute("aria-checked") === "mixed") { // For elements with aria-checked directly
+            addState(currentElementStates, "indeterminate");
+            updateStat("indeterminateElements");
+          } else if (element.getAttribute("aria-checked") === "true") { 
+            addState(currentElementStates, "checked");
+            updateStat("checkedElements");
+          } else if (element.getAttribute("aria-checked") === "false") {
+            addState(currentElementStates, "unchecked");
+          }
+          // Also check for Mui-checked class on the main element or its children
+          if (element.classList.contains("Mui-checked") || (element.querySelector(".Mui-checked"))) {
+             addState(currentElementStates, "checked");
+          }
           
-          log("✅ Highlighted element #" + index + ": " + getElementId(element));
+          // 3. Selected/Unselected state (tabs, list items, dropdowns, generic selected items)
+          // Priority 1: ARIA selected attribute
+          if (element.getAttribute("aria-selected") === "true") {
+            addState(currentElementStates, "selected");
+            updateStat("selectedElements");
+          } else if (element.getAttribute("aria-selected") === "false") {
+            addState(currentElementStates, "unselected");
+          }
+          // Priority 2: Standard HTML <option> selected attribute
+          if (element.tagName === "OPTION" && element.selected) {
+            addState(currentElementStates, "selected");
+            updateStat("selectedElements");
+          }
+          // Priority 3: Common UI Framework/Generic 'selected' or 'Mui-selected' classes
+          if (element.classList.contains("Mui-selected") || element.classList.contains("selected")) { 
+             addState(currentElementStates, "selected");
+             updateStat("selectedElements");
+          }
+
+          // --- 4. Current Page/Navigation Active State (Only assert positive 'current-page') ---
+          var ariaCurrent = element.getAttribute("aria-current");
+          if (ariaCurrent && ariaCurrent !== "false") { // Check if aria-current is set and not explicitly false
+              addState(currentElementStates, "current-page");
+              updateStat("currentPageElements");
+          }
+          if (element.classList.contains("nav-link-active")) { // Check for the specific class
+              addState(currentElementStates, "current-page"); // Use same state for consistency
+              updateStat("currentPageElements");
+          }
+          // --- END Current Page/Navigation Active State ---
+
+          // 5. Expanded/Collapsed state (accordions, tree views, menus, etc.)
+          var isDirectlyExpanded = element.getAttribute("aria-expanded") === "true" || element.classList.contains("Mui-expanded");
+          var isDirectlyCollapsed = element.getAttribute("aria-expanded") === "false" || element.classList.contains("Mui-collapsed");
+
+          if (isDirectlyExpanded) {
+            addState(currentElementStates, "expanded");
+            updateStat("expandedElements");
+          } else if (isDirectlyCollapsed) {
+            addState(currentElementStates, "collapsed");
+            updateStat("collapsedElements");
+          }
+
+          // Check for MuiAccordion-root (itself might not have aria-expanded)
+          var accordionRoot = element.closest(".MuiAccordion-root");
+          if (accordionRoot) {
+            if (accordionRoot.classList.contains("Mui-expanded")) {
+              addState(currentElementStates, "expanded");
+              updateStat("expandedElements");
+            } else { // Assume collapsed if not explicitly expanded
+              addState(currentElementStates, "collapsed");
+              updateStat("collapsedElements");
+            }
+          }
+
+          // Submenu/Disclosure Pattern (e.g., in MuiMenuItem followed by MuiCollapse)
+          if (element.tagName === "LI" && element.classList.contains("MuiMenuItem-root")) {
+              var nextSibling = element.nextElementSibling;
+              if (nextSibling && nextSibling.classList.contains("MuiCollapse-root")) {
+                  if (nextSibling.classList.contains("MuiCollapse-entered")) {
+                      addState(currentElementStates, "expanded");
+                      updateStat("expandedElements");
+                  } else if (nextSibling.classList.contains("MuiCollapse-exited") || nextSibling.classList.contains("MuiCollapse-hidden")) {
+                      addState(currentElementStates, "collapsed");
+                      updateStat("collapsedElements");
+                  } else {
+                       addState(currentElementStates, "collapsed"); // Default if not entered
+                       updateStat("collapsedElements");
+                  }
+              }
+              var arrowIcon = element.querySelector('[data-testid^="ArrowDrop"]');
+              if (arrowIcon) {
+                  var isUpArrow = arrowIcon.getAttribute("data-testid") === "ArrowDropUpIcon";
+                  var isDownArrow = arrowIcon.getAttribute("data-testid") === "ArrowDropDownIcon";
+                  if (isUpArrow) { addState(currentElementStates, "expanded"); updateStat("expandedElements"); }
+                  else if (isDownArrow) { addState(currentElementStates, "collapsed"); updateStat("collapsedElements"); }
+              }
+          }
+
+          // Inferring state of a controlled menu/popup/dialog by a button (e.g., MoreVertOutlinedIcon)
+          if (element.tagName === "BUTTON") { // Consider any button as a potential menu trigger
+              var isMoreVertButton = element.getAttribute("data-testid") === "MoreVertOutlinedIcon";
+              var isMenuButton = element.getAttribute("aria-haspopup") === "true" || element.getAttribute("role") === "menuitem";
+
+              if (isMoreVertButton || isMenuButton) {
+                  // Strategy 1: Look for common Material-UI popups/menus/dialogs in the document
+                  var potentialMenu = document.querySelector('.MuiPopover-root[role="presentation"], .MuiDialog-root, .MuiMenu-list[role="menu"]');
+                  
+                  if (potentialMenu) {
+                      var style = window.getComputedStyle(potentialMenu);
+                      var isMenuVisible = style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
+                      
+                      var isMuiMenuOrPopoverOpen = potentialMenu.classList.contains("MuiPopover-paper") || potentialMenu.classList.contains("MuiMenu-list");
+                      var isMuiDialogOpen = potentialMenu.classList.contains("MuiDialog-paper");
+                      
+                      if ((isMuiMenuOrPopoverOpen && isMenuVisible) || (isMuiDialogOpen && isMenuVisible)) {
+                          addState(currentElementStates, "menu-open");
+                          updateStat("menuOpenedElements");
+                      } else {
+                          addState(currentElementStates, "menu-closed");
+                      }
+                  } else {
+                      addState(currentElementStates, "menu-closed");
+                  }
+
+                  // Strategy 2: Look for aria-controls and check state of controlled element
+                  var controlsId = element.getAttribute("aria-controls");
+                  if (controlsId) {
+                      var controlledElement = document.getElementById(controlsId);
+                      if (controlledElement) {
+                          var controlledAriaExpanded = controlledElement.getAttribute("aria-expanded");
+                          if (controlledAriaExpanded === "true") {
+                              addState(currentElementStates, "controls-expanded");
+                              updateStat("expandedElements");
+                          } else if (controlledAriaExpanded === "false") {
+                              addState(currentElementStates, "controls-collapsed");
+                              updateStat("collapsedElements");
+                          }
+                      }
+                  }
+              }
+
+              // --- NEW: Inferring Toggle/Expansion State for Buttons with Arrow Icons (General Purpose) ---
+              // This covers buttons like "ExpandableSectionButton" that control a panel
+              if (element.classList.contains("ExpandableSectionButton")) {
+                  var arrowIcon = element.querySelector('[data-testid^="KeyboardArrow"]'); // Find any KeyboardArrow icon
+                  if (arrowIcon) {
+                      var iconTestId = arrowIcon.getAttribute("data-testid");
+                      if (iconTestId === "KeyboardArrowRightOutlinedIcon") {
+                          // Right arrow usually means the associated section is currently collapsed
+                          addState(currentElementStates, "controls-collapsed-panel");
+                          updateStat("collapsedElements"); // Use general collapsed stat
+                      } else if (iconTestId === "KeyboardArrowDownOutlinedIcon" || iconTestId === "KeyboardArrowLeftOutlinedIcon") {
+                          // Down or Left arrow usually means the associated section is currently expanded
+                          addState(currentElementStates, "controls-expanded-panel");
+                          updateStat("expandedElements"); // Use general expanded stat
+                      }
+                  }
+              }
+              // --- END NEW ---
+          }
+
+          // 6. Value (for inputs, selects, textareas)
+          if (element.tagName === "INPUT" || element.tagName === "TEXTAREA" || element.tagName === "SELECT") {
+            var value = element.value.trim();
+            if (value.length > 0 && element.type !== "password") {
+              addState(currentElementStates, "value: '" + value + "'");
+            } else if (element.type === "password" && value.length > 0) {
+              addState(currentElementStates, "value: '[password]'");
+            }
+
+            // --- REMOVED FORM FIELD STATES (readonly) ---
+            // Removed: if (element.readOnly) { ... }
+            if (element.required) {
+              addState(currentElementStates, "required");
+              updateStat("requiredElements");
+            }
+            if (element.getAttribute("aria-invalid") === "true" || element.classList.contains("Mui-error") || element.classList.contains("is-invalid")) {
+              addState(currentElementStates, "invalid");
+              updateStat("invalidElements");
+            }
+            // --- END REMOVED FORM FIELD STATES ---
+          }
+
+          // --- NEW GENERAL STATES (removed focused, pressed) ---
+          if (document.activeElement === element) {
+              addState(currentElementStates, "focused");
+              updateStat("focusedElements");
+          }
+          if (element.getAttribute("aria-pressed") === "true") {
+            addState(currentElementStates, "pressed");
+            updateStat("pressedElements");
+          } else if (element.getAttribute("aria-pressed") === "false") {
+            addState(currentElementStates, "not-pressed");
+          }
+          // Removed: Loading/Busy state
+          // Removed: if (element.getAttribute("aria-busy") === "true" || element.classList.contains("Mui-loading") || element.classList.contains("loading") || element.classList.contains("is-loading")) { ... }
+          // --- END NEW GENERAL STATES ---
+
+
+          if (currentElementStates.length > 0) {
+            return " (" + currentElementStates.join(", ") + ")";
+          }
+          return ""; // No specific state found
         }
 
         function elementHtmlWithIndex(element, index) {
-          return index + ": " + element.outerHTML;
+          var stateInfo = getInteractiveState(element);
+          return index + ": " + element.outerHTML + stateInfo;
         }
 
         function getAllInputs() {
@@ -395,7 +620,6 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           var combined = [];
           for (var i = 0; i < inputs.length; i++) combined.push(inputs[i]);
           for (var j = 0; j < textareas.length; j++) combined.push(textareas[j]);
-          log("📋 Found " + inputs.length + " inputs and " + textareas.length + " textareas");
           return combined;
         }
 
@@ -404,39 +628,27 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           var isButton = element.tagName === "BUTTON";
           var hasPointerCursor = style.cursor === "pointer" && element.tagName !== "INPUT";
           
-          // Enhanced: Check for meaningful interactive attributes (DIVs, SPANs, LIs)
           var hasInteractiveAttributes = false;
-          var attributeReasons = [];
           
-          // Conservative: Only detect DIVs if they don't contain buttons
           if (element.tagName === "DIV") {
             var hasButtonChildren = element.querySelector("button");
             var hasChipChildren = element.querySelector(".MuiChip-clickable, .MuiChip-root");
             var hasTestId = element.getAttribute("data-test-id") || element.getAttribute("data-testid");
             
-            // Exception: Allow expandable sections even if they contain buttons
             var isExpandablePattern = hasTestId && (
               hasTestId.toLowerCase().includes("expandable") || 
               hasTestId.toLowerCase().includes("section") ||
               hasTestId.toLowerCase().includes("accordion")
             );
             
-            // Priority: Skip DIVs that contain MuiChip children (to avoid selecting containers)
             if (hasChipChildren && !element.className.includes("MuiChip-")) {
-              log("🎯 PRIORITY: Skipping DIV container that contains MuiChip children: " + getElementId(element));
               return false;
             }
             
-            // Exception: Allow MuiAccordion containers even if they contain buttons (the summary IS the clickable part)
             var isAccordionContainer = element.className && element.className.includes("MuiAccordion-root");
             
             if (hasButtonChildren && !isExpandablePattern && !isAccordionContainer) {
-              log("🛡️ CONSERVATIVE: Skipping DIV that contains buttons: " + getElementId(element));
               return false;
-            }
-            
-            if (isExpandablePattern) {
-              log("🆕 EXCEPTION: Allowing expandable section DIV: " + getElementId(element));
             }
             
             var hasRole = element.getAttribute("role");
@@ -444,91 +656,56 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
             var hasTabIndex = element.getAttribute("tabindex") && element.getAttribute("tabindex") !== "-1";
             var hasButtonBase = element.className && element.className.includes("MuiButtonBase-root");
             
-            // Priority: MuiChip elements are always clickable if they have clickable class
             var isMuiChip = element.className && (
               element.className.includes("MuiChip-clickable") || 
               (element.className.includes("MuiChip-root") && element.className.includes("MuiButtonBase-root"))
             );
             
-            // Priority: MuiAccordionSummary elements are always clickable
             var isMuiAccordionSummary = element.className && element.className.includes("MuiAccordionSummary-root");
             
-            // Conservative: Require stronger evidence for DIV detection, OR expandable pattern, OR MuiChip, OR accordion summary
             var strongEvidence = (hasRole === "button") || (hasButtonBase && hasTabIndex) || hasDraggable || isExpandablePattern || isMuiChip || isMuiAccordionSummary;
             
             if (strongEvidence) {
-              if (hasTestId) attributeReasons.push("data-testid");
-              if (hasRole === "button") attributeReasons.push("role=button");
-              if (hasRole === "tab") attributeReasons.push("role=tab");
-              if (hasDraggable) attributeReasons.push("draggable");
-              if (hasTabIndex) attributeReasons.push("tabindex");
-              if (hasButtonBase) attributeReasons.push("MuiButtonBase");
-              if (isExpandablePattern) attributeReasons.push("expandable-pattern");
-              if (isMuiChip) attributeReasons.push("MuiChip-clickable");
-              if (isMuiAccordionSummary) attributeReasons.push("MuiAccordionSummary");
-              
               hasInteractiveAttributes = true;
             }
           }
           
-          // SPAN elements - Conservative detection for table sort headers, etc.
           else if (element.tagName === "SPAN") {
             var hasRole = element.getAttribute("role");
             var hasTabIndex = element.getAttribute("tabindex") && element.getAttribute("tabindex") !== "-1";
             var hasButtonBase = element.className && element.className.includes("MuiButtonBase-root");
             var hasTableSort = element.className && element.className.includes("MuiTableSortLabel-root");
             
-            // Conservative: Require strong evidence for SPAN detection
             var strongEvidence = (hasRole === "button" && hasTabIndex) || hasTableSort || (hasButtonBase && hasTabIndex);
             
             if (strongEvidence) {
-              if (hasRole === "button") attributeReasons.push("role=button");
-              if (hasTabIndex) attributeReasons.push("tabindex");
-              if (hasButtonBase) attributeReasons.push("MuiButtonBase");
-              if (hasTableSort) attributeReasons.push("MuiTableSort");
-              
               hasInteractiveAttributes = true;
             }
           }
           
-          // LI elements - Conservative detection for menu items
           else if (element.tagName === "LI") {
             var hasRole = element.getAttribute("role");
             var hasTabIndex = element.getAttribute("tabindex") && element.getAttribute("tabindex") !== "-1";
             var hasButtonBase = element.className && element.className.includes("MuiButtonBase-root");
             var hasMenuItem = element.className && element.className.includes("MuiMenuItem-root");
             
-            // Conservative: Require role-based or Material-UI class evidence
             var strongEvidence = (hasRole === "menuitem") || (hasRole === "button") || hasMenuItem || (hasButtonBase && hasTabIndex);
             
             if (strongEvidence) {
-              if (hasRole === "menuitem") attributeReasons.push("role=menuitem");
-              if (hasRole === "button") attributeReasons.push("role=button");
-              if (hasTabIndex) attributeReasons.push("tabindex");
-              if (hasButtonBase) attributeReasons.push("MuiButtonBase");
-              if (hasMenuItem) attributeReasons.push("MuiMenuItem");
-              
               hasInteractiveAttributes = true;
             }
           }
           
-          // A elements - Conservative link detection  
           else if (element.tagName === "A") {
             var hasHref = element.getAttribute("href");
             var hasRole = element.getAttribute("role");
             var hasButtonBase = element.className && element.className.includes("MuiButtonBase-root");
             
-            // Conservative: Standard links are usually fine, only enhance detection
             if (hasHref || (hasRole === "button") || hasButtonBase) {
-              if (hasHref) attributeReasons.push("href");
-              if (hasRole === "button") attributeReasons.push("role=button");
-              if (hasButtonBase) attributeReasons.push("MuiButtonBase");
-              
               hasInteractiveAttributes = true;
             }
           }
           
-          // Table elements - Very conservative detection
           else if (element.tagName === "IMG" || element.tagName === "TR" || element.tagName === "TD") {
             var hasClick = element.getAttribute("onclick");
             var hasRole = element.getAttribute("role");
@@ -537,33 +714,22 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
             var hasDataCy = element.getAttribute("data-cy");
             var hasDataTestId = element.getAttribute("data-testid");
             
-            // Very conservative: Only detect with explicit click handlers or strong evidence
             var strongEvidence = hasClick || (hasRole === "button") || (hasButtonBase && (hasDataCy || hasDataTestId));
             
             if (strongEvidence) {
-              if (hasClick) attributeReasons.push("onclick");
-              if (hasRole === "button") attributeReasons.push("role=button");
-              if (hasButtonBase) attributeReasons.push("MuiButtonBase");
-              if (hasTableRow) attributeReasons.push("MuiTableRow");
-              if (hasDataCy) attributeReasons.push("data-cy");
-              if (hasDataTestId) attributeReasons.push("data-testid");
-              
               hasInteractiveAttributes = true;
             }
           }
           
           var clickable = isButton || hasPointerCursor || hasInteractiveAttributes;
           
-          // Track enhanced detection statistics for ALL clickable elements
           if (clickable) {
-            // Track by element type
             if (element.tagName === "DIV") stats.divsDetected++;
             else if (element.tagName === "SPAN") stats.spansDetected++;
             else if (element.tagName === "LI") stats.lisDetected++;
             else if (element.tagName === "A") stats.linksDetected++;
             else if (element.tagName === "IMG" || element.tagName === "TR" || element.tagName === "TD") stats.tableElementsDetected++;
             
-            // Track specific patterns for ALL clickable elements
             if (element.className && element.className.includes("MuiButtonBase-root")) stats.muiButtonBaseDetected++;
             if (element.className && element.className.includes("MuiMenuItem-root")) stats.muiMenuItemDetected++;
             if (element.className && element.className.includes("MuiTableSortLabel-root")) stats.muiTableSortDetected++;
@@ -575,112 +741,71 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
             if (element.getAttribute("draggable") === "true") stats.draggableDetected++;
           }
           
-          if (!clickable) {
-            log("❌ Not clickable: " + getElementId(element) + " (cursor: " + style.cursor + ")");
-          } else {
-            var reason = isButton ? "button" : 
-                       hasPointerCursor ? "pointer cursor" : 
-                       "interactive (" + attributeReasons.join(", ") + ")";
-            log("✅ Clickable element: " + getElementId(element) + " (" + reason + ")");
-          }
-          
           return clickable;
         }
+
 
         function containsChildOnTop(element) {
           var children = element.children;
           if (element.children.length === 0) {
             var result = isTopElement(element);
-            log("🔍 Leaf element top check: " + getElementId(element) + " -> " + (result ? "✅" : "❌"));
             return result;
           }
           
-          // Smart bypass for meaningful elements: If this is a meaningful clickable element,
-          // don't require children to be on top
           if (isMeaningfulClickable(element)) {
-            log("🧠 SMART BYPASS: Meaningful element - skipping child top check for: " + getElementId(element));
             stats.smartBypasses++;
             return true;
           }
           
-          log("🔍 Checking children of: " + getElementId(element) + " (" + children.length + " children)");
           for (var i = 0; i < children.length; i++) {
             var child = children[i];
             var isChildTop = containsChildOnTop(child);
             if (isChildTop) {
-              log("✅ Child on top found in: " + getElementId(element));
               return true;
             }
           }
-          log("❌ No child on top in: " + getElementId(element));
           return false;
         }
 
         function findIntendedClickTarget(element) {
-          log("🎯 INTELLIGENT PROMOTION: Analyzing " + getElementId(element));
           
-          // If element is already a meaningful clickable, return it
           if (isMeaningfulClickable(element)) {
-            log("✅ Element is already meaningful: " + getElementId(element));
             return element;
           }
           
-          // Travel up the DOM tree to find a meaningful parent
           var current = element.parentElement;
           var depth = 0;
-          var maxDepth = 5; // Prevent infinite loops
+          var maxDepth = 5;
           
           while (current && depth < maxDepth) {
             depth++;
-            log("🔍 Checking parent level " + depth + ": " + getElementId(current));
             
             if (isMeaningfulClickable(current)) {
-              log("🚀 PROMOTED: " + getElementId(element) + " -> " + getElementId(current));
               return current;
             }
             
             current = current.parentElement;
           }
           
-          log("❌ No meaningful parent found for: " + getElementId(element));
-          return element; // Return original if no meaningful parent found
+          return element;
         }
         
         function isMeaningfulClickable(element) {
-          // Check if element has meaningful attributes or is a meaningful tag
           var hasTestId = element.getAttribute("data-test-id") || element.getAttribute("data-testid");
           var hasAriaLabel = element.getAttribute("aria-label");
           var hasRole = element.getAttribute("role");
           var hasOnClick = element.onclick || element.getAttribute("onclick");
           var hasTabIndex = element.getAttribute("tabindex");
           
-          // Meaningful tags
           var meaningfulTags = ["BUTTON", "A", "INPUT", "TEXTAREA", "SELECT"];
           var isMeaningfulTag = meaningfulTags.indexOf(element.tagName) !== -1;
           
-          // Meaningful attributes
           var hasMeaningfulAttributes = hasTestId || hasAriaLabel || hasRole || hasOnClick || hasTabIndex;
           
-          // Check for clickable styling
           var style = window.getComputedStyle(element);
           var hasPointerCursor = style.cursor === "pointer";
           
           var meaningful = isMeaningfulTag || hasMeaningfulAttributes || hasPointerCursor;
-          
-          if (meaningful) {
-            var reasons = [];
-            if (isMeaningfulTag) reasons.push("meaningful tag");
-            if (hasTestId) reasons.push("has data-test-id");
-            if (hasAriaLabel) reasons.push("has aria-label");
-            if (hasRole) reasons.push("has role");
-            if (hasOnClick) reasons.push("has onclick");
-            if (hasTabIndex) reasons.push("has tabindex");
-            if (hasPointerCursor) reasons.push("pointer cursor");
-            
-            log("✅ Meaningful clickable: " + getElementId(element) + " (" + reasons.join(", ") + ")");
-          } else {
-            log("❌ Not meaningful: " + getElementId(element) + " (generic element without context)");
-          }
           
           return meaningful;
         }
@@ -688,30 +813,22 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
         var clickableVisibleElements = [];
         var clickableHiddenElements = [];
         var elementIndex = initialElementIndex;
-        var processedIntendedTargets = []; // Track already processed intended targets to prevent duplicates
+        var processedIntendedTargets = [];
 
-        log("🚀 Starting element detection...");
-        var allElements = document.querySelectorAll("div, span, a, button, input, textarea");
-        log("📊 Total elements to scan: " + allElements.length);
+        var allElements = document.querySelectorAll("div, span, a, button, input, textarea, li");
         
         for (var i = 0; i < allElements.length; i++) {
           var element = allElements[i];
           stats.totalScanned++;
 
-          log("\\n🔍 Processing element " + (i + 1) + "/" + allElements.length + ": " + getElementId(element));
-
-          // Check for duplicates in visible elements
           var previousVisibleHtml = clickableVisibleElements.length > 0 ? clickableVisibleElements[clickableVisibleElements.length - 1] : '';
           if (previousVisibleHtml && previousVisibleHtml.includes(element.outerHTML)) {
-            log("⏭️ Skipping duplicate (found in visible): " + getElementId(element));
             stats.duplicatesSkipped++;
             continue;
           }
 
-          // Check for duplicates in hidden elements
           var previousHiddenHtml = clickableHiddenElements.length > 0 ? clickableHiddenElements[clickableHiddenElements.length - 1] : '';
           if (previousHiddenHtml && previousHiddenHtml.includes(element.outerHTML)) {
-            log("⏭️ Skipping duplicate (found in hidden): " + getElementId(element));
             stats.duplicatesSkipped++;
             continue;
           }
@@ -719,10 +836,8 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           if (isClickableElement(element)) {
             if (isVisible(element)) {
               if (containsChildOnTop(element)) {
-                // Apply intelligent promotion
                 var intendedTarget = findIntendedClickTarget(element);
                 
-                // Check if we've already processed this intended target
                 var alreadyProcessed = false;
                 for (var j = 0; j < processedIntendedTargets.length; j++) {
                   if (processedIntendedTargets[j] === intendedTarget) {
@@ -732,76 +847,49 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
                 }
                 
                 if (alreadyProcessed) {
-                  log("⏭️ Skipping: Intended target already processed - " + getElementId(intendedTarget));
                   stats.duplicatesSkipped++;
                   continue;
                 }
                 
-                // Mark intended target as processed
                 processedIntendedTargets.push(intendedTarget);
                 
-                // Track promotion if element was promoted
                 if (intendedTarget !== element) {
                   stats.elementsPromoted++;
                 }
                 
                 stats.intendedTargetsProcessed++;
                 
-                // Highlight and record the intended target
                 highlightElement(intendedTarget, elementIndex);
                 clickableVisibleElements.push(elementHtmlWithIndex(intendedTarget, elementIndex));
                 elementIndex++;
                 stats.successfullyProcessed++;
-                log("🎯 SUCCESS: Added intended target #" + (elementIndex - 1) + ": " + getElementId(intendedTarget));
               } else {
                 clickableHiddenElements.push(element.outerHTML);
                 stats.notOnTopSkipped++;
-                log("❌ FAILED: Element not on top (added to hidden)");
               }
             } else {
               clickableHiddenElements.push(element.outerHTML);
               stats.hiddenSkipped++;
-              log("❌ FAILED: Element not visible (added to hidden)");
             }
           } else {
             stats.nonClickableSkipped++;
-            log("❌ FAILED: Element not clickable");
           }
         }
 
-        log("\\n🔍 Processing input elements...");
         var inputElements = getAllInputs();
         for (var i = 0; i < inputElements.length; i++) {
           var elem = inputElements[i];
-          log("🔍 Processing input " + (i + 1) + "/" + inputElements.length + ": " + getElementId(elem) + " type=" + (elem.type || "text"));
           
           if (isVisible(elem)) {
             highlightElement(elem, elementIndex);
             clickableVisibleElements.push(elementHtmlWithIndex(elem, elementIndex));
             elementIndex++;
             stats.inputsProcessed++;
-            log("✅ SUCCESS: Added visible input element #" + (elementIndex - 1));
           } else {
             clickableHiddenElements.push(elem.outerHTML);
             stats.inputsHidden++;
-            log("❌ FAILED: Input not visible (added to hidden)");
           }
         }
-
-        log("\\n🏁 Detection completed!");
-        log("📊 FINAL STATS:");
-        log("   Total scanned: " + stats.totalScanned);
-        log("   Duplicates skipped: " + stats.duplicatesSkipped);
-        log("   Non-clickable skipped: " + stats.nonClickableSkipped);
-        log("   Hidden/invisible skipped: " + stats.hiddenSkipped);
-        log("   Not on top skipped: " + stats.notOnTopSkipped);
-        log("   Successfully processed: " + stats.successfullyProcessed);
-        log("   Inputs processed: " + stats.inputsProcessed);
-        log("   Inputs hidden: " + stats.inputsHidden);
-        log("🚀 INTELLIGENT PROMOTION STATS:");
-        log("   Elements promoted: " + stats.elementsPromoted);
-        log("   Intended targets processed: " + stats.intendedTargetsProcessed);
-        log("   Smart bypasses (covered by children): " + stats.smartBypasses);
       
         return {
           visibleElements: clickableVisibleElements.join('\\n'),
@@ -810,15 +898,13 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
             totalElements: allElements.length,
             visibleClickable: clickableVisibleElements.length,
             hiddenClickable: clickableHiddenElements.length,
-            stats: stats,
-            debugLog: debugLog
+            stats: stats
           }
         };
       })()
     `);
     
     console.log('✅ DOM evaluation completed successfully');
-    // console.log('📊 Browser-side stats:', (result as any).debugInfo?.stats);
     
     return result as ClickableDomResult;
   } catch (error: any) {

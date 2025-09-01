@@ -121,7 +121,7 @@ if (!changedFiles) {
     const path = require('node:path');
     
     // Use the specified document explorer file
-    const testDocPath = 'C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest\\docs\\5-Document-Viewer\\document_explorer.md';
+    const testDocPath = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/6-Image-Viewer/4_MoreOptionsToolbarMenu.md';
     
     // Verify the file exists
     if (fs.existsSync(testDocPath)) {
@@ -571,7 +571,7 @@ if (
             
             // Set the current markdown file path for image reference
             // First try to use the specified document explorer file path
-            const testDocPath = 'C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest\\docs\\5-Document-Viewer\\document_explorer.md';
+            const testDocPath = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/6-Image-Viewer/4_MoreOptionsToolbarMenu.md';
             
             if (fs.existsSync(testDocPath)) {
                 console.log(`📄 Setting markdown path from specified document: ${testDocPath}`);

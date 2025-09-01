@@ -29,13 +29,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 OMEGAAI_NAV_PLAYBOOK = {
     "0-Introduction": {
         "first_steps": [
-            "Open the docs and read the Introduction (no in-app navigation required)."
+            ""
         ]
     },
     "1-Getting-Started": {
         "first_steps": [
             "From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).",
             "Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms)."
+            "if its something related to organization choose the organization named ramsoft"
         ]
     },
     "2-OmegaAI-Homepage": {
@@ -156,27 +157,6 @@ PATH_LABEL_MAP = {
     "13-blume-patient-portal": "13-Blume-Patient-Portal",
 }
 
-def _normalize(text: str) -> str:
-    """Lowercase and strip non-alphanumeric to spaces for keyword matching."""
-    import re
-    t = text.lower()
-    t = re.sub(r"\d+\s*-\s*", "", t)  # drop leading ordinals like "3-"
-    t = re.sub(r"[^a-z0-9]+", " ", t)
-    return re.sub(r"\s+", " ", t).strip()
-
-def _playbook_entries():
-    """Flatten the playbook into (label, steps) entries including nested sections."""
-    entries = []
-    for key, value in OMEGAAI_NAV_PLAYBOOK.items():
-        if isinstance(value, dict) and "first_steps" in value:
-            entries.append((key, value["first_steps"]))
-        if isinstance(value, dict):
-            for subkey, subval in value.items():
-                if isinstance(subval, dict) and "first_steps" in subval:
-                    label = f"{key} {subkey}"
-                    entries.append((label, subval["first_steps"]))
-    return entries
-
 def _get_steps_by_path(path_label: str) -> list[str]:
     """Get first steps for a top-level or nested playbook path.
 
@@ -226,66 +206,27 @@ def _detect_label_from_docs_path(file_path: str) -> str | None:
     return None
 
 def detect_primary_label(file_path: str, file_content: str) -> str | None:
-    """Detect the most relevant playbook section based on file metadata/content.
+    """Detect the most relevant playbook section based on file path.
 
-    Prefers exact, deterministic matches (e.g., Image Viewer, Document Viewer) over fuzzy.
+    Uses direct docs path mapping for deterministic matches.
     """
-    # 1) Prefer direct docs path mapping (most deterministic)
+    # Direct docs path mapping (most deterministic)
     path_label = _detect_label_from_docs_path(file_path)
-    if path_label:
-        return path_label
+    return path_label
 
-    # 2) Fallback to content-based keyword detection
-    text = f"{file_path}\n{file_content[:20000]}"
-    t = _normalize(text)
-
-    ordered_rules: list[tuple[list[str], str]] = [
-        # Viewers
-        (["image viewer", "imageviewer", "6 image viewer", "image viewer module"], "6-Image-Viewer"),
-        (["document viewer", "documentviewer", "5 document viewer", "document viewer module"], "5-Document-Viewer"),
-        # Worklist/Homepage
-        (["worklist", "omega dial", "home page", "homepage", "work list"], "3-Worklist"),
-        (["omegaai homepage", "omega ai homepage", "home"], "2-OmegaAI-Homepage"),
-        # Scheduler
-        (["scheduler", "calendar"], "4-Scheduler"),
-        # Global search
-        (["global search", "search bar"], "7-Global-Search"),
-        # Communication & org tools
-        (["chat"], "8-Communication-and-Organization-Tools.Chat"),
-        (["notification", "notifications"], "8-Communication-and-Organization-Tools.Notifications"),
-        (["fax"], "8-Communication-and-Organization-Tools.Fax"),
-        (["user profile", "profile settings", "user settings"], "8-Communication-and-Organization-Tools.User_Profile"),
-        # Analytics / automation / link
-        (["root business analytics", "analytics and reporting"], "9-Root-Business-Analytics-and-Reporting"),
-        (["workflow automation"], "10-Workflow-Automation"),
-        (["omegaai link", "omega ai link", "devices tab"], "11-OmegaAI-Link"),
-        # Advanced
-        (["hanging protocol", "hanging protocols"], "12-Advanced-Topics.Hanging_Protocols"),
-        # Getting started / intro / portal
-        (["getting started"], "1-Getting-Started"),
-        (["introduction"], "0-Introduction"),
-        (["blume patient portal", "patient portal"], "13-Blume-Patient-Portal"),
-    ]
-
-    for keywords, label in ordered_rules:
-        for kw in keywords:
-            if kw in t:
-                return label
-    return None
-
-def extract_first_steps_for_file(file_path: str, file_content: str) -> list[str]:
+def extract_first_steps_for_file(file_path: str) -> list[str]:
     """Return only the initial steps for the single best-matching section.
 
     This enforces the rule: if processing Image Viewer documentation, include Image Viewer first steps only.
     """
-    label = detect_primary_label(file_path, file_content)
+    label = _detect_label_from_docs_path(file_path)
     return _get_steps_by_path(label) if label else []
 
 def build_playbook_hints_for_changed_files(file_to_content: dict[str, str]) -> str:
     """Build a markdown section containing per-file contextual first steps (single best match per file)."""
     sections: list[str] = []
     for fpath, fcontent in file_to_content.items():
-        label = detect_primary_label(fpath, fcontent)
+        label = _detect_label_from_docs_path(fpath)
         matched_steps = _get_steps_by_path(label) if label else []
         if matched_steps:
             bullets = "\n".join(f"- {s}" for s in matched_steps)
@@ -334,7 +275,7 @@ def _extract_instructions_only(text: str) -> str:
     
     # Find the start of the INSTRUCTIONS section
     for i, line in enumerate(lines):
-        if re.match(r"^\s*INSTRUCTIONS\s*$", line, flags=re.IGNORECASE):
+        if re.match(r"^\s*instructions\s*$", line, flags=re.IGNORECASE):
             instructions_start_idx = i + 1  # Start from the line after "INSTRUCTIONS"
             break
     
@@ -441,6 +382,7 @@ Output format (strict):
 Before capturing any screenshot:
 - Navigate to the correct screen/state
 - Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+- **Verify interactive elements are in the desired state (e.g., collapsed/expanded, inactive/active, unchecked/checked, menu-closed/menu-open) before proceeding to capture the screenshot.**
 - Verify all required elements are visible before taking the screenshot
 
 Rules for INSTRUCTIONS:
@@ -498,76 +440,102 @@ Remember: Format your THOUGHT and INSTRUCTIONS as a valid JSON object with the s
 }}
 """
 
+# def get_prompt_for_new_feature(doc_content):
+#     """
+#     Generates a prompt for filling a screenshot placeholder for a new document or feature.
+#     Requests response in JSON format.
+#     """
+                      
+#     import re
+#     doc_content = re.sub(r'!\[.*?\]\(.*?\)', '', doc_content)
+#     print("\n\n\n\n\n2")
+#     print(doc_content)
+#     print("have used the get_prompt_for_new_feature function")
 def get_prompt_for_new_feature(doc_content):
     """
-    Generates a prompt for filling a screenshot placeholder for a new document or feature.
+    Generates a prompt for taking screenshots only for placeholder comments in documentation.
     Requests response in JSON format.
     """
-                      
-    import re
-    doc_content = re.sub(r'!\[.*?\]\(.*?\)', '', doc_content)
-    print("\n\n\n\n\n2")
-    print(doc_content)
-    print("have used the get_prompt_for_new_feature function")
     return f"""
-Goal: Generate step‑by‑step browser actions to fill documentation screenshot placeholders for a new document or feature.
+Goal: Generate a single, comprehensive set of step-by-step browser actions to take screenshots ONLY for placeholder comments found in the document.
 
-Only produce instructions for explicit placeholders. Your ONLY trigger is the exact HTML comment:
+Your ONLY trigger is the exact HTML comment:
 <!-- placeholder for a screenshot -->
 If no such placeholders exist in the provided content, generate nothing (NO INSTRUCTIONS ARE NEEDED).
 
-Output format (strict):
-1) THINKING — A short planning block with:
-   - think of how the instructions should be structured and what the point of each step is.
-   - Navigation plan from the Worklist to each target screen related to each placeholder.
-   - For each placeholder (and filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions) to match the placeholder context.
-2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action, grouped in the same order as the placeholders appear in the document. Stop after the last placeholder.
+Analyze the entire document to identify ALL placeholder comments and create ONE sequential instruction set that captures every single screenshot placeholder in the most efficient navigation order.
 
-Before any screenshot, ensure the UI is fully visible and in the correct state:
-- Expand panels, open dropdowns/overlays, or toggle features as needed to match the description near the placeholder.
-- If the required element is already visible, do not click it unnecessarily; proceed to capture.
+Output format (strict):
+1) THINKING — A brief planning block that:
+   - Lists every single placeholder comment found in the document with its context
+   - For each placeholder (and filename if provided), a brief description of the expected UI state and the key elements that must be visible to match the placeholder context
+   - Plans the most efficient navigation route to capture all placeholder screenshots
+   - Notes the expected UI state and purpose for each screenshot based on surrounding documentation
+2) INSTRUCTIONS — One numbered sequence starting at 1, covering all placeholders. Each step is exactly one browser action.
+
+Before capturing any screenshot:
+- Navigate to the correct screen/state based on the documentation context
+- Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+- Verify all required elements are visible before taking the screenshot
 
 Rules for INSTRUCTIONS:
-- Use imperative voice.
-- Each step = exactly one action ("locate", "click", "type", "open", "hover", "wait", "screenshot")
-- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
-- When capturing, use "screenshot" as the action and, if a filename/path is specified next to the placeholder, save using that exact name. Do not invent filenames if none are provided.
-- For each screenshot step, include a detailed description that explains:
-  * WHAT specific UI elements should be visible in the screenshot
-  * WHY this screenshot is important (what it's documenting)
-  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
-  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured?
+- Use imperative voice for each step
+- Each step = exactly one action ("click", "type", "open", "hover", "wait until visible", "take a screenshot")
+- For every interacted element, include its English name plus brief visual/positional cues (color, icon, "top-right", etc.)
+- When capturing, if a filename/path is specified next to the placeholder, save using that exact name. Do not invent filenames if none are provided.
+- For screenshot steps, analyze the surrounding documentation context to determine:
+  * WHAT specific UI elements should be visible
+  * WHAT the screenshot should document (based on nearby text)
+  * HOW the UI should be configured
+  * WHAT filename to use (derived from the context and purpose)
 - Preserve the order of placeholders in the document. Stop after the last placeholder.
+- Steps are grouped in the same order as the placeholders appear in the document.
 
-Scope and constraints:
-- Include only steps required to reach and capture the placeholder screenshot(s).
-- If choosing among similar rows/buttons, pick the 3rd item in the list.
-- You are already at the homepage (Worklist). Do not include login steps.
-- Ignore any command to open a pop‑out window.
-- Add a final step with action "note" and target "quality check" with a description about redoing any screenshots that don't look right.
+Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose based on context]. Save as [descriptive-filename.png]"
 
-Example (format only):
-THINKING
-- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
-- Placeholder (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+Example format:
+THINKING:
+Placeholder comments found:
+- <!-- placeholder for a screenshot --> after text about dashboard overview - needs main interface screenshot
 
-INSTRUCTIONS
-1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
-2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
-3. wait until the "Document Viewer" page is visible
-4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
-5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
-6. add why that step is being performed what is the point of that action and what is the goal state that we are trying to achieve.
-7. do not add verify steps u can verify with the screenshot while performing the nxt step anyways just add why the step is being done.
-Notes about navigation in this product:
-- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
-- in document viewer the left panel has documents and patient information as am alternative you need to click on one of them to see them. 
+Navigation plan: Homepage → Dashboard (capture dashboard overview)
+
+INSTRUCTIONS:
+1. locate the main data table in the center of the screen displaying patient records with columns for names, dates, and status indicators
+2. click on the third patient name from the top in the leftmost column to navigate to the dashboard interface
+3. wait until the dashboard loads completely with the top navigation bar, left sidebar menu, and main content area visible
+4. take a screenshot of the complete dashboard showing the navigation bar with logo and user menu, left sidebar with menu options, and main content area with data widgets and charts, to document the primary user interface and navigation structure. Save as dashboard-overview.png
+
+Critical requirements:
+- Include every single placeholder comment found in the document - do not miss any
+- Ignore existing image paths (![name](./path/to/image)) - only focus on <!-- placeholder for a screenshot --> comments
+- Organize navigation efficiently (group screenshots from same screens together)  
+- Ensure each screenshot instruction is extremely detailed and specific
+- Every screenshot step must include "screenshot" as the action followed by comprehensive description and descriptive filename
+- Generate appropriate filenames based on the context and purpose of each screenshot
+- You start at homepage (Worklist) - no login steps needed
+- If choosing among similar items, pick the 3rd in the list
+- Ignore pop-out window commands
+
+Navigation notes for this product:
+- Standard flow: Worklist → click patient name → wheel interface → select feature
+- Make instructions extremely detailed and descriptive with specific visual cues, element positions, colors, icons, and contextual information
+- Include precise descriptions of where elements are located (top-left corner, center panel, right sidebar, etc.)
+- Describe visual characteristics of elements (button colors, icon shapes, text labels, panel sizes)
+- Provide context about what should be visible before and after each action
+
 Document to process:
 ---
 {doc_content}
 ---
 
-Remember: Format your INSTRUCTIONS as a valid JSON object with the structure shown in the example.
+Important: Scan the entire document for all placeholder comments (<!-- placeholder for a screenshot -->) and ensure every single one is included in your instruction sequence. Create one comprehensive set of instructions that captures screenshots for all placeholders. Ignore any existing image references.
+
+Remember: Format your THINKING and INSTRUCTIONS as a valid JSON object with the structure shown in the example.
+{{
+  "thinking": "text string of your thought",
+  "instructions": "one text string which has the whole set of detailed instructions (not a list)"
+}}
 """
 
 def extract_image_paths_from_md(file_content):

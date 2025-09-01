@@ -120,7 +120,6 @@ export class AIUtilsEnhanced {
       fs.appendFileSync(outputPath, summary + '\n\n');
       
       // Print the final report to console as well
-      console.log(summary);
       
       // Write AI thinking logs if we have any stored
       if (this.thinkingHistory && this.thinkingHistory.length > 0) {
@@ -164,11 +163,12 @@ export class AIUtilsEnhanced {
       isLandmark: boolean;
       isModalLike: boolean;
       headerText?: string;
-      keywords?: string[];
+      textChunks?: string[];
       elementCount: number;
       interactiveCount: number;
       parentUid?: number;
       childrenUids: number[];
+      nestedContainerUids?: number[];
     }>;
     elements: Array<{
       uid: number;
@@ -242,19 +242,24 @@ export class AIUtilsEnhanced {
         return parts.join(' > ');
       }
 
-      function collectTextKeywords(root: HTMLElement, max = 5): string[] {
-        const text = (root.innerText || '').toLowerCase();
-        const tokens = text.split(/[^a-z0-9]+/i).filter(t => t.length >= 4);
-        const stop = new Set(['with','from','that','this','have','your','will','into','there','their','about','after','before','which','such','were','been','more','only','like','when','then','over','also','view','main','menu','panel','card','section','content','container']);
-        const freq: Record<string, number> = {};
-        for (const t of tokens) {
-          if (stop.has(t)) continue;
-          freq[t] = (freq[t] || 0) + 1;
-        }
-        return Object.entries(freq)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, max)
-          .map(([t]) => t);
+      function collectTextContent(root: HTMLElement): {
+        textChunks: string[];
+      } {
+        const text = (root.innerText || '').trim();
+        
+        // Split text into paragraphs/sentences and truncate each to 20 words
+        const paragraphs = text.split(/\n\s*\n|\.\s+/).filter(p => p.trim().length > 0);
+        const textChunks = paragraphs.map(paragraph => {
+          const words = paragraph.trim().split(/\s+/);
+          if (words.length <= 20) {
+            return paragraph.trim();
+          }
+          return words.slice(0, 20).join(' ') + '...';
+        }).slice(0, 5); // Limit to 5 chunks to avoid overwhelming the prompt
+        
+        return {
+          textChunks
+        };
       }
 
       const candidateSelectors = [
@@ -283,7 +288,7 @@ export class AIUtilsEnhanced {
         const id = el.id || undefined;
         const header = el.querySelector('h1,h2,h3,h4,h5,h6');
         const headerText = header && isVisible(header as HTMLElement) ? (header as HTMLElement).innerText.trim().substring(0, 120) : undefined;
-        const keywords = collectTextKeywords(el, 6);
+        const textInfo = collectTextContent(el);
         const container = {
           uid: uidCounter++,
           el,
@@ -306,11 +311,12 @@ export class AIUtilsEnhanced {
           isLandmark: ['main','nav','header','footer'].includes(semanticTag) || ['main','navigation','dialog','menu','region','toolbar'].includes(role || ''),
           isModalLike: (role === 'dialog') || el.getAttribute('aria-modal') === 'true' || (classes || '').toLowerCase().includes('modal') || (classes || '').toLowerCase().includes('dialog'),
           headerText,
-          keywords,
+          textChunks: textInfo.textChunks,
           elementCount: 0,
           interactiveCount: 0,
           parentUid: undefined as number | undefined,
           childrenUids: [] as number[],
+          nestedContainerUids: [] as number[], // Track containers inside this container
         };
         containersRaw.push(container);
       }
@@ -329,6 +335,7 @@ export class AIUtilsEnhanced {
         if (closestParent) {
           c.parentUid = closestParent.uid;
           closestParent.childrenUids.push(c.uid);
+          closestParent.nestedContainerUids.push(c.uid);
         }
       }
 
@@ -392,11 +399,12 @@ export class AIUtilsEnhanced {
         isLandmark: c.isLandmark,
         isModalLike: c.isModalLike,
         headerText: c.headerText,
-        keywords: c.keywords,
+        textChunks: c.textChunks,
         elementCount: c.elementCount,
         interactiveCount: c.interactiveCount,
         parentUid: c.parentUid,
         childrenUids: c.childrenUids,
+        nestedContainerUids: c.nestedContainerUids,
       }));
 
       const cleanElements = elements.map(e => ({
@@ -1009,11 +1017,12 @@ async generateEnhancedPrompt(
         role: c.role,
         testId: c.testId,
         bbox: c.bbox,
-        keywords: c.keywords?.slice(0, 10) || [], // Increased from 5 to 10 for more comprehensive keyword information
+        textChunks: c.textChunks?.slice(0, 3) || [], // Show up to 3 text chunks for better context
         headerText: c.headerText,
         interactiveCount: c.interactiveCount,
         isLandmark: c.isLandmark,
-        isModalLike: c.isModalLike
+        isModalLike: c.isModalLike,
+        nestedContainerUids: c.nestedContainerUids || []
       }));
 
     // Also collect a compact element listing grouped by container
@@ -1121,19 +1130,25 @@ async generateEnhancedPrompt(
       Attributes: no role, data-testid="layout-view-root"
       Position: x:64, y:61, w:1176, h:708
       Interactive elements: 1
-      Keywords: ramsoft, ordered, test, study, corrupti, voluptatem
+      Text content: "Welcome to the application dashboard" | "Navigate using the menu options..." | "Current status: active"
+      Nested containers: [2, 3, 4] (3 containers inside this one)
       Elements: div[data-testid="layout-view-root"]: "Omega.ai Default..."
     \`\`\`
+    
+    **NEW TEXT CONTENT FORMAT:**
+    - **Text content**: Shows actual readable text from the container, split into meaningful chunks (max 20 words each)
+    - **Nested containers**: Lists container UIDs that are inside this container for better hierarchy understanding
     
     **DECISION PROCESS:**
     1. **Read the screenshot intent** - Understand what needs to be captured
     2. **Analyze each numbered container** [1], [2], [3], etc. from the provided data
-    3. **Match keywords to intent** - Look for relevant terms in the container keywords
-    4. **Check interactive elements count** - Higher counts may indicate more relevant containers
-    5. **Review container dimensions** - Prefer containers that provide spatial context (bigger is better for context)
-    6. **Extract the exact data-testid** - Use the precise value from the ELEMENT field
-    7. **Generate the locator** - Create Playwright code with \`[data-testid="exact-value"]\`
-    
+    3. **Match text content to intent** - Look for relevant phrases in the actual text content displayed
+    4. **Consider nested containers** - Containers with many nested elements might provide better context if there are 2 containers with both having required text content find a container that has both these containers inside it.
+    5. **Check interactive elements count** - Higher counts may indicate more relevant containers
+    6. **Review container dimensions** - Prefer containers that provide spatial context (bigger is better for context)
+    7. **Extract the exact data-testid** - Use the precise value from the ELEMENT field
+    8. **Generate the locator** - Create Playwright code with \`[data-testid="exact-value"]\`
+
     **TECHNICAL REQUIREMENTS:**
     1. Pick EXACTLY ONE best container that includes the target and shows where the target is located
     2. Always prefer [data-testid] selectors over any other type when available
@@ -1209,20 +1224,30 @@ async generateEnhancedPrompt(
         ).join(', ')}`
       : '';
     
+    // Format nested containers information
+    const nestedContainers = c.nestedContainerUids && c.nestedContainerUids.length > 0 
+      ? `\n    Nested containers: [${c.nestedContainerUids.join(', ')}] (${c.nestedContainerUids.length} container${c.nestedContainerUids.length !== 1 ? 's' : ''} inside this one)`
+      : '';
+    
+    // Format text content chunks
+    const textContent = c.textChunks && c.textChunks.length > 0
+      ? `\n    Text content: ${c.textChunks.map(chunk => `"${chunk}"`).join(' | ')}`
+      : '';
+    
     return `${i + 1}. [${c.uid}] ${c.type.toUpperCase()}: ${c.selector}
       Attributes: ${c.role ? `role="${c.role}"` : 'no role'}${c.testId ? `, data-testid="${c.testId}"` : ''}
       Position: ${bbox}
-      Interactive elements: ${c.interactiveCount || 0}${(c.keywords && c.keywords.length) ? `\n    Keywords: ${c.keywords.join(', ')}` : ''}${c.headerText ? `\n    Header: "${c.headerText}"` : ''}${c.isModalLike ? '\n    Type: modal-like container' : ''}${elementsList}`;
+      Interactive elements: ${c.interactiveCount || 0}${textContent}${c.headerText ? `\n    Header: "${c.headerText}"` : ''}${c.isModalLike ? '\n    Type: modal-like container' : ''}${nestedContainers}${elementsList}`;
     }).join('\n\n')}
     
     URL: ${pageUrl}, Viewport: ${JSON.stringify(viewport)}
     
     **RESPONSE FORMAT:**
-    Your response should be a strict JSON format with a thinking field and a code field:
+    Your response should be a strict JSON format with a thinking field and a code field and the name of the screenshot has to be exactly like in the code previously generated:
     
     {{
       "thinking": "Detailed explanation of your reasoning process, which container you chose and why, how it relates to the screenshot intent, and why this selector is the most appropriate choice.",
-      "code": "await page.locator('[data-testid=\"example-container\"]', { force: true }).screenshot({ path: './images/screenshot.png', timeout: 30000 });"
+      "code": "await page.locator('[data-testid=\"example-container\"]', { force: true }).screenshot({ path: './images/example-image-name.png', timeout: 30000 });"
     }}
     `;
 
@@ -1257,8 +1282,14 @@ async generateEnhancedPrompt(
     const userTextPrompt = `You are supposed to take a screenshot of the container that contains the target element and to do that consider the image description, the screenshot intent and the container highlighted image shared with you.
 
 The following JSON contains the full previous response with all the details:
+use the same name of the image when you write the playwright command for the screenshot.
+the command might be right but it not always is your job is to find the best container that can fit the right elements with enough surrounding context to get the perfect screenshot.
+bigger container is always better to get the right context.
+pick the container based on the container name if it makes sense for the intent.
+use the intent of the screenshot to pick the container.
 ${fullJsonResponse ? `${fullJsonResponse}` : ''}
-this is how the ideal screenshot should look like:
+this is the description of the ideal screenshot
+you have to find a container to capture the screenshot of that can make it look like this:
 ${imageDescription ? `\n\n${imageDescription}` : ''}`;
 
     const userMessageContent: Array<{ type: string; text?: string; image_url?: { url: string, detail?: string } }> =
@@ -1275,14 +1306,6 @@ ${imageDescription ? `\n\n${imageDescription}` : ''}`;
       });
     }
 
-    // Prompt logging removed as requested by user
-    // Only log minimal stats when verbose mode is enabled
-    if (process.env.VERBOSE_LLM === 'true') {
-      console.log('📊 Making API call with images:', 
-        base64Screenshot ? 'Original reference ✓' : 'Original reference ✗',
-        enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot ? 'Container-highlighted ✓' : 'Container-highlighted ✗');
-    }
-
     const requestPayload = {
       messages: [
         { role: 'system', content: systemPrompt },
@@ -1291,6 +1314,8 @@ ${imageDescription ? `\n\n${imageDescription}` : ''}`;
       temperature: 0.4,
       top_p: 0.8,
     };
+
+    // Log the actual API call payload
 
     const startTime = Date.now();
 
@@ -1315,8 +1340,14 @@ ${imageDescription ? `\n\n${imageDescription}` : ''}`;
       console.log('🔍 Response from ai utils enhanced: ' + response.data);
       const duration = Date.now() - startTime;
       const aiContent: string = response.data.choices?.[0]?.message?.content || '';
+/* The above code is written in TypeScript and it is checking the `response.data.usage` object for the
+existence of the `prompt_tokens` property. If the `prompt_tokens` property exists, it assigns its
+value to the `inputTokenCount` variable. If the `prompt_tokens` property does not exist or is `null`
+or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
       const inputTokenCount = response.data.usage?.prompt_tokens || 0;
       const outputTokenCount = response.data.usage?.completion_tokens || 0;
+      
+      // Log token usage (excluding image tokens)
       
       // Declare variables for extracted content
       let cleaned = '';
@@ -1832,8 +1863,8 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
    * Highlight container elements on the page for better AI understanding
    */
   private async highlightContainers(containers: ContainerInfo[]): Promise<string> {
-    // Highlight more containers to give better options
-    const topContainers = containers.slice(0, 15); // Increased from 8 to 15 for more lenient selection
+    // Highlight a focused set of containers to avoid visual clutter
+    const topContainers = containers.slice(0, 8); // Reduced back to 8 for cleaner visualization
     
     return await this.page.evaluate((containersToHighlight) => {
       // Clean up any previous highlights
@@ -2000,7 +2031,7 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       const userMessageContent = [
         {
           type: "text",
-          text: "Please describe this UI screenshot in detail. Focus on:\n\n1. The main UI components visible (toolbars, panels, buttons, etc.)\n2. Text content and labels visible in the interface\n3. The layout and organization of elements\n4. Any highlighted or selected elements\n5. The overall purpose of this screen based on what's visible\n\nProvide a structured description that would help someone understand what they're looking at. most importatntly mention if it looks like the whol escreen or a part or a panel is ebign shown or somehtign taht way and stress on thins part also keep the whole description compact and dont make it a single paraghaph."
+          text: "Analyze this website screenshot and describe what portion of the interface it represents. Specifically:\n\nDoes it show the entire webpage/application window, or just a specific section/panel/component? Clearly state this.\n\nIf it is a part, describe which container/section it seems to belong to (e.g., sidebar panel, modal dialog, content area, toolbar, footer, etc.).\n\nBriefly outline the main visible elements (toolbars, panels, text, buttons) to support the classification.\n\nKeep the output compact, structured, and focused on identifying the correct container scope for screenshotting."
         },
         {
           type: "image_url",
