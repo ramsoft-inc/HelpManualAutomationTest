@@ -108,7 +108,7 @@ jobs:
           # Install root dependencies
           install_deps "."
           
-          # Install AutoSnap dependencies (where enhanced-run-script.js is located)
+          # Install AutoSnap dependencies (where test-enhanced-flow.js is located)
           install_deps "AutoSnap"
           
           # Install Python dependencies
@@ -430,7 +430,7 @@ jobs:
           echo "📋 NPM version: $(npm --version)"
           echo "📋 Python version: $(python --version)"
           echo "📋 Files exist check:"
-          ls -la enhanced-run-script.js || echo "❌ enhanced-run-script.js not found!"
+          ls -la test-enhanced-flow.js || echo "❌ test-enhanced-flow.js not found!"
           ls -la changed_files_temp.txt || echo "❌ changed_files_temp.txt not found!"
           ls -la tracewrightt/dist/ || echo "⚠️ tracewrightt/dist/ not found, will use ts-node"
           
@@ -514,17 +514,17 @@ jobs:
           
           # Determine if we're processing a folder pattern and pass appropriate arguments
           if [[ "$FILES_TO_PROCESS" == */ ]] || [ -d "$GITHUB_WORKSPACE/$FILES_TO_PROCESS" ]; then
-            # Folder mode - pass folder path to enhanced-run-script.js (matching test-enhanced-flow.js)
+            # Folder mode - use test-enhanced-flow.js with --folder parameter
             folder_path_to_process="${FILES_TO_PROCESS%/}"
-            echo "📁 Running enhanced-run-script.js in folder mode with folder: $folder_path_to_process"
+            echo "📁 Running test-enhanced-flow.js in folder mode with folder: $folder_path_to_process"
             
-            # Convert to absolute path for enhanced-run-script.js
+            # Convert to absolute path for test-enhanced-flow.js
             absolute_folder_path="$GITHUB_WORKSPACE/$folder_path_to_process"
             
-            node enhanced-run-script.js \
+            node test-enhanced-flow.js \
               --mode "$CURRENT_MODE" \
               --folder "$absolute_folder_path" || {
-              echo "❌ Enhanced screenshot update failed in folder mode"
+              echo "❌ Test enhanced flow failed in folder mode"
               echo "📁 Folder path: $absolute_folder_path"
               echo "📁 Current directory contents:"
               ls -la
@@ -533,13 +533,13 @@ jobs:
               exit 1
             }
           else
-            # File mode - use changed files list (original behavior)
-            echo "📄 Running enhanced-run-script.js in file mode with changed files list"
+            # File mode - use test-enhanced-flow.js with --changed-files parameter
+            echo "📄 Running test-enhanced-flow.js in file mode with changed files list"
             
-            node enhanced-run-script.js \
+            node test-enhanced-flow.js \
               --mode "$CURRENT_MODE" \
               --changed-files "changed_files_temp.txt" || {
-              echo "❌ Enhanced screenshot update failed in file mode"
+              echo "❌ Test enhanced flow failed in file mode"
               echo "📁 Contents of changed_files_temp.txt:"
               cat changed_files_temp.txt || echo "Could not read changed_files_temp.txt"
               echo "📁 Current directory contents:"
