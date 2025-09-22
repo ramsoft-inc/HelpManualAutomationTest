@@ -48,6 +48,11 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Install root dependencies
+          npm install
+          
+          # Install AutoSnap dependencies (where enhanced-run-script.js is located)
+          cd AutoSnap
           npm install
           npx playwright install chromium --with-deps
 
