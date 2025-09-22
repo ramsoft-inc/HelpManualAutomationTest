@@ -239,40 +239,133 @@ jobs:
             echo "🔍 Finding all markdown files in docs directory..."
             find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/|../|" > changed_files_temp.txt
           else
-            # Process specific files/patterns - prepend ../ for AutoSnap relative paths
-            echo "📝 Processing specific files: $FILES"
-            # Handle both space-separated and comma-separated files
-            echo "$FILES" | tr ' ,' '\n' | grep -v '^$' | sed 's|^|../|' > changed_files_temp.txt
+            # Process specific files/patterns - handle folders and individual files
+            echo "📝 Processing specific files/folders: $FILES"
+            > changed_files_temp.txt
+            
+            # Handle both space-separated and comma-separated files/folders
+            echo "$FILES" | tr ' ,' '\n' | grep -v '^$' | while IFS= read -r item; do
+              # Remove leading/trailing whitespace
+              item=$(echo "$item" | xargs)
+              [ -z "$item" ] && continue
+              
+              # Check if item is a directory (ends with / or is an existing directory)
+              if [[ "$item" == */ ]] || [ -d "$GITHUB_WORKSPACE/$item" ]; then
+                # Remove trailing slash for consistency
+                folder_path="${item%/}"
+                echo "📁 Processing folder in translation/default mode: $folder_path"
+                echo "ℹ️  Translation mode processes files that contain actual images only"
+                
+                # Recursively find all markdown files in the folder (exactly like test-enhanced-flow.js)
+                if [ -d "$GITHUB_WORKSPACE/$folder_path" ]; then
+                  echo "🔍 Recursively finding all .md and .mdx files in: $GITHUB_WORKSPACE/$folder_path"
+                  
+                  # Create a function to recursively find markdown files (replicating findMarkdownFiles)
+                  find_markdown_files() {
+                    local dir="$1"
+                    find "$dir" -type f \( -name "*.md" -o -name "*.mdx" \) 2>/dev/null || true
+                  }
+                  
+                  # Get all markdown files
+                  all_markdown_files=$(find_markdown_files "$GITHUB_WORKSPACE/$folder_path")
+                  markdown_count=$(echo "$all_markdown_files" | grep -c . || echo "0")
+                  
+                  echo "📄 Found $markdown_count markdown files in language folder"
+                  
+                  if [ "$markdown_count" -gt 0 ]; then
+                    # Filter files to only include those with actual images (replicating hasActualImages check)
+                    echo "🔍 Filtering files to only include those with actual images..."
+                    
+                    # Use a temporary file to store files with images to avoid subshell variable issues
+                    files_with_images_temp="$GITHUB_WORKSPACE/files_with_images_temp.txt"
+                    skipped_files_temp="$GITHUB_WORKSPACE/skipped_files_temp.txt"
+                    > "$files_with_images_temp"
+                    > "$skipped_files_temp"
+                    
+                    # Process each markdown file
+                    while IFS= read -r md_file; do
+                      [ -z "$md_file" ] && continue
+                      
+                      # Check if file contains actual image references (replicating hasActualImages function)
+                      if grep -qE '!\[.*?\]\(.*?\.(png|jpg|jpeg|gif|svg|webp|bmp)\)' "$md_file" 2>/dev/null; then
+                        # File has actual images - add to processing list
+                        echo "$md_file" | sed "s|$GITHUB_WORKSPACE/|../|" >> changed_files_temp.txt
+                        echo "$md_file" >> "$files_with_images_temp"
+                        echo "✅ File has images: $(basename "$md_file")"
+                      else
+                        echo "$md_file" >> "$skipped_files_temp"
+                        echo "⏭️  File without images (skipped): $(basename "$md_file")"
+                      fi
+                    done <<< "$all_markdown_files"
+                    
+                    # Count the results
+                    files_with_images=$(wc -l < "$files_with_images_temp" 2>/dev/null || echo "0")
+                    skipped_files=$(wc -l < "$skipped_files_temp" 2>/dev/null || echo "0")
+                    
+                    echo "📄 Files with actual images: $files_with_images"
+                    echo "⏭️  Files without images (skipped): $skipped_files"
+                    
+                    # Clean up temp files
+                    rm -f "$files_with_images_temp" "$skipped_files_temp"
+                    
+                    if [ "$files_with_images" -eq 0 ]; then
+                      echo "⚠️ No files with actual images found in folder: $folder_path"
+                      echo "ℹ️ Translation mode only processes files that contain actual image references"
+                    else
+                      echo "✅ Translation mode processing will handle $files_with_images files with images"
+                    fi
+                  else
+                    echo "⚠️ No markdown files found in folder: $folder_path"
+                  fi
+                else
+                  echo "⚠️ Folder not found: $folder_path"
+                fi
+              else
+                # It's a file path - add ../ prefix for AutoSnap relative paths
+                echo "../$item" >> changed_files_temp.txt
+                echo "📄 Added individual file: $item"
+              fi
+            done
           fi
           
           # Validate files exist and convert to paths relative to AutoSnap directory
           echo "🔍 Validating files exist relative to AutoSnap directory..."
           > validated_files_temp.txt
-          while IFS= read -r file; do
-            # Remove leading/trailing whitespace
-            file=$(echo "$file" | xargs)
-            
-            # Skip empty lines
-            [ -z "$file" ] && continue
-            
-            # Check if file exists using paths relative to AutoSnap directory
-            if [ -f "$file" ]; then
-              echo "$file" >> validated_files_temp.txt
-              echo "✅ Found: $file (relative to AutoSnap/)"
-            else
-              echo "⚠️ File not found: $file (relative to AutoSnap/)"
-              # Try absolute path for debugging
-              absolute_file="$GITHUB_WORKSPACE/${file#../}"
-              if [ -f "$absolute_file" ]; then
-                echo "📍 File exists at absolute path: $absolute_file"
+          
+          if [ -s changed_files_temp.txt ]; then
+            while IFS= read -r file; do
+              # Remove leading/trailing whitespace
+              file=$(echo "$file" | xargs)
+              
+              # Skip empty lines
+              [ -z "$file" ] && continue
+              
+              # Check if file exists using paths relative to AutoSnap directory
+              if [ -f "$file" ]; then
                 echo "$file" >> validated_files_temp.txt
+                echo "✅ Found: $file (relative to AutoSnap/)"
               else
-                echo "❌ File not found at absolute path either: $absolute_file"
-                # List what's actually in the directory for debugging
-                ls -la "$(dirname "$absolute_file")" 2>/dev/null || echo "Directory doesn't exist: $(dirname "$absolute_file")"
+                echo "⚠️ File not found: $file (relative to AutoSnap/)"
+                # Try absolute path for debugging
+                absolute_file="$GITHUB_WORKSPACE/${file#../}"
+                if [ -f "$absolute_file" ]; then
+                  echo "📍 File exists at absolute path: $absolute_file"
+                  echo "$file" >> validated_files_temp.txt
+                else
+                  echo "❌ File not found at absolute path either: $absolute_file"
+                  # List what's actually in the directory for debugging
+                  if [ -d "$(dirname "$absolute_file")" ]; then
+                    echo "📁 Directory contents of $(dirname "$absolute_file"):"
+                    ls -la "$(dirname "$absolute_file")" | head -10
+                  else
+                    echo "❌ Directory doesn't exist: $(dirname "$absolute_file")"
+                  fi
+                fi
               fi
-            fi
-          done < changed_files_temp.txt
+            done < changed_files_temp.txt
+          else
+            echo "⚠️ No files were found in the initial processing step"
+          fi
           
           # Use validated files
           mv validated_files_temp.txt changed_files_temp.txt
@@ -283,6 +376,24 @@ jobs:
           # Check if we have any files to process
           if [ ! -s changed_files_temp.txt ]; then
             echo "❌ No valid files found to process!"
+            echo "🔍 Debugging information:"
+            echo "  - Original FILES pattern: $FILES"
+            echo "  - GitHub workspace: $GITHUB_WORKSPACE"
+            echo "  - Current directory: $(pwd)"
+            
+            # Show what directories actually exist
+            echo "📁 Available directories in workspace root:"
+            ls -la "$GITHUB_WORKSPACE" | grep "^d" | head -10
+            
+            # If it's a folder pattern, show what's in it
+            if [[ "$FILES" == */ ]] || [ -d "$GITHUB_WORKSPACE/$FILES" ]; then
+              folder_to_check="${FILES%/}"
+              if [ -d "$GITHUB_WORKSPACE/$folder_to_check" ]; then
+                echo "📁 Contents of $folder_to_check directory:"
+                find "$GITHUB_WORKSPACE/$folder_to_check" -name "*.md" -type f | head -10 || echo "No .md files found"
+              fi
+            fi
+            
             exit 1
           fi
 
@@ -401,19 +512,43 @@ jobs:
           echo "🔧 Forcing ts-node fallback due to module compatibility issues"
           rm -f "tracewrightt/dist/esm/index.js" 2>/dev/null || true
           
-          # Run your actual enhanced flow - exactly like local development
-          node enhanced-run-script.js \
-            --mode "$CURRENT_MODE" \
-            --changed-files "changed_files_temp.txt" || {
-            echo "❌ Enhanced screenshot update failed"
-            echo "📁 Contents of changed_files_temp.txt:"
-            cat changed_files_temp.txt || echo "Could not read changed_files_temp.txt"
-            echo "📁 Current directory contents:"
-            ls -la
-            echo "📁 Node modules in AutoSnap:"
-            ls -la node_modules/ | head -10 || echo "No node_modules found"
-            exit 1
-          }
+          # Determine if we're processing a folder pattern and pass appropriate arguments
+          if [[ "$FILES_TO_PROCESS" == */ ]] || [ -d "$GITHUB_WORKSPACE/$FILES_TO_PROCESS" ]; then
+            # Folder mode - pass folder path to enhanced-run-script.js (matching test-enhanced-flow.js)
+            folder_path_to_process="${FILES_TO_PROCESS%/}"
+            echo "📁 Running enhanced-run-script.js in folder mode with folder: $folder_path_to_process"
+            
+            # Convert to absolute path for enhanced-run-script.js
+            absolute_folder_path="$GITHUB_WORKSPACE/$folder_path_to_process"
+            
+            node enhanced-run-script.js \
+              --mode "$CURRENT_MODE" \
+              --folder "$absolute_folder_path" || {
+              echo "❌ Enhanced screenshot update failed in folder mode"
+              echo "📁 Folder path: $absolute_folder_path"
+              echo "📁 Current directory contents:"
+              ls -la
+              echo "📁 Folder contents (if exists):"
+              ls -la "$absolute_folder_path" 2>/dev/null || echo "Folder not accessible"
+              exit 1
+            }
+          else
+            # File mode - use changed files list (original behavior)
+            echo "📄 Running enhanced-run-script.js in file mode with changed files list"
+            
+            node enhanced-run-script.js \
+              --mode "$CURRENT_MODE" \
+              --changed-files "changed_files_temp.txt" || {
+              echo "❌ Enhanced screenshot update failed in file mode"
+              echo "📁 Contents of changed_files_temp.txt:"
+              cat changed_files_temp.txt || echo "Could not read changed_files_temp.txt"
+              echo "📁 Current directory contents:"
+              ls -la
+              echo "📁 Node modules in AutoSnap:"
+              ls -la node_modules/ | head -10 || echo "No node_modules found"
+              exit 1
+            }
+          fi
           
           # Clean up temporary file
           rm -f changed_files_temp.txt
