@@ -83,6 +83,7 @@ of medical imaging documents.
     - Look at the top section of the Document Explorer to see the
       details of the patient whose studies you are examining.
 
+
       ![patient details](./img/patientdetails.png)
 
 3.  **Navigating Studies:**
