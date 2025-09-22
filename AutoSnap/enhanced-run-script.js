@@ -53,44 +53,8 @@ for (let i = 0; i < args.length; i++) {
     }
 }
 
-// Handle folder processing if --folder argument is provided (matching test-enhanced-flow.js)
+// Initialize processedFileResults array for later use
 let processedFileResults = [];
-
-if (folderPath) {
-    // TRANSLATION MODE - Process folder like test-enhanced-flow.js
-    console.log(`📁 TRANSLATION MODE: Processing all .md/.mdx files in: ${folderPath}`);
-    console.log(`ℹ️  This is default/translation mode - processing any language folder that mirrors docs structure`);
-    
-    try {
-        const fs = await import('node:fs');
-        const path = await import('node:path');
-        
-        if (!fs.existsSync(folderPath)) {
-            throw new Error(`Folder does not exist: ${folderPath}`);
-        }
-        
-        // Process the folder using the same logic as test-enhanced-flow.js
-        processedFileResults = await processFolderInDefaultMode(folderPath);
-        console.log(`✅ Processed ${processedFileResults.length} files in translation mode`);
-        
-        // Create a changed files list for the automation
-        if (processedFileResults.length > 0) {
-            const translationChangedFilesPath = path.join(process.cwd(), 'changed-files-translation.txt');
-            const allProcessedFiles = processedFileResults.map(result => result.filePath.replace(/\\/g, '/'));
-            fs.writeFileSync(translationChangedFilesPath, allProcessedFiles.join('\n'));
-            
-            console.log(`📋 Created translation changed files list: ${translationChangedFilesPath}`);
-            console.log(`📄 Files in translation list: ${allProcessedFiles.length}`);
-            
-            changedFiles = translationChangedFilesPath;
-        } else {
-            console.warn('⚠️  No files with images found in folder, translation mode has nothing to process');
-        }
-    } catch (error) {
-        console.error(`❌ Error in translation mode: ${error.message}`);
-        process.exit(1);
-    }
-}
 
 // Log the changed files for debugging
 if (changedFiles) {
@@ -264,6 +228,9 @@ const processFolderInDefaultMode = async (folderPath) => {
     }
 };
 
+// Handle folder processing if --folder argument is provided (matching test-enhanced-flow.js)
+// This needs to be async, so we'll handle it later in the main execution flow
+
 /**
  * Process markdown files to assign names to placeholders before AI processing
  */
@@ -342,6 +309,43 @@ async function postprocessPlaceholders(processedFiles) {
 (async () => {
     console.log('🚀 Starting Enhanced Tracewright with Instruction Generation...\n');
     console.log(`📋 Mode: ${SCENARIO_TYPE} - ${MODE_DESCRIPTIONS[SCENARIO_TYPE]}\n`);
+    
+    // Handle folder processing if --folder argument is provided (matching test-enhanced-flow.js)
+    if (folderPath) {
+        // TRANSLATION MODE - Process folder like test-enhanced-flow.js
+        console.log(`📁 TRANSLATION MODE: Processing all .md/.mdx files in: ${folderPath}`);
+        console.log(`ℹ️  This is default/translation mode - processing any language folder that mirrors docs structure`);
+        
+        try {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            
+            if (!fs.existsSync(folderPath)) {
+                throw new Error(`Folder does not exist: ${folderPath}`);
+            }
+            
+            // Process the folder using the same logic as test-enhanced-flow.js
+            processedFileResults = await processFolderInDefaultMode(folderPath);
+            console.log(`✅ Processed ${processedFileResults.length} files in translation mode`);
+            
+            // Create a changed files list for the automation
+            if (processedFileResults.length > 0) {
+                const translationChangedFilesPath = path.join(process.cwd(), 'changed-files-translation.txt');
+                const allProcessedFiles = processedFileResults.map(result => result.filePath.replace(/\\/g, '/'));
+                fs.writeFileSync(translationChangedFilesPath, allProcessedFiles.join('\n'));
+                
+                console.log(`📋 Created translation changed files list: ${translationChangedFilesPath}`);
+                console.log(`📄 Files in translation list: ${allProcessedFiles.length}`);
+                
+                changedFiles = translationChangedFilesPath;
+            } else {
+                console.warn('⚠️  No files with images found in folder, translation mode has nothing to process');
+            }
+        } catch (error) {
+            console.error(`❌ Error in translation mode: ${error.message}`);
+            process.exit(1);
+        }
+    }
     
     // Step 1: Check Python dependencies
     const pythonDepsAvailable = await checkPythonDependencies();

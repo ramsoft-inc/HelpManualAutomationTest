@@ -23,7 +23,6 @@ patients from the work list, enhancing the management and accessibility
 of medical imaging documents.
 
 ![document explorer](./img_as/documentviewer_S.png)
-
 ## Layout and Functionality
 
 1.  **Patient Details:**
