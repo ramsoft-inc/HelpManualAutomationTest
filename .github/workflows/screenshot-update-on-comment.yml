@@ -245,9 +245,15 @@ jobs:
             
             # Check if the FILES pattern is a folder (enhanced detection)
             echo "🔍 Checking if '$FILES' is a folder..."
+            
+            # Remove trailing slash for directory check
+            files_no_slash="${FILES%/}"
+            echo "  - Original pattern: '$FILES'"
+            echo "  - Pattern without slash: '$files_no_slash'"
             echo "  - Ends with slash: $([[ "$FILES" == */ ]] && echo "YES" || echo "NO")"
-            echo "  - Directory exists: $([ -d "$GITHUB_WORKSPACE/$FILES" ] && echo "YES" || echo "NO")"
-            echo "  - Full path check: $GITHUB_WORKSPACE/$FILES"
+            echo "  - Directory exists (with slash): $([ -d "$GITHUB_WORKSPACE/$FILES" ] && echo "YES" || echo "NO")"
+            echo "  - Directory exists (without slash): $([ -d "$GITHUB_WORKSPACE/$files_no_slash" ] && echo "YES" || echo "NO")"
+            echo "  - Full path check: $GITHUB_WORKSPACE/$files_no_slash"
             
             # Use explicit tests for better debugging
             ends_with_slash=false
@@ -260,9 +266,10 @@ jobs:
               echo "  ❌ Pattern does not end with slash"
             fi
             
-            if [ -d "$GITHUB_WORKSPACE/$FILES" ]; then
+            # Check directory without trailing slash (this is the key fix)
+            if [ -d "$GITHUB_WORKSPACE/$files_no_slash" ]; then
               dir_exists=true
-              echo "  ✅ Directory exists at path"
+              echo "  ✅ Directory exists at path (without slash)"
             else
               echo "  ❌ Directory does not exist at path"
             fi
