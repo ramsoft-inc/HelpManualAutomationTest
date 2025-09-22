@@ -117,16 +117,37 @@ jobs:
           pip install -r requirements.txt
           
           # Install tracewrightt dependencies (TypeScript compilation)
-          install_deps "AutoSnap/tracewrightt"
+          echo "🔨 Installing tracewrightt dependencies..."
+          cd "$GITHUB_WORKSPACE/AutoSnap/tracewrightt"
+          
+          # Check what package manager to use for tracewrightt
+          if [ -f "yarn.lock" ] && command -v yarn >/dev/null 2>&1; then
+            echo "🧶 Using yarn for tracewrightt"
+            yarn install || yarn install --frozen-lockfile=false
+          elif [ -f "package-lock.json" ]; then
+            echo "📦 Using npm for tracewrightt"
+            npm ci || npm install
+          else
+            echo "⚠️ Using npm install as fallback for tracewrightt"
+            npm install
+          fi
           
           # Pre-compile TypeScript to avoid runtime compilation issues
           echo "🔨 Building TypeScript..."
-          cd "$GITHUB_WORKSPACE/AutoSnap/tracewrightt"
+          
+          # Verify rollup dependencies are installed
+          echo "🔍 Checking rollup dependencies..."
+          ls -la node_modules/@rollup/ 2>/dev/null || {
+            echo "⚠️ Missing rollup dependencies, installing manually"
+            npm install @rollup/plugin-node-resolve @rollup/plugin-commonjs @rollup/plugin-terser || true
+          }
           
           # Check if we can build TypeScript
           if [ -f "package.json" ] && grep -q '"build"' package.json; then
             npm run build || {
               echo "⚠️  TypeScript compilation failed, will use ts-node fallback"
+              echo "📋 Available node_modules in tracewrightt:"
+              ls -la node_modules/ | head -10 || echo "No node_modules found"
             }
           else
             echo "⚠️  No build script found, will use ts-node"
@@ -212,7 +233,7 @@ jobs:
           if [ "$FILES" = "docs/**/*.md" ] || [ "$FILES" = "all" ]; then
             # Process all markdown files in docs
             echo "🔍 Finding all markdown files in docs directory..."
-            find ../docs -name "*.md" -type f > changed_files_temp.txt
+            find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/||" > changed_files_temp.txt
           else
             # Process specific files/patterns
             echo "📝 Processing specific files: $FILES"
@@ -221,7 +242,7 @@ jobs:
           fi
           
           # Validate files exist and convert to relative paths from project root
-          echo "🔍 Validating files exist..."
+          echo "🔍 Validating files exist from project root..."
           > validated_files_temp.txt
           while IFS= read -r file; do
             # Remove leading/trailing whitespace
@@ -230,15 +251,14 @@ jobs:
             # Skip empty lines
             [ -z "$file" ] && continue
             
-            # Check if file exists (try multiple possible paths)
-            if [ -f "../$file" ]; then
+            # Check if file exists using absolute paths
+            if [ -f "$GITHUB_WORKSPACE/$file" ]; then
               echo "$file" >> validated_files_temp.txt
-              echo "✅ Found: $file"
-            elif [ -f "$file" ]; then
-              echo "${file#../}" >> validated_files_temp.txt
-              echo "✅ Found: $file (adjusted path)"
+              echo "✅ Found: $GITHUB_WORKSPACE/$file"
             else
-              echo "⚠️ File not found: $file"
+              echo "⚠️ File not found: $GITHUB_WORKSPACE/$file"
+              # List what's actually in the directory for debugging
+              ls -la "$GITHUB_WORKSPACE/$(dirname "$file")" 2>/dev/null || echo "Directory doesn't exist: $(dirname "$file")"
             fi
           done < changed_files_temp.txt
           
@@ -261,8 +281,8 @@ jobs:
           CURRENT_MODE: ${{ steps.extract.outputs.mode }}
           FILES_TO_PROCESS: ${{ steps.extract.outputs.files }}
           PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/playwright-browsers
-          # Node.js ESM and TypeScript support (safer options)
-          NODE_OPTIONS: "--experimental-loader ts-node/esm"
+          # Node.js ESM and TypeScript support (updated for Node 18+)
+          NODE_OPTIONS: "--loader ts-node/esm --no-warnings"
           TS_NODE_ESM: true
           TS_NODE_COMPILER_OPTIONS: '{"module":"ESNext","moduleResolution":"node"}'
           # Add your API keys from secrets
@@ -289,6 +309,18 @@ jobs:
           ls -la enhanced-run-script.js || echo "❌ enhanced-run-script.js not found!"
           ls -la changed_files_temp.txt || echo "❌ changed_files_temp.txt not found!"
           ls -la tracewrightt/dist/ || echo "⚠️ tracewrightt/dist/ not found, will use ts-node"
+          
+          # Debug: Check if files in changed_files_temp.txt actually exist
+          echo "🔍 Verifying files in changed_files_temp.txt exist:"
+          while IFS= read -r file; do
+            if [ -f "$GITHUB_WORKSPACE/$file" ]; then
+              echo "✅ File exists: $GITHUB_WORKSPACE/$file"
+            else
+              echo "❌ File missing: $GITHUB_WORKSPACE/$file"
+              echo "📁 Contents of $(dirname "$GITHUB_WORKSPACE/$file"):"
+              ls -la "$(dirname "$GITHUB_WORKSPACE/$file")" 2>/dev/null || echo "Directory doesn't exist"
+            fi
+          done < changed_files_temp.txt
           
           # Run your actual enhanced flow - exactly like local development
           node enhanced-run-script.js \
