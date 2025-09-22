@@ -325,7 +325,7 @@ jobs:
           # Debug: Check what's actually in the compiled dist directory
           if [ -d "tracewrightt/dist/esm" ]; then
             echo "📁 Contents of tracewrightt/dist/esm:"
-            find tracewrightt/dist/esm -name "*.js" | head -10
+            find tracewrightt/dist/esm -name "*.js" | head -15
             echo "🔍 Looking for specific entry points:"
             for entry in "tracewrightt/dist/esm/tracewrightt/src/run.js" "tracewrightt/dist/esm/src/run.js" "tracewrightt/dist/esm/run.js" "tracewrightt/dist/esm/index.js"; do
               if [ -f "$entry" ]; then
@@ -334,6 +334,21 @@ jobs:
                 echo "❌ Missing: $entry"
               fi
             done
+            
+            # Also check for files in _virtual directory and other patterns
+            echo "🔍 Checking alternative patterns:"
+            for pattern in "tracewrightt/dist/esm/_virtual/index.js" "tracewrightt/dist/esm/_virtual/run.js" "tracewrightt/dist/esm/_virtual/main.js"; do
+              if [ -f "$pattern" ]; then
+                echo "✅ Found alternative: $pattern"
+              else
+                echo "❌ Missing alternative: $pattern"  
+              fi
+            done
+            
+            # Show detailed structure
+            echo "📂 Full directory structure:"
+            ls -la tracewrightt/dist/esm/ || echo "Cannot list esm directory"
+            ls -la tracewrightt/dist/esm/_virtual/ 2>/dev/null || echo "No _virtual directory"
           else
             echo "❌ tracewrightt/dist/esm directory not found"
           fi
@@ -354,6 +369,16 @@ jobs:
               fi
             fi
           done < changed_files_temp.txt
+          
+          # Temporary fix: Add additional search paths for Tracewright entry points
+          # Since the build creates _virtual/index.js, let's patch the enhanced script to find it
+          if [ -f "tracewrightt/dist/esm/_virtual/index.js" ] && [ ! -f "tracewrightt/dist/esm/index.js" ]; then
+            echo "🔧 Patching: Creating symlink for Tracewright entry point"
+            ln -sf "_virtual/index.js" "tracewrightt/dist/esm/index.js" || {
+              echo "⚠️ Symlink failed, trying copy"
+              cp "tracewrightt/dist/esm/_virtual/index.js" "tracewrightt/dist/esm/index.js" || echo "Copy also failed"
+            }
+          fi
           
           # Run your actual enhanced flow - exactly like local development
           node enhanced-run-script.js \
