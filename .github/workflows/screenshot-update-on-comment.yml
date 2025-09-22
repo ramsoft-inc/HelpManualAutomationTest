@@ -243,8 +243,31 @@ jobs:
             echo "📝 Processing specific files/folders: $FILES"
             > changed_files_temp.txt
             
-            # Check if the FILES pattern is a folder (this is the key fix)
-            if [[ "$FILES" == */ ]] || [ -d "$GITHUB_WORKSPACE/$FILES" ]; then
+            # Check if the FILES pattern is a folder (enhanced detection)
+            echo "🔍 Checking if '$FILES' is a folder..."
+            echo "  - Ends with slash: $([[ "$FILES" == */ ]] && echo "YES" || echo "NO")"
+            echo "  - Directory exists: $([ -d "$GITHUB_WORKSPACE/$FILES" ] && echo "YES" || echo "NO")"
+            echo "  - Full path check: $GITHUB_WORKSPACE/$FILES"
+            
+            # Use explicit tests for better debugging
+            ends_with_slash=false
+            dir_exists=false
+            
+            if [[ "$FILES" == */ ]]; then
+              ends_with_slash=true
+              echo "  ✅ Pattern ends with slash"
+            else
+              echo "  ❌ Pattern does not end with slash"
+            fi
+            
+            if [ -d "$GITHUB_WORKSPACE/$FILES" ]; then
+              dir_exists=true
+              echo "  ✅ Directory exists at path"
+            else
+              echo "  ❌ Directory does not exist at path"
+            fi
+            
+            if [ "$ends_with_slash" = true ] || [ "$dir_exists" = true ]; then
               # It's a folder - let test-enhanced-flow.js handle it directly
               folder_path="${FILES%/}"
               echo "📁 Detected folder pattern: $folder_path"
@@ -253,6 +276,7 @@ jobs:
               # Create a simple marker file to indicate folder mode
               echo "FOLDER_MODE:$folder_path" > changed_files_temp.txt
             else
+              echo "📄 Treating as individual file(s): $FILES"
               # Handle individual files
               echo "$FILES" | tr ' ,' '\n' | grep -v '^$' | while IFS= read -r item; do
                 # Remove leading/trailing whitespace
