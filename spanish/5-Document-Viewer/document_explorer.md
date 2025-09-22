@@ -64,6 +64,7 @@ O Explorador de Documentos é um componente essencial do Visualizador de Documen
 
     - Olhe para a seção superior do Explorador de Documentos para ver os detalhes do paciente cujos estudos você está examinando.
 
+
     ![patient details](img_as/patientdetails_E.png)
 
 3.  **Navegando entre Estudos:**
