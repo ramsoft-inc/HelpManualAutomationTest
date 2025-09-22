@@ -45,10 +45,15 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            AutoSnap/package-lock.json
-            AutoSnap/tracewrightt/package-lock.json
+          
+      - name: Setup Yarn (for projects using yarn.lock)
+        run: |
+          # Enable yarn if needed for projects with yarn.lock
+          if [ -f "yarn.lock" ]; then
+            echo "📦 Yarn lock file detected, enabling yarn"
+            npm install -g yarn
+            yarn --version
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -58,36 +63,82 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Function to install dependencies with GitHub Actions environment considerations
+          install_deps() {
+            local dir=$1
+            echo "📦 Installing dependencies in $dir..."
+            
+            # Use absolute path to avoid directory issues in GitHub Actions
+            local abs_dir=$(cd "$dir" && pwd)
+            cd "$abs_dir"
+            
+            # Check what package manager files exist
+            local has_yarn_lock=false
+            local has_package_lock=false
+            
+            if [ -f "yarn.lock" ]; then
+              has_yarn_lock=true
+              echo "✅ Found yarn.lock in $abs_dir"
+            fi
+            
+            if [ -f "package-lock.json" ]; then
+              has_package_lock=true
+              echo "✅ Found package-lock.json in $abs_dir"
+            fi
+            
+            # Install dependencies based on what's available in GitHub Actions
+            if [ "$has_yarn_lock" = true ] && command -v yarn >/dev/null 2>&1; then
+              echo "🧶 Using yarn install (frozen lockfile)"
+              yarn install --frozen-lockfile || {
+                echo "⚠️ Frozen lockfile failed, trying regular yarn install"
+                yarn install
+              }
+            elif [ "$has_package_lock" = true ]; then
+              echo "📦 Using npm ci"
+              npm ci
+            else
+              echo "⚠️ No lock file or using fallback npm install"
+              npm install
+            fi
+            
+            # Return to original directory
+            cd "$GITHUB_WORKSPACE"
+          }
+          
           # Install root dependencies
-          echo "📦 Installing root dependencies..."
-          npm ci
+          install_deps "."
           
           # Install AutoSnap dependencies (where enhanced-run-script.js is located)
-          echo "📦 Installing AutoSnap dependencies..."
-          cd AutoSnap
-          npm ci
+          install_deps "AutoSnap"
           
           # Install Python dependencies
           echo "🐍 Installing Python dependencies..."
+          cd "$GITHUB_WORKSPACE/AutoSnap"
           pip install -r requirements.txt
           
           # Install tracewrightt dependencies (TypeScript compilation)
-          echo "📦 Installing tracewrightt dependencies..."
-          cd tracewrightt
-          npm ci
+          install_deps "AutoSnap/tracewrightt"
           
           # Pre-compile TypeScript to avoid runtime compilation issues
           echo "🔨 Building TypeScript..."
-          npm run build || {
-            echo "⚠️  TypeScript compilation failed, will use ts-node fallback"
-          }
-          cd ../.. # Back to root
+          cd "$GITHUB_WORKSPACE/AutoSnap/tracewrightt"
+          
+          # Check if we can build TypeScript
+          if [ -f "package.json" ] && grep -q '"build"' package.json; then
+            npm run build || {
+              echo "⚠️  TypeScript compilation failed, will use ts-node fallback"
+            }
+          else
+            echo "⚠️  No build script found, will use ts-node"
+          fi
           
           # Install Playwright browsers in AutoSnap directory
           echo "🎭 Installing Playwright browsers..."
-          cd AutoSnap
-          npx playwright install chromium --with-deps
-          cd ..
+          cd "$GITHUB_WORKSPACE/AutoSnap"
+          npx playwright install chromium --with-deps || {
+            echo "⚠️ Playwright install failed, trying without --with-deps"
+            npx playwright install chromium
+          }
 
       - name: Extract command parameters
         id: extract
@@ -151,7 +202,8 @@ jobs:
 
       - name: Create temporary changed files list
         run: |
-          cd AutoSnap
+          # Ensure we're in the right directory with absolute path
+          cd "$GITHUB_WORKSPACE/AutoSnap"
           FILES="${{ steps.extract.outputs.files }}"
           
           # Create a temporary file with the files to process
@@ -218,7 +270,8 @@ jobs:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          cd AutoSnap
+          # Ensure we're in the right directory with absolute path
+          cd "$GITHUB_WORKSPACE/AutoSnap"
           
           echo "🚀 Starting enhanced screenshot update process..."
           echo "Environment: GitHub Actions"
