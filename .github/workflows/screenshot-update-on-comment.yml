@@ -235,18 +235,18 @@ jobs:
           echo "📁 Creating temporary file list for: $FILES"
           
           if [ "$FILES" = "docs/**/*.md" ] || [ "$FILES" = "all" ]; then
-            # Process all markdown files in docs
+            # Process all markdown files in docs - use paths relative to AutoSnap directory
             echo "🔍 Finding all markdown files in docs directory..."
-            find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/||" > changed_files_temp.txt
+            find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/|../|" > changed_files_temp.txt
           else
-            # Process specific files/patterns
+            # Process specific files/patterns - prepend ../ for AutoSnap relative paths
             echo "📝 Processing specific files: $FILES"
             # Handle both space-separated and comma-separated files
-            echo "$FILES" | tr ' ,' '\n' | grep -v '^$' > changed_files_temp.txt
+            echo "$FILES" | tr ' ,' '\n' | grep -v '^$' | sed 's|^|../|' > changed_files_temp.txt
           fi
           
-          # Validate files exist and convert to relative paths from project root
-          echo "🔍 Validating files exist from project root..."
+          # Validate files exist and convert to paths relative to AutoSnap directory
+          echo "🔍 Validating files exist relative to AutoSnap directory..."
           > validated_files_temp.txt
           while IFS= read -r file; do
             # Remove leading/trailing whitespace
@@ -255,14 +255,22 @@ jobs:
             # Skip empty lines
             [ -z "$file" ] && continue
             
-            # Check if file exists using absolute paths
-            if [ -f "$GITHUB_WORKSPACE/$file" ]; then
+            # Check if file exists using paths relative to AutoSnap directory
+            if [ -f "$file" ]; then
               echo "$file" >> validated_files_temp.txt
-              echo "✅ Found: $GITHUB_WORKSPACE/$file"
+              echo "✅ Found: $file (relative to AutoSnap/)"
             else
-              echo "⚠️ File not found: $GITHUB_WORKSPACE/$file"
-              # List what's actually in the directory for debugging
-              ls -la "$GITHUB_WORKSPACE/$(dirname "$file")" 2>/dev/null || echo "Directory doesn't exist: $(dirname "$file")"
+              echo "⚠️ File not found: $file (relative to AutoSnap/)"
+              # Try absolute path for debugging
+              absolute_file="$GITHUB_WORKSPACE/${file#../}"
+              if [ -f "$absolute_file" ]; then
+                echo "📍 File exists at absolute path: $absolute_file"
+                echo "$file" >> validated_files_temp.txt
+              else
+                echo "❌ File not found at absolute path either: $absolute_file"
+                # List what's actually in the directory for debugging
+                ls -la "$(dirname "$absolute_file")" 2>/dev/null || echo "Directory doesn't exist: $(dirname "$absolute_file")"
+              fi
             fi
           done < changed_files_temp.txt
           
@@ -314,15 +322,36 @@ jobs:
           ls -la changed_files_temp.txt || echo "❌ changed_files_temp.txt not found!"
           ls -la tracewrightt/dist/ || echo "⚠️ tracewrightt/dist/ not found, will use ts-node"
           
-          # Debug: Check if files in changed_files_temp.txt actually exist
-          echo "🔍 Verifying files in changed_files_temp.txt exist:"
+          # Debug: Check what's actually in the compiled dist directory
+          if [ -d "tracewrightt/dist/esm" ]; then
+            echo "📁 Contents of tracewrightt/dist/esm:"
+            find tracewrightt/dist/esm -name "*.js" | head -10
+            echo "🔍 Looking for specific entry points:"
+            for entry in "tracewrightt/dist/esm/tracewrightt/src/run.js" "tracewrightt/dist/esm/src/run.js" "tracewrightt/dist/esm/run.js" "tracewrightt/dist/esm/index.js"; do
+              if [ -f "$entry" ]; then
+                echo "✅ Found: $entry"
+              else
+                echo "❌ Missing: $entry"
+              fi
+            done
+          else
+            echo "❌ tracewrightt/dist/esm directory not found"
+          fi
+          
+          # Debug: Check if files in changed_files_temp.txt actually exist (relative to AutoSnap/)
+          echo "🔍 Verifying files in changed_files_temp.txt exist (relative to AutoSnap/):"
           while IFS= read -r file; do
-            if [ -f "$GITHUB_WORKSPACE/$file" ]; then
-              echo "✅ File exists: $GITHUB_WORKSPACE/$file"
+            if [ -f "$file" ]; then
+              echo "✅ File exists: $file (relative to AutoSnap/)"
             else
-              echo "❌ File missing: $GITHUB_WORKSPACE/$file"
-              echo "📁 Contents of $(dirname "$GITHUB_WORKSPACE/$file"):"
-              ls -la "$(dirname "$GITHUB_WORKSPACE/$file")" 2>/dev/null || echo "Directory doesn't exist"
+              echo "❌ File missing: $file (relative to AutoSnap/)"
+              # Also check absolute path
+              absolute_file="$GITHUB_WORKSPACE/${file#../}"
+              if [ -f "$absolute_file" ]; then
+                echo "✅ File exists at absolute path: $absolute_file"
+              else
+                echo "❌ File also missing at absolute path: $absolute_file"
+              fi
             fi
           done < changed_files_temp.txt
           
