@@ -29,10 +29,14 @@ import { processMarkdownFile, extractImageNamesFromPlaceholders, replacePlacehol
 // Obsolete helper functions (`removeOverlays`, `clickDocumentViewerIcon`) have been removed
 // since the application no longer shows blocking overlays or special viewer buttons.
 
-// Accept --changed-files argument
+// Accept command-line arguments (matching test-enhanced-flow.js)
 const args = process.argv.slice(2);
 let changedFiles = null;
 let modeArg = null;
+let folderPath = null;
+let languageCodeArg = null;
+
+// Parse command-line arguments
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--changed-files' && args[i + 1]) {
         changedFiles = args[i + 1];
@@ -40,6 +44,51 @@ for (let i = 0; i < args.length; i++) {
     } else if ((args[i] === '--mode' || args[i] === '-m') && args[i + 1]) {
         modeArg = args[i + 1];
         i++;
+    } else if (args[i] === '--folder' && args[i + 1]) {
+        folderPath = args[i + 1];
+        i++;
+    } else if ((args[i] === '--lang' || args[i] === '-l') && args[i + 1]) {
+        languageCodeArg = args[i + 1];
+        i++;
+    }
+}
+
+// Handle folder processing if --folder argument is provided (matching test-enhanced-flow.js)
+let processedFileResults = [];
+
+if (folderPath) {
+    // TRANSLATION MODE - Process folder like test-enhanced-flow.js
+    console.log(`📁 TRANSLATION MODE: Processing all .md/.mdx files in: ${folderPath}`);
+    console.log(`ℹ️  This is default/translation mode - processing any language folder that mirrors docs structure`);
+    
+    try {
+        const fs = await import('node:fs');
+        const path = await import('node:path');
+        
+        if (!fs.existsSync(folderPath)) {
+            throw new Error(`Folder does not exist: ${folderPath}`);
+        }
+        
+        // Process the folder using the same logic as test-enhanced-flow.js
+        processedFileResults = await processFolderInDefaultMode(folderPath);
+        console.log(`✅ Processed ${processedFileResults.length} files in translation mode`);
+        
+        // Create a changed files list for the automation
+        if (processedFileResults.length > 0) {
+            const translationChangedFilesPath = path.join(process.cwd(), 'changed-files-translation.txt');
+            const allProcessedFiles = processedFileResults.map(result => result.filePath.replace(/\\/g, '/'));
+            fs.writeFileSync(translationChangedFilesPath, allProcessedFiles.join('\n'));
+            
+            console.log(`📋 Created translation changed files list: ${translationChangedFilesPath}`);
+            console.log(`📄 Files in translation list: ${allProcessedFiles.length}`);
+            
+            changedFiles = translationChangedFilesPath;
+        } else {
+            console.warn('⚠️  No files with images found in folder, translation mode has nothing to process');
+        }
+    } catch (error) {
+        console.error(`❌ Error in translation mode: ${error.message}`);
+        process.exit(1);
     }
 }
 
@@ -97,6 +146,122 @@ const MODE_DESCRIPTIONS = {
     "ui_change": "UI Change Mode - Replace existing screenshots due to UI changes",
     "new_feature": "New Feature Mode - Take screenshots for new features/placeholders", 
     "default": "Default Mode - Standard translation mode with both English and Spanish docs"
+};
+
+/**
+ * Check if a markdown file contains actual image references (not placeholders)
+ * @param {string} filePath - Path to the markdown file
+ * @returns {boolean} True if the file contains actual images, false otherwise
+ */
+const hasActualImages = async (filePath) => {
+    try {
+        const fs = await import('node:fs');
+        const content = fs.readFileSync(filePath, 'utf8');
+        
+        // Check for actual image references in markdown format
+        const imagePattern = /!\[.*?\]\(.*?\.(png|jpg|jpeg|gif|svg|webp|bmp)\)/gi;
+        const hasImageReferences = imagePattern.test(content);
+        
+        return hasImageReferences;
+    } catch (error) {
+        console.warn(`⚠️  Error checking images in ${filePath}: ${error.message}`);
+        return false; // If we can't read the file, assume no images
+    }
+};
+
+/**
+ * Process all .md/.mdx files in a specified folder (Translation/Default Mode)
+ * Replicates the exact logic from test-enhanced-flow.js processFolderInDefaultMode function
+ * @param {string} folderPath - Path to the folder to process (any language folder that mirrors docs structure)
+ * @returns {Array<Object>} Array of file processing results
+ */
+const processFolderInDefaultMode = async (folderPath) => {
+    try {
+        const fs = await import('node:fs');
+        const path = await import('node:path');
+        
+        console.log(`📁 Processing folder in translation/default mode: ${folderPath}`);
+        console.log(`ℹ️  Translation mode processes files that contain actual images only`);
+        
+        // Recursively find all .md and .mdx files (exactly like test-enhanced-flow.js)
+        const findMarkdownFiles = (dir) => {
+            const files = [];
+            const items = fs.readdirSync(dir, { withFileTypes: true });
+            
+            for (const item of items) {
+                const fullPath = path.join(dir, item.name);
+                if (item.isDirectory()) {
+                    files.push(...findMarkdownFiles(fullPath));
+                } else if (item.isFile() && (item.name.endsWith('.md') || item.name.endsWith('.mdx'))) {
+                    files.push(fullPath);
+                }
+            }
+            return files;
+        };
+        
+        const markdownFiles = findMarkdownFiles(folderPath);
+        console.log(`📄 Found ${markdownFiles.length} markdown files in language folder`);
+        
+        // Filter files to only include those with actual images (exactly like test-enhanced-flow.js)
+        const filesWithImages = [];
+        const skippedFiles = [];
+        
+        console.log(`🔍 Filtering files to only include those with actual images...`);
+        for (const filePath of markdownFiles) {
+            const fileHasImages = await hasActualImages(filePath);
+            if (fileHasImages) {
+                filesWithImages.push(filePath);
+            } else {
+                skippedFiles.push(filePath);
+            }
+        }
+        
+        console.log(`📄 Files with actual images: ${filesWithImages.length}`);
+        console.log(`⏭️  Files without images (skipped): ${skippedFiles.length}`);
+        
+        if (skippedFiles.length > 0) {
+            console.log(`ℹ️  Skipped files (no actual images):`);
+            skippedFiles.forEach(file => console.log(`    - ${file}`));
+        }
+        
+        if (filesWithImages.length === 0) {
+            console.warn(`⚠️  No files with actual images found in folder: ${folderPath}`);
+            console.log(`ℹ️  Translation mode only processes files that contain actual image references`);
+            return [];
+        }
+        
+        // Process each file with images sequentially in translation mode (exactly like test-enhanced-flow.js)
+        const results = [];
+        for (const filePath of filesWithImages) {
+            try {
+                console.log(`🌐 Processing language file: ${filePath}`);
+                
+                // For translation mode, we process files that contain actual images
+                // This is the "default" scenario that handles translated content with images
+                results.push({
+                    filePath,
+                    mode: 'translation',
+                    processed: true,
+                    translationMode: true,
+                    hasImages: true
+                });
+            } catch (error) {
+                console.error(`❌ Error processing translation file ${filePath}: ${error.message}`);
+                results.push({
+                    filePath,
+                    mode: 'translation_error',
+                    processed: false,
+                    error: error.message
+                });
+            }
+        }
+        
+        console.log(`✅ Translation mode processing complete: ${results.length} files processed`);
+        return results;
+    } catch (error) {
+        console.error(`❌ Error processing translation folder ${folderPath}: ${error.message}`);
+        return [];
+    }
 };
 
 /**
