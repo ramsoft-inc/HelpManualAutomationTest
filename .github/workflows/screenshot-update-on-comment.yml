@@ -45,16 +45,49 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            AutoSnap/package-lock.json
+            AutoSnap/tracewrightt/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           # Install root dependencies
-          npm install
+          echo "📦 Installing root dependencies..."
+          npm ci
           
           # Install AutoSnap dependencies (where enhanced-run-script.js is located)
+          echo "📦 Installing AutoSnap dependencies..."
           cd AutoSnap
-          npm install
+          npm ci
+          
+          # Install Python dependencies
+          echo "🐍 Installing Python dependencies..."
+          pip install -r requirements.txt
+          
+          # Install tracewrightt dependencies (TypeScript compilation)
+          echo "📦 Installing tracewrightt dependencies..."
+          cd tracewrightt
+          npm ci
+          
+          # Pre-compile TypeScript to avoid runtime compilation issues
+          echo "🔨 Building TypeScript..."
+          npm run build || {
+            echo "⚠️  TypeScript compilation failed, will use ts-node fallback"
+          }
+          cd ../.. # Back to root
+          
+          # Install Playwright browsers in AutoSnap directory
+          echo "🎭 Installing Playwright browsers..."
+          cd AutoSnap
           npx playwright install chromium --with-deps
+          cd ..
 
       - name: Extract command parameters
         id: extract
@@ -69,11 +102,11 @@ jobs:
           # /update-screenshots all
           # /update-screenshots mode:ui_change docs/specific-file.md
           
-          # Extract mode (default to ui_change)
-          MODE=$(echo "$COMMENT" | grep -oP 'mode:\K\w+' || echo "ui_change")
+          # Extract mode (default to ui_change) - fixed regex
+          MODE=$(echo "$COMMENT" | grep -oE 'mode:[a-zA-Z_]+' | cut -d':' -f2 || echo "ui_change")
           
-          # Extract files pattern
-          FILES=$(echo "$COMMENT" | sed 's/\/update-screenshots//' | sed 's/mode:\w\+//' | xargs)
+          # Extract files pattern - improved parsing
+          FILES=$(echo "$COMMENT" | sed 's|\/update-screenshots||' | sed 's|mode:[a-zA-Z_]*||' | xargs)
           
           if [ -z "$FILES" ] || [ "$FILES" = "all" ]; then
             FILES="docs/**/*.md"
@@ -115,13 +148,6 @@ jobs:
               [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
             });
 
-      - name: Setup Python dependencies
-        run: |
-          # Install Python dependencies for instruction generation
-          cd AutoSnap
-          pip install -r requirements.txt || {
-            echo "⚠️ requirements.txt not found or failed to install, continuing..."
-          }
 
       - name: Create temporary changed files list
         run: |
@@ -129,18 +155,52 @@ jobs:
           FILES="${{ steps.extract.outputs.files }}"
           
           # Create a temporary file with the files to process
-          echo "Creating temporary file list for: $FILES"
+          echo "📁 Creating temporary file list for: $FILES"
           
           if [ "$FILES" = "docs/**/*.md" ] || [ "$FILES" = "all" ]; then
             # Process all markdown files in docs
+            echo "🔍 Finding all markdown files in docs directory..."
             find ../docs -name "*.md" -type f > changed_files_temp.txt
           else
             # Process specific files/patterns
-            echo "$FILES" | tr ' ' '\n' > changed_files_temp.txt
+            echo "📝 Processing specific files: $FILES"
+            # Handle both space-separated and comma-separated files
+            echo "$FILES" | tr ' ,' '\n' | grep -v '^$' > changed_files_temp.txt
           fi
           
-          echo "Files to process:"
+          # Validate files exist and convert to relative paths from project root
+          echo "🔍 Validating files exist..."
+          > validated_files_temp.txt
+          while IFS= read -r file; do
+            # Remove leading/trailing whitespace
+            file=$(echo "$file" | xargs)
+            
+            # Skip empty lines
+            [ -z "$file" ] && continue
+            
+            # Check if file exists (try multiple possible paths)
+            if [ -f "../$file" ]; then
+              echo "$file" >> validated_files_temp.txt
+              echo "✅ Found: $file"
+            elif [ -f "$file" ]; then
+              echo "${file#../}" >> validated_files_temp.txt
+              echo "✅ Found: $file (adjusted path)"
+            else
+              echo "⚠️ File not found: $file"
+            fi
+          done < changed_files_temp.txt
+          
+          # Use validated files
+          mv validated_files_temp.txt changed_files_temp.txt
+          
+          echo "📋 Final files to process:"
           cat changed_files_temp.txt
+          
+          # Check if we have any files to process
+          if [ ! -s changed_files_temp.txt ]; then
+            echo "❌ No valid files found to process!"
+            exit 1
+          fi
 
       - name: Run enhanced screenshot flow
         env:
@@ -149,6 +209,10 @@ jobs:
           CURRENT_MODE: ${{ steps.extract.outputs.mode }}
           FILES_TO_PROCESS: ${{ steps.extract.outputs.files }}
           PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/playwright-browsers
+          # Node.js ESM and TypeScript support (safer options)
+          NODE_OPTIONS: "--experimental-loader ts-node/esm"
+          TS_NODE_ESM: true
+          TS_NODE_COMPILER_OPTIONS: '{"module":"ESNext","moduleResolution":"node"}'
           # Add your API keys from secrets
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
@@ -163,12 +227,27 @@ jobs:
           echo "Files to process: $FILES_TO_PROCESS"
           echo "Branch: ${{ fromJson(steps.pr.outputs.result).head_ref }}"
           
+          # Debug: Show current environment
+          echo "📋 Current directory: $(pwd)"
+          echo "📋 Node version: $(node --version)"
+          echo "📋 NPM version: $(npm --version)"
+          echo "📋 Python version: $(python --version)"
+          echo "📋 Files exist check:"
+          ls -la enhanced-run-script.js || echo "❌ enhanced-run-script.js not found!"
+          ls -la changed_files_temp.txt || echo "❌ changed_files_temp.txt not found!"
+          ls -la tracewrightt/dist/ || echo "⚠️ tracewrightt/dist/ not found, will use ts-node"
+          
           # Run your actual enhanced flow - exactly like local development
           node enhanced-run-script.js \
             --mode "$CURRENT_MODE" \
             --changed-files "changed_files_temp.txt" || {
             echo "❌ Enhanced screenshot update failed"
-            cat changed_files_temp.txt
+            echo "📁 Contents of changed_files_temp.txt:"
+            cat changed_files_temp.txt || echo "Could not read changed_files_temp.txt"
+            echo "📁 Current directory contents:"
+            ls -la
+            echo "📁 Node modules in AutoSnap:"
+            ls -la node_modules/ | head -10 || echo "No node_modules found"
             exit 1
           }
           
