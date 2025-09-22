@@ -1,0 +1,302 @@
+name: Screenshot Update on PR Comment
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  update-screenshots:
+    # Only run on pull request comments that contain the trigger phrase
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/update-screenshots')
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            return {
+              head_ref: pullRequest.head.ref,
+              head_sha: pullRequest.head.sha,
+              base_ref: pullRequest.base.ref
+            };
+
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ fromJson(steps.pr.outputs.result).head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npx playwright install chromium --with-deps
+
+      - name: Extract command parameters
+        id: extract
+        run: |
+          COMMENT="${{ github.event.comment.body }}"
+          echo "Original comment: $COMMENT"
+          
+          # Extract file patterns from comment
+          # Examples:
+          # /update-screenshots docs/5-Document-Viewer/document_explorer.md
+          # /update-screenshots docs/*/login.md  
+          # /update-screenshots all
+          # /update-screenshots mode:ui_change docs/specific-file.md
+          
+          # Extract mode (default to ui_change)
+          MODE=$(echo "$COMMENT" | grep -oP 'mode:\K\w+' || echo "ui_change")
+          
+          # Extract files pattern
+          FILES=$(echo "$COMMENT" | sed 's/\/update-screenshots//' | sed 's/mode:\w\+//' | xargs)
+          
+          if [ -z "$FILES" ] || [ "$FILES" = "all" ]; then
+            FILES="docs/**/*.md"
+          fi
+          
+          echo "mode=$MODE" >> $GITHUB_OUTPUT
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+          echo "Processing mode: $MODE"
+          echo "Processing files: $FILES"
+
+      - name: Add reaction to comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: 'rocket'
+            });
+
+      - name: Comment start notification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Screenshot update started!**
+              
+              **Triggered by:** @${{ github.event.comment.user.login }}
+              **Mode:** \`${{ steps.extract.outputs.mode }}\`
+              **Files:** \`${{ steps.extract.outputs.files }}\`
+              **Branch:** \`${{ fromJson(steps.pr.outputs.result).head_ref }}\`
+              
+              ⏳ Processing... This may take a few minutes.
+              
+              [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+            });
+
+      - name: Setup Python dependencies
+        run: |
+          # Install Python dependencies for instruction generation
+          cd AutoSnap
+          pip install -r requirements.txt || {
+            echo "⚠️ requirements.txt not found or failed to install, continuing..."
+          }
+
+      - name: Create temporary changed files list
+        run: |
+          cd AutoSnap
+          FILES="${{ steps.extract.outputs.files }}"
+          
+          # Create a temporary file with the files to process
+          echo "Creating temporary file list for: $FILES"
+          
+          if [ "$FILES" = "docs/**/*.md" ] || [ "$FILES" = "all" ]; then
+            # Process all markdown files in docs
+            find ../docs -name "*.md" -type f > changed_files_temp.txt
+          else
+            # Process specific files/patterns
+            echo "$FILES" | tr ' ' '\n' > changed_files_temp.txt
+          fi
+          
+          echo "Files to process:"
+          cat changed_files_temp.txt
+
+      - name: Run enhanced screenshot flow
+        env:
+          GITHUB_ACTIONS: true
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          CURRENT_MODE: ${{ steps.extract.outputs.mode }}
+          FILES_TO_PROCESS: ${{ steps.extract.outputs.files }}
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/playwright-browsers
+          # Add your API keys from secrets
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          cd AutoSnap
+          
+          echo "🚀 Starting enhanced screenshot update process..."
+          echo "Environment: GitHub Actions"
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "Mode: $CURRENT_MODE"
+          echo "Files to process: $FILES_TO_PROCESS"
+          echo "Branch: ${{ fromJson(steps.pr.outputs.result).head_ref }}"
+          
+          # Run your actual enhanced flow - exactly like local development
+          node enhanced-run-script.js \
+            --mode "$CURRENT_MODE" \
+            --changed-files "changed_files_temp.txt" || {
+            echo "❌ Enhanced screenshot update failed"
+            cat changed_files_temp.txt
+            exit 1
+          }
+          
+          # Clean up temporary file
+          rm -f changed_files_temp.txt
+
+      - name: Check for changes
+        id: changes
+        run: |
+          # Check if there are any changes in the docs directory
+          if git diff --quiet docs/; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in docs directory"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in docs directory"
+            echo "Changed files:"
+            git diff --name-only docs/
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          
+          # Add all changes in docs directory
+          git add docs/
+          
+          # Create commit with detailed message
+          git commit -m "🤖 Update screenshots via GitHub Actions
+
+          Triggered by: @${{ github.event.comment.user.login }}
+          Comment: ${{ github.event.comment.html_url }}
+          Mode: ${{ steps.extract.outputs.mode }}
+          Files processed: ${{ steps.extract.outputs.files }}
+          Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          Auto-generated by screenshot-update-on-comment workflow"
+          
+          # Push changes
+          git push origin ${{ fromJson(steps.pr.outputs.result).head_ref }}
+
+      - name: Comment on success
+        if: success() && steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: commit } = await github.rest.repos.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: '${{ fromJson(steps.pr.outputs.result).head_ref }}'
+            });
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ **Screenshot update completed successfully!**
+              
+              **Summary:**
+              - **Mode:** \`${{ steps.extract.outputs.mode }}\`
+              - **Files processed:** \`${{ steps.extract.outputs.files }}\`
+              - **Branch:** \`${{ fromJson(steps.pr.outputs.result).head_ref }}\`
+              - **Commit:** [\`${commit.sha.substring(0, 7)}\`](${commit.html_url})
+              
+              **Changes committed:**
+              ${process.env.GITHUB_WORKSPACE ? '- Screenshots updated in docs directory' : ''}
+              
+              The PR has been updated with the new screenshots. You can now review the changes.
+              
+              [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+            });
+
+      - name: Comment on success (no changes)
+        if: success() && steps.changes.outputs.has_changes == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ **Screenshot update completed successfully!**
+              
+              **Summary:**
+              - **Mode:** \`${{ steps.extract.outputs.mode }}\`
+              - **Files processed:** \`${{ steps.extract.outputs.files }}\`
+              - **Branch:** \`${{ fromJson(steps.pr.outputs.result).head_ref }}\`
+              
+              **Result:** No changes were needed - all screenshots are already up to date! 🎉
+              
+              [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+            });
+
+      - name: Comment on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ **Screenshot update failed!**
+              
+              **Summary:**
+              - **Mode:** \`${{ steps.extract.outputs.mode }}\`
+              - **Files processed:** \`${{ steps.extract.outputs.files }}\`
+              - **Branch:** \`${{ fromJson(steps.pr.outputs.result).head_ref }}\`
+              
+              **Error:** The screenshot update process encountered an error.
+              
+              Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+              
+              Common issues:
+              - Files not found in the specified pattern
+              - Script execution errors
+              - Browser automation failures
+              
+              You can retry by commenting \`/update-screenshots\` again.`
+            });
+
+      - name: Add final reaction
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reaction = '${{ job.status }}' === 'success' ? '+1' : '-1';
+            github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: reaction
+            });

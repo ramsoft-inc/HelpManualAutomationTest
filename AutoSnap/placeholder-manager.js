@@ -27,12 +27,10 @@ async function processMarkdownFile(mdFilePath) {
             await fs.mkdir(imgDir, { recursive: true });
         }
         
-        // Get existing images in the img folder
-        const existingImages = await getExistingImages(imgDir);
-        console.log(`🖼️  Found ${existingImages.length} existing images:`, existingImages);
+
         
         // Process placeholders
-        const { updatedContent, placeholderCount } = await assignPlaceholderNames(content, existingImages);
+        const { updatedContent, placeholderCount } = await assignPlaceholderNames(content);
         
         if (placeholderCount > 0) {
             // Write the updated content back to the file

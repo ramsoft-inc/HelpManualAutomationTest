@@ -6,7 +6,7 @@ import { cleanStepFiles, generateStep, performStep } from "./step.js";
 import { TracewrightOptions } from "./types.js";
 
 export const run = async (page: Page, options: TracewrightOptions) => {
-  const { script, alternateDoneString, beforeEach } = options;
+  const { script, alternateDoneString, beforeEach, aiUtils, currentFile } = options;
   const doneString = alternateDoneString || "done";
 
   let stepCounter = 1;
@@ -69,7 +69,7 @@ export const run = async (page: Page, options: TracewrightOptions) => {
       break;
     }
 
-    const stepErrorStack = await performStep(page, currentStepCodeResponse);
+    const stepErrorStack = await performStep(page, currentStepCodeResponse, aiUtils);
     if (stepErrorStack) {
       console.error(chalk.red("error executing step"), stepCounter);
       console.error(stepErrorStack);

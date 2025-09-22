@@ -146,7 +146,7 @@ describe("GeminiProvider", () => {
         { text: scenarioText } as Content,
       ]);
       expect(calledWith.config?.systemInstruction).toBe(systemInstruction);
-      expect(calledWith.config?.temperature).toBe(0);
+      expect(calledWith.config?.temperature).toBe(0.7);
       expect(calledWith.config?.safetySettings).toEqual([
         { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
@@ -193,6 +193,7 @@ describe("GeminiProvider", () => {
           code: "just some text, no code block",
           inputTokenCount: 8,
           outputTokenCount: 3,
+          thinking: "No thinking provided",
         });
       });
 
@@ -214,7 +215,7 @@ describe("GeminiProvider", () => {
         true, // includeSystemInstruction
         true  // isCodeAnswer
       );
-      expect(response).toEqual({ code: "done", inputTokenCount: 10, outputTokenCount: 0 });
+      expect(response).toEqual({ code: "done", inputTokenCount: 10, outputTokenCount: 0, thinking: "No response from LLM" });
     });
 
     it.each([

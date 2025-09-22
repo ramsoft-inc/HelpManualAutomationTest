@@ -70,23 +70,824 @@ export class AIUtilsEnhanced {
   private referenceImagesDir: string;
   private currentMdPath: string | null = null;
   public thinkingHistory: ThinkingEntry[] = [];
+  private generatedImages: string[] = []; // Track generated image files
+  private currentMode: string = 'default'; // Track current mode (ui_change, translation, etc.)
+  private referenceImageSourcePath: string | null = null; // Track where reference image was found
+  private isGitHubActions: boolean = false; // Track if running in GitHub Actions
+  private repositoryRoot: string; // Track repository root path
 
   constructor(page: Page, referenceImagesDir: string = "./reference_images") {
     this.page = page;
     this.referenceImagesDir = referenceImagesDir;
     this.thinkingHistory = [];
+    this.generatedImages = [];
+    
+    // Detect GitHub Actions environment
+    this.isGitHubActions = !!(process.env.GITHUB_ACTIONS || process.env.CI);
+    
+    // Set repository root based on environment
+    if (this.isGitHubActions) {
+      // In GitHub Actions, GITHUB_WORKSPACE points to the repository root
+      this.repositoryRoot = process.env.GITHUB_WORKSPACE || process.cwd();
+      console.log(`🤖 GitHub Actions detected. Repository root: ${this.repositoryRoot}`);
+    } else {
+      // Local development - try to detect repository root or use current working directory
+      this.repositoryRoot = this.findRepositoryRoot();
+      console.log(`💻 Local environment detected. Repository root: ${this.repositoryRoot}`);
+    }
+    
     // Token statistics will be shown at the end of execution
   }
   
   /**
    * Set the current markdown file path
    * This should be called by the page helper when processing a markdown file
+   * Handles path resolution for both local and GitHub Actions environments
    */
   public setCurrentMdFilePath(mdPath: string): void {
-    console.log(`📝 Setting current markdown file path: ${mdPath}`);
-    this.currentMdPath = mdPath;
+    console.log(`📝 AIUtilsEnhanced: Setting current markdown file path: ${mdPath}`);
+    
+    // Normalize the path for the current environment
+    const normalizedPath = this.normalizePath(mdPath);
+    this.currentMdPath = normalizedPath;
+    
+    console.log(`📝 AIUtilsEnhanced: Confirmed currentMdPath set to: ${this.currentMdPath}`);
+    console.log(`🌍 Environment: ${this.isGitHubActions ? 'GitHub Actions' : 'Local'}`);
+    
     // Also set it as an environment variable for other components
-    process.env.CURRENT_MD_PATH = mdPath;
+    process.env.CURRENT_MD_PATH = normalizedPath;
+    
+    // Create img_as folder in the directory where the markdown file is located
+    this.ensureImgAsFolder();
+  }
+
+  /**
+   * Normalize a path for the current environment
+   * Converts between local absolute paths and repository-relative paths
+   */
+  private normalizePath(inputPath: string): string {
+    if (this.isGitHubActions) {
+      // In GitHub Actions, ensure we're working with absolute paths from GITHUB_WORKSPACE
+      if (path.isAbsolute(inputPath)) {
+        // If already absolute, check if it's within the workspace
+        if (inputPath.startsWith(this.repositoryRoot)) {
+          return inputPath;
+        } else {
+          // Convert to workspace-relative
+          const relativePath = path.relative(this.getDocsDirectory(), inputPath);
+          return path.join(this.getDocsDirectory(), relativePath);
+        }
+      } else {
+        // Convert relative path to absolute within workspace
+        return path.resolve(this.repositoryRoot, inputPath);
+      }
+    } else {
+      // Local development - handle various path formats
+      if (path.isAbsolute(inputPath)) {
+        return inputPath;
+      } else {
+        // Convert relative path to absolute
+        // Try relative to docs directory first
+        const docsRelativePath = path.resolve(this.getDocsDirectory(), inputPath);
+        if (fs.existsSync(docsRelativePath)) {
+          return docsRelativePath;
+        }
+        
+        // Fallback to current working directory
+        return path.resolve(process.cwd(), inputPath);
+      }
+    }
+  }
+  
+  /**
+   * Ensure img_as folder exists in the current markdown file directory
+   */
+  private ensureImgAsFolder(): void {
+    console.log(`🔍 ensureImgAsFolder called, currentMdPath: ${this.currentMdPath}`);
+    if (!this.currentMdPath) {
+      console.log('⚠️  No current markdown path set, cannot create img_as folder');
+      return;
+    }
+    
+    try {
+      const mdDir = path.dirname(this.currentMdPath);
+      const imgAsDir = path.join(mdDir, 'img_as');
+      
+      if (!fs.existsSync(imgAsDir)) {
+        fs.mkdirSync(imgAsDir, { recursive: true });
+        console.log(`📁 Created img_as directory: ${imgAsDir}`);
+      } else {
+        console.log(`📁 img_as directory already exists: ${imgAsDir}`);
+      }
+      
+      // Store the img_as path for use in screenshot operations
+      process.env.IMG_AS_PATH = imgAsDir;
+    } catch (error) {
+      console.error('❌ Error creating img_as folder:', error);
+    }
+  }
+  
+  /**
+   * Get the img_as folder path for the current markdown file
+   */
+  public getImgAsPath(): string | null {
+    if (!this.currentMdPath) {
+      return null;
+    }
+    
+    const mdDir = path.dirname(this.currentMdPath);
+    return path.join(mdDir, 'img_as');
+  }
+  
+  /**
+   * Get the current markdown file path
+   */
+  public getCurrentMdFilePath(): string | null {
+    return this.currentMdPath;
+  }
+  
+  /**
+   * Update the current file path during processing
+   * This can be called by external components to change the active file
+   */
+  public updateCurrentFile(newFilePath: string): void {
+    console.log(`🔄 AIUtilsEnhanced: Updating current file from ${this.currentMdPath} to ${newFilePath}`);
+    this.setCurrentMdFilePath(newFilePath);
+  }
+  
+  /**
+   * Set the current mode (ui_change, translation, etc.)
+   */
+  public setCurrentMode(mode: string): void {
+    console.log(`🔧 AIUtilsEnhanced: Setting current mode to: ${mode}`);
+    this.currentMode = mode;
+  }
+  
+  /**
+   * Get the current mode
+   */
+  public getCurrentMode(): string {
+    return this.currentMode;
+  }
+
+  /**
+   * Find the repository root in local development
+   */
+  private findRepositoryRoot(): string {
+    let currentDir = process.cwd();
+    
+    // Walk up the directory tree looking for common repository indicators
+    const repoIndicators = ['.git', 'package.json', 'docs', 'AutoSnap'];
+    
+    while (currentDir !== path.dirname(currentDir)) { // Until we reach root
+      const hasIndicator = repoIndicators.some(indicator => {
+        const indicatorPath = path.join(currentDir, indicator);
+        return fs.existsSync(indicatorPath);
+      });
+      
+      if (hasIndicator) {
+        console.log(`📂 Found repository root: ${currentDir}`);
+        return currentDir;
+      }
+      
+      currentDir = path.dirname(currentDir);
+    }
+    
+    // If no repository root found, use current working directory
+    console.log(`⚠️ Repository root not detected, using current directory: ${process.cwd()}`);
+    return process.cwd();
+  }
+
+  /**
+   * Get the docs directory path (environment-aware)
+   */
+  private getDocsDirectory(): string {
+    if (this.isGitHubActions) {
+      // In GitHub Actions, use repository root + docs
+      const docsPath = path.join(this.repositoryRoot, 'docs');
+      console.log(`🤖 GitHub Actions docs path: ${docsPath}`);
+      return docsPath;
+    } else {
+      // Local development - try multiple detection strategies
+      
+      // Strategy 1: Repository root + docs
+      const repoDocsPath = path.join(this.repositoryRoot, 'docs');
+      if (fs.existsSync(repoDocsPath)) {
+        console.log(`💻 Local docs path (repo root): ${repoDocsPath}`);
+        return repoDocsPath;
+      }
+      
+      // Strategy 2: Look for docs directory in common locations
+      const commonPaths = [
+        'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs',
+        path.join(process.cwd(), 'docs'),
+        path.join(process.cwd(), '..', 'docs'),
+        path.join(process.cwd(), 'HelpManualAutomationTest', 'docs')
+      ];
+      
+      for (const docsPath of commonPaths) {
+        if (fs.existsSync(docsPath)) {
+          console.log(`💻 Local docs path (fallback): ${docsPath}`);
+          return docsPath;
+        }
+      }
+      
+      // Strategy 3: Use repository root + docs as fallback (even if it doesn't exist)
+      console.log(`⚠️ Docs directory not found, using fallback: ${repoDocsPath}`);
+      return repoDocsPath;
+    }
+  }
+
+  /**
+   * Convert a relative path from the docs directory to an absolute path
+   */
+  private resolveFromDocsDir(relativePath: string): string {
+    const docsDir = this.getDocsDirectory();
+    return path.join(docsDir, relativePath);
+  }
+
+  /**
+   * Get the relative path from docs directory to a given path
+   */
+  private getRelativeToDocsDir(absolutePath: string): string {
+    const docsDir = this.getDocsDirectory();
+    return path.relative(docsDir, absolutePath);
+  }
+
+  /**
+   * Get environment information for debugging
+   */
+  public getEnvironmentInfo(): object {
+    return {
+      isGitHubActions: this.isGitHubActions,
+      repositoryRoot: this.repositoryRoot,
+      docsDirectory: this.getDocsDirectory(),
+      currentMdPath: this.currentMdPath,
+      currentMode: this.currentMode,
+      workingDirectory: process.cwd(),
+      env: {
+        GITHUB_WORKSPACE: process.env.GITHUB_WORKSPACE,
+        GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
+        CI: process.env.CI
+      }
+    };
+  }
+  
+  /**
+   * Get the appropriate save path for screenshots based on mode
+   */
+  public getScreenshotSavePath(): string | null {
+    if (this.currentMode === 'ui_change') {
+      if (this.referenceImageSourcePath) {
+        console.log(`📁 Using reference image source path for ui_change mode: ${this.referenceImageSourcePath}`);
+        return this.referenceImageSourcePath;
+      } else {
+        // When no reference image found, find best folder in document directory structure
+        if (this.currentMdPath) {
+          const currentDocDir = path.dirname(this.currentMdPath);
+          const bestSaveDir = this.findBestSaveDirectory(currentDocDir);
+          
+          console.log(`📁 No reference image found, using best save directory for ui_change mode: ${bestSaveDir}`);
+          return bestSaveDir;
+        } else {
+          console.log(`📁 No reference image and no current document path, falling back to img_as`);
+          return this.getImgAsPath();
+        }
+      }
+    }
+    
+    // For other modes, use img_as folder
+    return this.getImgAsPath();
+  }
+  
+  /**
+   * Find the best directory to save screenshots when no reference image is found
+   * Priority: existing folders under document directory > create img folder
+   */
+  private findBestSaveDirectory(currentDocDir: string): string {
+    try {
+      console.log(`🔍 Finding best save directory under: ${currentDocDir}`);
+      
+      if (!fs.existsSync(currentDocDir)) {
+        console.log(`⚠️ Document directory does not exist: ${currentDocDir}`);
+        return currentDocDir;
+      }
+      
+      // Get all subdirectories in the current document directory
+      const items = fs.readdirSync(currentDocDir);
+      const subdirectories = items.filter(item => {
+        const itemPath = path.join(currentDocDir, item);
+        try {
+          return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
+        } catch (e) {
+          return false;
+        }
+      }).filter(dir => {
+        // Skip common non-content directories
+        const skipDirs = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out', 'img_as'];
+        return !skipDirs.includes(dir);
+      });
+      
+      console.log(`📂 Found ${subdirectories.length} subdirectories: ${subdirectories.join(', ')}`);
+      
+      if (subdirectories.length > 0) {
+        // Check if any subdirectory already has an img or images folder
+        for (const subdir of subdirectories) {
+          const subdirPath = path.join(currentDocDir, subdir);
+          const commonImageDirs = ['img', 'images', 'Images', 'IMG', 'assets', 'screenshots'];
+          
+          for (const imgDirName of commonImageDirs) {
+            const imgDir = path.join(subdirPath, imgDirName);
+            if (fs.existsSync(imgDir) && fs.lstatSync(imgDir).isDirectory()) {
+              console.log(`✅ Found existing image directory: ${imgDir}`);
+              return imgDir;
+            }
+          }
+        }
+        
+        // No image directories found, use the first available subdirectory
+        const targetSubdir = subdirectories[0];
+        const targetSubdirPath = path.join(currentDocDir, targetSubdir);
+        
+        console.log(`📁 Using existing subdirectory: ${targetSubdirPath}`);
+        return targetSubdirPath;
+      } else {
+        // No subdirectories found, create img folder in root document directory
+        const imgDir = path.join(currentDocDir, 'img');
+        
+        if (!fs.existsSync(imgDir)) {
+          try {
+            fs.mkdirSync(imgDir, { recursive: true });
+            console.log(`📁 Created img directory: ${imgDir}`);
+          } catch (error) {
+            console.error(`❌ Failed to create img directory: ${error}`);
+            // Return document directory as fallback
+            return currentDocDir;
+          }
+        } else {
+          console.log(`📁 Using existing img directory: ${imgDir}`);
+        }
+        
+        return imgDir;
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error finding best save directory: ${error}`);
+      // Return document directory as ultimate fallback
+      return currentDocDir;
+    }
+  }
+
+  /**
+   * Track a generated image file
+   */
+  public trackGeneratedImage(imagePath: string): void {
+    if (!this.generatedImages.includes(imagePath)) {
+      this.generatedImages.push(imagePath);
+      console.log(`📸 Tracked generated image: ${imagePath}`);
+    }
+  }
+  
+  /**
+   * Get list of generated images
+   */
+  public getGeneratedImages(): string[] {
+    return [...this.generatedImages];
+  }
+  
+  /**
+   * Update a single image path in the markdown file immediately after it's saved
+   * This is called from screenshot_helper.ts after each successful screenshot
+   */
+  public async updateSingleImagePath(imagePath: string): Promise<void> {
+    if (!this.currentMdPath) {
+      console.log('⚠️  No current markdown path set, skipping single image path update');
+      return;
+    }
+    
+    try {
+      console.log(`📝 IMMEDIATE UPDATE: Updating single image path in ${this.currentMdPath} for: ${imagePath}`);
+      
+      // Extract the filename from the image path
+      const imageName = path.basename(imagePath);
+      console.log(`🔍 Processing image: ${imageName}`);
+      
+      // Read the markdown file
+      const mdContent = fs.readFileSync(this.currentMdPath, 'utf8');
+      
+      // Track the generated image
+      this.trackGeneratedImage(imagePath);
+      
+      let updatedContent = mdContent;
+      let updatesCount = 0;
+      
+      // Update image paths in markdown content for this specific image
+      const imagePatterns = [
+        // Markdown image syntax: ![alt](path/to/image.ext)
+        /!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|bmp|webp|svg))\)/gi,
+        // HTML img tags: <img src="path/to/image.ext">
+        /<img[^>]+src=["']([^"']+\.(png|jpg|jpeg|gif|bmp|webp|svg))["'][^>]*>/gi,
+        // HTML img tags with self-closing syntax
+        /<img[^>]+src=["']([^"']+\.(png|jpg|jpeg|gif|bmp|webp|svg))["'][^>]*\/?>/gi
+      ];
+      
+      for (const pattern of imagePatterns) {
+        updatedContent = updatedContent.replace(pattern, (match, ...groups) => {
+          // Extract the full image path from the match
+          const fullImagePath = groups.find(group => group && group.includes('.'));
+          if (!fullImagePath) return match;
+          
+          // Extract just the filename from the path (last part after /)
+          const foundImageName = path.basename(fullImagePath);
+          
+          // Check if this is the base name match or exact match
+          // For enhanced images (ending with _E), find the corresponding base image (without _E)
+          const foundBaseName = path.basename(foundImageName, path.extname(foundImageName));
+          const newBaseName = path.basename(imageName, path.extname(imageName));
+          
+          // Check for enhanced/stock pairs and choose the higher resolution
+          let shouldUpdate = false;
+          let finalImageName = imageName;
+          
+          if (newBaseName.endsWith('_E') || newBaseName.endsWith('_S')) {
+            // Remove _E or _S to get the base name that should be in markdown
+            // Handle nested suffixes like _S_E or _S_S
+            let expectedBaseName = newBaseName;
+            // Remove final _E or _S suffix
+            expectedBaseName = expectedBaseName.replace(/[_][ES]$/, '');
+            // If there's still an _S suffix (from stock version), remove that too  
+            expectedBaseName = expectedBaseName.replace(/[_]S$/, '');
+            
+            shouldUpdate = foundBaseName === expectedBaseName;
+            console.log(`🔍 Enhanced/Stock image detected: ${newBaseName} -> looking for base: ${expectedBaseName} -> found: ${foundBaseName} -> match: ${shouldUpdate}`);
+            
+            if (shouldUpdate) {
+              // Check if we have both Enhanced and Stock versions and choose the better one
+              finalImageName = this.chooseBestImageVersion(imageName);
+              console.log(`📊 Choosing best image version: ${imageName} -> ${finalImageName}`);
+            }
+          } else {
+            // For non-enhanced/stock images, look for exact matches
+            shouldUpdate = foundImageName === imageName || foundImageName.toLowerCase() === imageName.toLowerCase();
+            console.log(`🔍 Regular image: ${newBaseName} -> exact match check: ${shouldUpdate}`);
+          }
+          
+          if (shouldUpdate) {
+            
+            // Use the chosen best version filename
+            const newPath = `img_as/${finalImageName}`;
+            
+            // Check if the path is already pointing to img_as with the same filename
+            if (fullImagePath === newPath) {
+              console.log(`ℹ️  Image path already correct: ${fullImagePath}`);
+              return match; // No change needed
+            }
+            
+            // Replace the original path with the new img_as path using chosen best version
+            const updatedMatch = match.replace(fullImagePath, newPath);
+            console.log(`🔄 Updated single image path: ${fullImagePath} → ${newPath} (chosen best version: ${finalImageName})`);
+            updatesCount++;
+            return updatedMatch;
+          }
+          
+          return match; // No change if not our target image
+        });
+      }
+      
+      // Write back the updated content if changes were made
+      if (updatesCount > 0) {
+        fs.writeFileSync(this.currentMdPath, updatedContent, 'utf8');
+        console.log(`✅ IMMEDIATE UPDATE COMPLETE: Updated ${updatesCount} references for ${imageName} in ${this.currentMdPath}`);
+      } else {
+        console.log(`ℹ️  IMMEDIATE UPDATE: No image path references found for ${imageName} in markdown file`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error during single image path update:', error);
+    }
+  }
+
+  /**
+   * Choose the best image version between Enhanced (_E) and Stock (_S) based on image resolution (pixels)
+   * Returns the filename of the higher resolution image
+   */
+  private chooseBestImageVersion(currentImageName: string): string {
+    try {
+      const currentBaseName = path.basename(currentImageName, path.extname(currentImageName));
+      const extension = path.extname(currentImageName);
+      const imgAsDir = this.getImgAsPath();
+      
+      if (!imgAsDir) {
+        console.log(`⚠️  No img_as directory available, using current image: ${currentImageName}`);
+        return currentImageName;
+      }
+      
+      // Extract the true base name by removing all _E and _S suffixes
+      let baseName = currentBaseName;
+      // Keep removing _E and _S suffixes until we get the base name
+      while (baseName.endsWith('_E') || baseName.endsWith('_S')) {
+        baseName = baseName.replace(/[_][ES]$/, '');
+      }
+      
+      console.log(`🔍 Extracted base name: ${currentBaseName} → ${baseName}`);
+      
+      // Now check what enhanced/stock versions might exist in img_as folder
+      // Could be: base_E, base_S, base_S_E, base_S_S, etc.
+      const possibleEnhancedNames = [
+        `${baseName}_E${extension}`,      // Simple enhanced: documentviewer_E.png
+        `${baseName}_S_E${extension}`    // Stock-based enhanced: documentviewer_S_E.png  
+      ];
+      
+      const possibleStockNames = [
+        `${baseName}_S${extension}`,     // Simple stock: documentviewer_S.png
+        `${baseName}_S_S${extension}`   // Stock-based stock: documentviewer_S_S.png
+      ];
+      
+      console.log(`🔍 Looking for Enhanced versions: ${possibleEnhancedNames.join(', ')}`);
+      console.log(`🔍 Looking for Stock versions: ${possibleStockNames.join(', ')}`);
+      // Find which enhanced and stock versions actually exist
+      let foundEnhancedName = null;
+      let foundStockName = null;
+      
+      for (const enhancedName of possibleEnhancedNames) {
+        const enhancedPath = path.join(imgAsDir, enhancedName);
+        if (fs.existsSync(enhancedPath)) {
+          foundEnhancedName = enhancedName;
+          console.log(`✅ Found Enhanced version: ${enhancedName}`);
+          break;
+        }
+      }
+      
+      for (const stockName of possibleStockNames) {
+        const stockPath = path.join(imgAsDir, stockName);
+        if (fs.existsSync(stockPath)) {
+          foundStockName = stockName;
+          console.log(`✅ Found Stock version: ${stockName}`);
+          break;
+        }
+      }
+      
+      console.log(`🔍 Comparing recently captured image versions for base: ${baseName}`);
+      console.log(`   Enhanced found: ${foundEnhancedName || 'none'}`);
+      console.log(`   Stock found: ${foundStockName || 'none'}`);
+      
+      if (foundEnhancedName && foundStockName) {
+        // Both exist, compare image dimensions (pixels) for higher resolution
+        const enhancedPath = path.join(imgAsDir, foundEnhancedName);
+        const stockPath = path.join(imgAsDir, foundStockName);
+        
+        const enhancedResolution = this.getImageResolution(enhancedPath);
+        const stockResolution = this.getImageResolution(stockPath);
+        
+        console.log(`   Enhanced resolution: ${enhancedResolution.width}x${enhancedResolution.height} (${enhancedResolution.pixels} pixels)`);
+        console.log(`   Stock resolution: ${stockResolution.width}x${stockResolution.height} (${stockResolution.pixels} pixels)`);
+        
+        if (enhancedResolution.pixels >= stockResolution.pixels) {
+          console.log(`📊 Choosing Enhanced version (higher/equal resolution): ${foundEnhancedName}`);
+          return foundEnhancedName;
+        } else {
+          console.log(`📊 Choosing Stock version (higher resolution): ${foundStockName}`);
+          return foundStockName;
+        }
+      } else if (foundEnhancedName) {
+        console.log(`📊 Only Enhanced version exists, choosing: ${foundEnhancedName}`);
+        return foundEnhancedName;
+      } else if (foundStockName) {
+        console.log(`📊 Only Stock version exists, choosing: ${foundStockName}`);
+        return foundStockName;
+      } else {
+        console.log(`⚠️  Neither Enhanced nor Stock version found in img_as, using current: ${currentImageName}`);
+        return currentImageName;
+      }
+      
+    } catch (error) {
+      console.warn(`⚠️  Error choosing best image version for ${currentImageName}:`, error);
+      return currentImageName;
+    }
+  }
+
+  /**
+   * Get image resolution (width x height in pixels) from image file
+   * Returns object with width, height, and total pixels
+   */
+  private getImageResolution(imagePath: string): { width: number; height: number; pixels: number } {
+    try {
+      // Try to read PNG image dimensions from file header
+      const buffer = fs.readFileSync(imagePath);
+      
+      if (imagePath.toLowerCase().endsWith('.png')) {
+        // PNG format: width and height are at bytes 16-19 and 20-23 respectively
+        if (buffer.length >= 24 && buffer.toString('ascii', 1, 4) === 'PNG') {
+          const width = buffer.readUInt32BE(16);
+          const height = buffer.readUInt32BE(20);
+          const pixels = width * height;
+          return { width, height, pixels };
+        }
+      } else if (imagePath.toLowerCase().endsWith('.jpg') || imagePath.toLowerCase().endsWith('.jpeg')) {
+        // For JPEG, we'll use file size as a proxy for resolution (since parsing JPEG headers is complex)
+        const stats = fs.statSync(imagePath);
+        const fileSize = stats.size;
+        // Estimate pixels based on file size (rough approximation)
+        const estimatedPixels = Math.floor(fileSize / 3); // Rough estimate: 3 bytes per pixel
+        return { width: 0, height: 0, pixels: estimatedPixels };
+      }
+      
+      // Fallback: use file size as approximation
+      const stats = fs.statSync(imagePath);
+      const fileSize = stats.size;
+      const estimatedPixels = Math.floor(fileSize / 3);
+      console.log(`⚠️  Could not parse image dimensions for ${imagePath}, using file size approximation`);
+      return { width: 0, height: 0, pixels: estimatedPixels };
+      
+    } catch (error) {
+      console.warn(`⚠️  Error reading image resolution for ${imagePath}:`, error);
+      // Return minimal values as fallback
+      return { width: 0, height: 0, pixels: 1 };
+    }
+  }
+
+  /**
+   * Post-process markdown file to update image paths
+   * Only for ui_change and translation modes
+   */
+  public async postProcessMarkdownImagePaths(mode: string): Promise<void> {
+    if (!this.currentMdPath) {
+      console.log('⚠️  No current markdown path set, skipping post-processing');
+      return;
+    }
+    
+    // Only process for ui_change and translation modes
+    if (mode !== 'ui_change' && mode !== 'translation') {
+      console.log(`ℹ️  Skipping image path post-processing for mode: ${mode}`);
+      return;
+    }
+    
+    try {
+      console.log(`🔄 Post-processing image paths in ${this.currentMdPath} for mode: ${mode}`);
+      
+      // Read the markdown file
+      const mdContent = fs.readFileSync(this.currentMdPath, 'utf8');
+      
+      // Get the img_as directory
+      const imgAsPath = this.getImgAsPath();
+      if (!imgAsPath || !fs.existsSync(imgAsPath)) {
+        console.log('⚠️  img_as directory not found, skipping post-processing');
+        return;
+      }
+      
+      // Get all images in img_as directory
+      const imageFiles = fs.readdirSync(imgAsPath)
+        .filter(file => /\.(png|jpg|jpeg|gif|bmp|webp)$/i.test(file));
+      
+      console.log(`📁 Found ${imageFiles.length} images in img_as directory:`, imageFiles);
+      
+      if (imageFiles.length === 0) {
+        console.log('ℹ️  No images found in img_as directory, nothing to update');
+        return;
+      }
+      
+      let updatedContent = mdContent;
+      let updatesCount = 0;
+      
+      // Update image paths in markdown content
+      // Look for ALL image reference patterns (any folder structure, including existing img_as)
+      const imagePatterns = [
+        // Markdown image syntax: ![alt](path/to/image.ext) - includes img_as and any other folder
+        /!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|bmp|webp|svg))\)/gi,
+        // HTML img tags: <img src="path/to/image.ext"> - includes img_as and any other folder
+        /<img[^>]+src=["']([^"']+\.(png|jpg|jpeg|gif|bmp|webp|svg))["'][^>]*>/gi,
+        // HTML img tags with self-closing syntax - includes img_as and any other folder
+        /<img[^>]+src=["']([^"']+\.(png|jpg|jpeg|gif|bmp|webp|svg))["'][^>]*\/?>/gi
+      ];
+      
+      for (const pattern of imagePatterns) {
+        updatedContent = updatedContent.replace(pattern, (match, ...groups) => {
+          // Extract the full image path from the match
+          const fullImagePath = groups.find(group => group && group.includes('.'));
+          if (!fullImagePath) return match;
+          
+          // Extract just the filename from the path (last part after /)
+          const imageName = path.basename(fullImagePath);
+          
+          console.log(`🔍 Found image reference: ${fullImagePath} → filename: ${imageName}`);
+          
+          // Check if this image filename exists in img_as directory
+          // Priority: exact match > case-insensitive match > base name match > similar name match
+          let matchingImage = imageFiles.find(file => {
+            const fileName = path.basename(file);
+            return fileName === imageName; // Exact match first
+          });
+          
+          if (!matchingImage) {
+            // Try case-insensitive match
+            matchingImage = imageFiles.find(file => {
+              const fileName = path.basename(file);
+              return fileName.toLowerCase() === imageName.toLowerCase();
+            });
+          }
+          
+          if (!matchingImage) {
+            // Try base name match (without extension)
+            matchingImage = imageFiles.find(file => {
+              const fileName = path.basename(file);
+              return path.basename(fileName, path.extname(fileName)) === path.basename(imageName, path.extname(imageName));
+            });
+          }
+          
+          if (!matchingImage) {
+            // Try finding similar names (for retaken screenshots with timestamps/versions)
+            const baseImageName = path.basename(imageName, path.extname(imageName));
+            const baseImageNameClean = baseImageName.replace(/[_-][ES]$/i, '');
+            
+            // Find all potential matches - focus on _E/_S suffix matching only
+            const potentialMatches = imageFiles.filter(file => {
+              const fileName = path.basename(file);
+              const baseFileName = path.basename(fileName, path.extname(fileName));
+              const baseFileNameClean = baseFileName.replace(/[_-][ES]$/i, '');
+              
+              // Only match if base names are exactly the same after removing _E/_S suffixes
+              return baseImageNameClean === baseFileNameClean;
+            });
+            
+            if (potentialMatches.length > 0) {
+              // ALWAYS prefer Enhanced (_E) over Stock (_S) - Enhanced is the target
+              const enhancedMatch = potentialMatches.find(file => file.includes('_E'));
+              const stockMatch = potentialMatches.find(file => file.includes('_S'));
+              
+              if (enhancedMatch) {
+                matchingImage = enhancedMatch;
+                console.log(`🎯 Using Enhanced version: ${enhancedMatch}`);
+              } else if (stockMatch) {
+                matchingImage = stockMatch;
+                console.log(`📸 Using Stock version (Enhanced not available): ${stockMatch}`);
+              } else {
+                // Use the first match if no _E/_S suffixes
+                matchingImage = potentialMatches[0];
+                console.log(`📄 Using available version: ${potentialMatches[0]}`);
+              }
+            }
+          }
+          
+          if (matchingImage) {
+            const newPath = `img_as/${matchingImage}`;
+            
+            // Log the type of match found
+            if (matchingImage === imageName) {
+              console.log(`✅ Exact match found: ${imageName} → ${matchingImage}`);
+            } else if (matchingImage.toLowerCase() === imageName.toLowerCase()) {
+              console.log(`📝 Case-insensitive match found: ${imageName} → ${matchingImage}`);
+            } else if (path.basename(matchingImage, path.extname(matchingImage)) === path.basename(imageName, path.extname(imageName))) {
+              console.log(`🔄 Base name match found: ${imageName} → ${matchingImage}`);
+            } else {
+              // Check if it's an _E/_S suffix match
+              const baseImageName = path.basename(imageName, path.extname(imageName));
+              const baseFileName = path.basename(matchingImage, path.extname(matchingImage));
+              const baseImageNameClean = baseImageName.replace(/[_-][ES]$/i, '');
+              const baseFileNameClean = baseFileName.replace(/[_-][ES]$/i, '');
+              
+              if (baseImageNameClean === baseFileNameClean) {
+                if (matchingImage.includes('_E')) {
+                  console.log(`🎯 Enhanced suffix match: ${imageName} → ${matchingImage}`);
+                } else if (matchingImage.includes('_S')) {
+                  console.log(`📸 Stock suffix match: ${imageName} → ${matchingImage}`);
+                } else {
+                  console.log(`🔄 Base name suffix match: ${imageName} → ${matchingImage}`);
+                }
+              } else {
+                console.log(`🔍 Similar name match found: ${imageName} → ${matchingImage}`);
+              }
+            }
+            
+            // Check if the path is already pointing to img_as with the same filename
+            if (fullImagePath === newPath) {
+              console.log(`ℹ️  Image path already correct: ${fullImagePath}`);
+              return match; // No change needed
+            }
+            
+            // Replace the original path with the new img_as path
+            const updatedMatch = match.replace(fullImagePath, newPath);
+            console.log(`🔄 Updated image path: ${fullImagePath} → ${newPath}`);
+            updatesCount++;
+            return updatedMatch;
+          } else {
+            console.log(`⚠️  No matching image found for: ${imageName}`);
+          }
+          
+          return match; // No change if image not found
+        });
+      }
+      
+      // Write back the updated content if changes were made
+      if (updatesCount > 0) {
+        fs.writeFileSync(this.currentMdPath, updatedContent, 'utf8');
+        console.log(`✅ Post-processing complete: Updated ${updatesCount} image paths in ${this.currentMdPath}`);
+      } else {
+        console.log('ℹ️  No image paths needed updating');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error during markdown post-processing:', error);
+    }
   }
   
   /**
@@ -1115,7 +1916,7 @@ async generateEnhancedPrompt(
     
     **PRIORITY ORDER:**
     1. HIGHEST: Elements with [data-testid] that are most specific to the screenshot intent (e.g., if screenshotting a modal, prefer data-testids containing "modal", "dialog"; if screenshotting a table, prefer "table", "grid", "list")
-    2. Elements with any [data-testid] attribute (critical for stable automation)
+    2. Elements with any [data-testid] attribute (critical for stable automation)daniel 
     3. Elements with stable semantic roles using CSS selectors: [role="dialog"], [role="listbox"], [role="menu"], [role="combobox"]
     4. Elements with stable, non-auto-generated IDs
     5. Semantic containers (main, section, article, nav) that contain the target
@@ -1245,10 +2046,16 @@ async generateEnhancedPrompt(
     **RESPONSE FORMAT:**
     Your response should be a strict JSON format with a thinking field and a code field and the name of the screenshot has to be exactly like in the code previously generated:
     
-    {{
+    {
       "thinking": "Detailed explanation of your reasoning process, which container you chose and why, how it relates to the screenshot intent, and why this selector is the most appropriate choice.",
       "code": "await page.locator('[data-testid=\"example-container\"]', { force: true }).screenshot({ path: './images/example-image-name.png', timeout: 30000 });"
-    }}
+    }
+
+    **NESTED CONTAINERS EXAMPLE:**
+    {
+      "thinking": "I need to capture the complete user profile section including personal info, subscription details, and account settings. Container C2 [data-testid='user-profile-section'] is the optimal choice because: 1) It's specifically named 'user-profile-section' which directly matches the intent, 2) It contains nested containers C3 (personal-info-card) and C4 (subscription-details) which provide the required personal info and subscription details, 3) It includes the profile header with user name 'John Doe' and 'Premium Member' status, 4) It's focused enough to exclude unrelated dashboard elements from C1 but comprehensive enough to include all profile-related information in one cohesive screenshot. The nested structure ensures I capture all required information in their proper context.",
+      "code": "await page.locator('[data-testid=\"user-profile-section\"]', { force: true }).screenshot({ path: './images/user-profile-complete.png', timeout: 30000 });"
+    }
     `;
 
     // Get image description from LLM and add context
@@ -1666,8 +2473,15 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
         
         // If not found in command directory, use our enhanced image finder
         if (!base64Screenshot) {
-          base64Screenshot = this.getReferenceImageBase64(origFileName);
-          if (!base64Screenshot) console.warn(`⚠️ Reference image '${origFileName}' not found.`);
+          const referenceResult = this.getReferenceImageBase64WithPath(origFileName);
+          base64Screenshot = referenceResult.base64;
+          this.referenceImageSourcePath = referenceResult.sourcePath;
+          
+          if (!base64Screenshot) {
+            console.warn(`⚠️ Reference image '${origFileName}' not found.`);
+          } else if (this.referenceImageSourcePath) {
+            console.log(`📍 Found reference image at: ${this.referenceImageSourcePath}`);
+          }
         }
       } else {
         console.warn(`⚠️ Could not extract image filename from: ${originalScreenshotCommand.substring(0, 100)}...`);
@@ -1703,6 +2517,9 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
       let stockCommand = originalScreenshotCommand;
       let enhancedCommand = aiGeneratedCommand;
       
+      // Note: Path modification to img_as is now handled in screenshot_helper.ts
+      // This ensures the images are saved to the correct img_as folder automatically
+      
       if (fileName && filePath) {
         // Check if the filename has an extension
         const lastDotIndex = fileName.lastIndexOf('.');
@@ -1737,20 +2554,22 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
           
           // Replace the path in the original command in a more robust way
           if (filePath && fileDir) {
-            const stockPath = path.join(fileDir, stockFileName);
+            // Use appropriate save directory based on mode
+            const saveDir = this.getScreenshotSavePath() || fileDir;
+            const stockPath = path.join(saveDir, stockFileName);
             
             // More robust path replacement using regex with word boundaries
             const escapedFilePath = filePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const pathRegex = new RegExp(`(path\\s*:\\s*['\"])${escapedFilePath}(['\"])`, 'i');
-            stockCommand = originalScreenshotCommand.replace(pathRegex, `$1${stockPath}$2`);
+            stockCommand = originalScreenshotCommand.replace(pathRegex, `$1${stockPath.replace(/\\/g, '/')}$2`);
             
             // If no replacement occurred (no path: syntax), try direct replacement
             if (stockCommand === originalScreenshotCommand) {
               const directRegex = new RegExp(`(['\"])${escapedFilePath}(['\"])`, 'i');
-              stockCommand = originalScreenshotCommand.replace(directRegex, `$1${stockPath}$2`);
+              stockCommand = originalScreenshotCommand.replace(directRegex, `$1${stockPath.replace(/\\/g, '/')}$2`);
             }
             
-            console.log(`📂 Modified stock path from '${filePath}' to '${stockPath}'`);
+            console.log(`📂 Modified stock path from '${filePath}' to '${stockPath}' (${this.currentMode} mode)`);
           } else {
             // If we only have a filename, use a more precise replacement
             const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1763,20 +2582,22 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
           
           // Replace the path in the enhanced command using the same robust approach
           if (enhancedImgInfo.imgPath && enhancedImgInfo.imgDir) {
-            const enhancedPath = path.join(enhancedImgInfo.imgDir, enhancedFileName);
+            // Use appropriate save directory based on mode
+            const saveDir = this.getScreenshotSavePath() || enhancedImgInfo.imgDir;
+            const enhancedPath = path.join(saveDir, enhancedFileName);
             
             // More robust path replacement
             const escapedPath = enhancedImgInfo.imgPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const pathRegex = new RegExp(`(path\\s*:\\s*['\"])${escapedPath}(['\"])`, 'i');
-            enhancedCommand = aiGeneratedCommand.replace(pathRegex, `$1${enhancedPath}$2`);
+            enhancedCommand = aiGeneratedCommand.replace(pathRegex, `$1${enhancedPath.replace(/\\/g, '/')}$2`);
             
             // If no replacement occurred, try direct replacement
             if (enhancedCommand === aiGeneratedCommand) {
               const directRegex = new RegExp(`(['\"])${escapedPath}(['\"])`, 'i');
-              enhancedCommand = aiGeneratedCommand.replace(directRegex, `$1${enhancedPath}$2`);
+              enhancedCommand = aiGeneratedCommand.replace(directRegex, `$1${enhancedPath.replace(/\\/g, '/')}$2`);
             }
             
-            console.log(`📂 Modified enhanced path from '${enhancedImgInfo.imgPath}' to '${enhancedPath}'`);
+            console.log(`📂 Modified enhanced path from '${enhancedImgInfo.imgPath}' to '${enhancedPath}' (${this.currentMode} mode)`);
           } else {
             // If we only have a filename, use a more precise replacement
             const enhancedFileName = enhancedImgInfo.imgFileName || fileName;
@@ -1837,13 +2658,33 @@ if (!fs.existsSync(enhancedDir)) {
         }
       }
       
+      // Add force: true to stock command if not present
+      let finalStockCommand = stockCommand;
+      if (!finalStockCommand.includes('force:') && !finalStockCommand.includes('force :')) {
+        // Find the locator part and add force: true as parameter
+        finalStockCommand = finalStockCommand.replace(
+          /(page\.locator\([^,)]+)\)/,
+          '$1, { force: true })'
+        );
+        // If that didn't work (locator already has options), try adding force to existing options
+        if (finalStockCommand === stockCommand) {
+          finalStockCommand = finalStockCommand.replace(
+            /(page\.locator\([^,)]+,\s*{)([^}]*)(}\))/,
+            (match, p1, p2, p3) => {
+              const hasOptions = p2.trim().length > 0;
+              return `${p1}${hasOptions ? p2 + ', ' : ''}force: true${p3}`;
+            }
+          );
+        }
+      }
+
       // Generate a code block that executes both commands with directory creation
       const finalCodeBlock = originalCodeBlock.replace(
         originalScreenshotCommand, 
         `${ensureDirCode}
 
 // Stock version
-${stockCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))(['"])/gi, (match, p1, p2, p3) => 
+${finalStockCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))(['"])/gi, (match, p1, p2, p3) => 
   `path: ${p1}${p2.replace(/\\/g, '/')}${p3}`)}
 
 // Enhanced version
@@ -2144,7 +2985,8 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     thinking?: string,
     mdFilePath?: string,
     screenshotIntent?: string,
-    fullJsonResponse?: string // Add parameter for the full JSON response
+    fullJsonResponse?: string, // Add parameter for the full JSON response
+    mode?: string // Add parameter for current mode
   ): Promise<void> {
     console.log('🚀 Starting enhanced code execution...');
     console.log('📍 Page URL:', this.page.url());
@@ -2157,6 +2999,11 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       console.log('📋 Full JSON response:', fullJsonResponse);
     }
     console.log('📊 Step number:', stepNumber);
+    
+    // Set mode if provided
+    if (mode) {
+      this.setCurrentMode(mode);
+    }
     
     // Store and log thinking immediately
     try {
@@ -2274,7 +3121,85 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       /\.screenshot\(\s*\)/g,
       '.screenshot({ timeout: 30000 })'
     );
+  }
+
+  /**
+   * Modify screenshot command to use appropriate directory based on mode
+   */
+  private modifyPathForImgAs(command: string): string {
+    let modifiedCommand = command;
+    
+    // Get the appropriate save path based on current mode
+    const savePath = this.getScreenshotSavePath();
+    if (!savePath) {
+      console.warn('⚠️  No save path available, using relative path');
+      return this.modifyPathForImgAsRelative(command);
     }
+    
+    const savePathNormalized = savePath.replace(/\\/g, '/');
+    const isUiChangeMode = this.currentMode === 'ui_change';
+    
+    console.log(`📁 Using ${isUiChangeMode ? 'reference image source' : 'img_as'} path for ${this.currentMode} mode: ${savePathNormalized}`);
+    
+    // Replace 'img/' with appropriate save path in screenshot paths
+    modifiedCommand = modifiedCommand.replace(/(['"`])img\//g, `$1${savePathNormalized}/`);
+    
+    // Also handle cases where the path doesn't include a folder (just filename)
+    // Replace patterns like { path: './filename.png' } with { path: 'absolute_path/filename.png' }
+    modifiedCommand = modifiedCommand.replace(
+      /(path\s*:\s*['"`])\.\/([^'"\/\\]+\.(?:png|jpg|jpeg|gif|bmp|webp))(['"`])/gi,
+      `$1${savePathNormalized}/$2$3`
+    );
+    
+    // Replace patterns like { path: 'filename.png' } with { path: 'absolute_path/filename.png' }
+    modifiedCommand = modifiedCommand.replace(
+      /(path\s*:\s*['"`])([^'"\/\\:]+\.(?:png|jpg|jpeg|gif|bmp|webp))(['"`])/gi,
+      (match, p1, filename, p3) => {
+        // Don't modify if it already contains the save path or starts with a path or is already absolute
+        if (filename.includes(path.basename(savePath)) || filename.includes('/') || filename.includes('\\') || filename.includes(':')) {
+          return match;
+        }
+        return `${p1}${savePathNormalized}/${filename}${p3}`;
+      }
+    );
+    
+    return modifiedCommand;
+  }
+
+  /**
+   * Fallback method for relative path modification (when absolute path is not available)
+   */
+  private modifyPathForImgAsRelative(command: string): string {
+    let modifiedCommand = command;
+    
+    // Use different folder based on mode
+    const relativeFolder = this.currentMode === 'ui_change' ? 'img' : 'img_as';
+    console.log(`📁 Using relative ${relativeFolder} folder for ${this.currentMode} mode`);
+    
+    // Replace 'img/' with appropriate folder in screenshot paths
+    modifiedCommand = modifiedCommand.replace(/(['"`])img\//g, `$1${relativeFolder}/`);
+    
+    // Also handle cases where the path doesn't include a folder (just filename)
+    // Replace patterns like { path: './filename.png' } with { path: './folder/filename.png' }
+    modifiedCommand = modifiedCommand.replace(
+      /(path\s*:\s*['"`])\.\/([^'"\/\\]+\.(?:png|jpg|jpeg|gif|bmp|webp))(['"`])/gi,
+      `$1./${relativeFolder}/$2$3`
+    );
+    
+    // Replace patterns like { path: 'filename.png' } with { path: 'folder/filename.png' }
+    modifiedCommand = modifiedCommand.replace(
+      /(path\s*:\s*['"`])([^'"\/\\:]+\.(?:png|jpg|jpeg|gif|bmp|webp))(['"`])/gi,
+      (match, p1, filename, p3) => {
+        // Don't modify if it already contains the folder or starts with a path
+        if (filename.includes(relativeFolder) || filename.includes('/') || filename.includes('\\')) {
+          return match;
+        }
+        return `${p1}${relativeFolder}/${filename}${p3}`;
+      }
+    );
+    
+    return modifiedCommand;
+  }
 
   /**
    * Executes screenshot code with simplified retry logic
@@ -2282,11 +3207,18 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
    * @returns The result of the execution
    */
   async executeScreenshotWithStability(code: string): Promise<any> {
+    // Ensure img_as directory exists
+    this.ensureImgAsFolder();
+    
+    // Note: Path modification to img_as is now handled automatically in screenshot_helper.ts
+    // The screenshot helper will modify paths to use the correct img_as folder before execution
+    let modifiedCode = code;
+    
     // Ensure directories exist first (extract and run that part safely)
-    if (code.includes('fs.mkdirSync')) {
+    if (modifiedCode.includes('fs.mkdirSync')) {
       try {
         // Execute just the directory creation part
-        const dirSetupCode = code.split(/\/\/\s*(Stock|Enhanced)\s*version/)[0];
+        const dirSetupCode = modifiedCode.split(/\/\/\s*(Stock|Enhanced)\s*version/)[0];
         const dirSetupFunc = new Function('page', `return (async () => { ${dirSetupCode} })()`);
         await dirSetupFunc(this.page);
         console.log('✅ Directory setup completed');
@@ -2296,10 +3228,10 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     }
     
     // Check if this is a complex multi-statement screenshot block
-    if (code.includes('// Stock version') || code.includes('// Enhanced version')) {
+    if (modifiedCode.includes('// Stock version') || modifiedCode.includes('// Enhanced version')) {
       console.log('📦 Detected complex multi-statement screenshot block, executing both stock and enhanced versions');
       
-      const lines = code.split('\n');
+      const lines = modifiedCode.split('\n');
       let stockCmd = '';
       let enhancedCmd = '';
       
@@ -2319,14 +3251,30 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         }
       }
       
-      // Execute both commands if found
+      // Path modification to img_as is handled automatically in screenshot_helper.ts
       if (stockCmd) {
         console.log('🔍 Executing stock screenshot command with retries:', stockCmd);
+        
+        // Extract image filename for tracking (just the filename, not full path)
+        const pathMatch = stockCmd.match(/path:\s*['"]([^'"]+)['"]/);
+        if (pathMatch) {
+          const filename = path.basename(pathMatch[1]);
+          this.trackGeneratedImage(filename);
+        }
+        
         await forceScreenshotWithRetries(stockCmd, this.page, this);
       }
       
       if (enhancedCmd) {
         console.log('🔍 Executing enhanced screenshot command with retries:', enhancedCmd);
+        
+        // Extract image filename for tracking (just the filename, not full path)
+        const pathMatch = enhancedCmd.match(/path:\s*['"]([^'"]+)['"]/);
+        if (pathMatch) {
+          const filename = path.basename(pathMatch[1]);
+          this.trackGeneratedImage(filename);
+        }
+        
         await forceScreenshotWithRetries(enhancedCmd, this.page, this);
       }
       
@@ -2335,106 +3283,193 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     
     // For simple screenshot commands, just execute directly with retries
     console.log('🔍 Executing simple screenshot command with retries');
-    await forceScreenshotWithRetries(code, this.page, this);
+    
+    // Extract image filename for tracking (just the filename, not full path)
+    const pathMatch = modifiedCode.match(/path:\s*['"]([^'"]+)['"]/);
+    if (pathMatch) {
+      const filename = path.basename(pathMatch[1]);
+      this.trackGeneratedImage(filename);
+    }
+    
+    await forceScreenshotWithRetries(modifiedCode, this.page, this);
     return;
   }
 
   private getReferenceImageBase64(imageFileName: string): string {
+    const result = this.getReferenceImageBase64WithPath(imageFileName);
+    return result.base64;
+  }
+
+  private getReferenceImageBase64WithPath(imageFileName: string): { base64: string; sourcePath: string | null } {
     try {
-      // Hardcode the exact absolute path to the docs directory
-      const docsDir = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs';
+      // Start from current markdown document directory if available
+      let searchRoot: string;
       
-      if (!fs.existsSync(docsDir)) {
-        return '';
+      if (this.currentMdPath) {
+        // Use the directory containing the current markdown file
+        searchRoot = path.dirname(this.currentMdPath);
+        console.log(`🔍 Searching for image '${imageFileName}' in all subdirectories under: ${searchRoot}`);
+      } else {
+        // Fallback to environment-aware docs directory
+        searchRoot = this.getDocsDirectory();
+        console.log(`🔍 Searching for image '${imageFileName}' in fallback docs directory: ${searchRoot}`);
       }
       
-      // Get all subdirectories in the docs folder
-      const docSubdirs = fs.readdirSync(docsDir)
-        .filter(item => {
-          const itemPath = path.join(docsDir, item);
-          return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
-        })
-        .map(dir => path.join(docsDir, dir));
-      
-      // First check if there's an img directory directly in the docs folder
-      const docsImgDir = path.join(docsDir, 'img');
-      if (fs.existsSync(docsImgDir)) {
-        const exactPath = path.join(docsImgDir, imageFileName);
-        if (fs.existsSync(exactPath)) {
-          return fs.readFileSync(exactPath).toString('base64');
-        }
+      if (!fs.existsSync(searchRoot)) {
+        console.log(`⚠️ Search root directory does not exist: ${searchRoot}`);
+        return { base64: '', sourcePath: null };
       }
       
-      // For each subdirectory, check if it has an img folder
-      for (const subdir of docSubdirs) {
-        // Check for img directory in this subdirectory
-        const imgDir = path.join(subdir, 'img');
-        if (fs.existsSync(imgDir)) {
-          // Try exact filename match
-          const exactPath = path.join(imgDir, imageFileName);
-          if (fs.existsSync(exactPath)) {
-            return fs.readFileSync(exactPath).toString('base64');
-          }
-        }
+      // Search in all subdirectories under the document directory first
+      const foundImagePath = this.findImageInAllSubdirectories(searchRoot, imageFileName);
+      
+      if (foundImagePath) {
+        console.log(`✅ Found reference image at: ${foundImagePath}`);
+        return {
+          base64: fs.readFileSync(foundImagePath).toString('base64'),
+          sourcePath: path.dirname(foundImagePath)
+        };
+      }
+      
+      // If not found in current document directory tree, try the docs directory as fallback
+      const docsDir = this.getDocsDirectory();
+      if (this.currentMdPath && searchRoot !== docsDir) {
+        console.log(`🔍 Image not found in document directory tree, trying docs directory fallback...`);
         
-        // Also check for Images directory (alternative spelling)
-        const imagesDir = path.join(subdir, 'Images');
-        if (fs.existsSync(imagesDir)) {
-          // Try exact filename match
-          const exactPath = path.join(imagesDir, imageFileName);
-          if (fs.existsSync(exactPath)) {
-            console.log(`✅ Found image at: ${exactPath}`);
-            return fs.readFileSync(exactPath).toString('base64');
-          }
-        }
-        
-        // Check for nested directories within this subdirectory
-        try {
-          const nestedDirs = fs.readdirSync(subdir)
-            .filter(item => {
-              const itemPath = path.join(subdir, item);
-              return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
-            })
-            .map(dir => path.join(subdir, dir));
+        if (fs.existsSync(docsDir)) {
+          const fallbackImagePath = this.findImageInAllSubdirectories(docsDir, imageFileName);
           
-          // Check each nested directory for img folders
-          for (const nestedDir of nestedDirs) {
-            // Skip img and Images directories as we already checked them
-            if (path.basename(nestedDir) === 'img' || path.basename(nestedDir) === 'Images') {
+          if (fallbackImagePath) {
+            console.log(`✅ Found reference image in docs fallback at: ${fallbackImagePath}`);
+            return {
+              base64: fs.readFileSync(fallbackImagePath).toString('base64'),
+              sourcePath: path.dirname(fallbackImagePath)
+            };
+          }
+        }
+      }
+      
+      console.log(`❌ Image '${imageFileName}' not found in any directory`);
+      return { base64: '', sourcePath: null };
+      
+    } catch (error: any) {
+      console.error(`❌ Error searching for image '${imageFileName}':`, error.message);
+      return { base64: '', sourcePath: null };
+    }
+  }
+
+  /**
+   * Search for an image file in all subdirectories under the document directory
+   * This focuses on the specific document's folder structure
+   */
+  private findImageInAllSubdirectories(searchRoot: string, imageFileName: string): string | null {
+    try {
+      if (!fs.existsSync(searchRoot) || !fs.lstatSync(searchRoot).isDirectory()) {
+        return null;
+      }
+      
+      console.log(`🔍 Searching in document directory: ${searchRoot}`);
+      
+      // First check directly in the root directory
+      const directPath = path.join(searchRoot, imageFileName);
+      if (fs.existsSync(directPath)) {
+        console.log(`✅ Found image directly in root: ${directPath}`);
+        return directPath;
+      }
+      
+      // Get all subdirectories under the document directory
+      const items = fs.readdirSync(searchRoot);
+      const subdirectories = items.filter(item => {
+        const itemPath = path.join(searchRoot, item);
+        try {
+          return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
+        } catch (e) {
+          return false;
+        }
+      }).filter(dir => {
+        // Skip common non-content directories
+        const skipDirs = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out', 'img_as'];
+        return !skipDirs.includes(dir);
+      });
+      
+      console.log(`📂 Searching in ${subdirectories.length} subdirectories: ${subdirectories.join(', ')}`);
+      
+      // Search in each subdirectory using deep recursive search
+      for (const subdir of subdirectories) {
+        const subdirPath = path.join(searchRoot, subdir);
+        console.log(`🔍 Deep searching in: ${subdirPath}`);
+        
+        const foundPath = this.findImageInDirectory(subdirPath, imageFileName);
+        if (foundPath) {
+          console.log(`✅ Found image in subdirectory: ${foundPath}`);
+          return foundPath;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error(`❌ Error searching subdirectories in ${searchRoot}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Recursively search for an image file in a directory structure
+   */
+  private findImageInDirectory(searchDir: string, imageFileName: string): string | null {
+    try {
+      if (!fs.existsSync(searchDir) || !fs.lstatSync(searchDir).isDirectory()) {
+        return null;
+      }
+      
+      // Check directly in this directory
+      const directPath = path.join(searchDir, imageFileName);
+      if (fs.existsSync(directPath)) {
+        return directPath;
+      }
+      
+      // Check in common image directories
+      const commonImageDirs = ['img', 'images', 'Images', 'IMG', 'assets', 'screenshots'];
+      
+      for (const imgDirName of commonImageDirs) {
+        const imgDir = path.join(searchDir, imgDirName);
+        if (fs.existsSync(imgDir) && fs.lstatSync(imgDir).isDirectory()) {
+          const imgPath = path.join(imgDir, imageFileName);
+          if (fs.existsSync(imgPath)) {
+            return imgPath;
+          }
+        }
+      }
+      
+      // Recursively search subdirectories
+      const items = fs.readdirSync(searchDir);
+      
+      for (const item of items) {
+        const itemPath = path.join(searchDir, item);
+        
+        try {
+          if (fs.lstatSync(itemPath).isDirectory()) {
+            // Skip common directories that typically don't contain reference images
+            const skipDirs = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out'];
+            if (skipDirs.includes(item)) {
               continue;
             }
             
-            // Check for img directory in this nested directory
-            const nestedImgDir = path.join(nestedDir, 'img');
-            if (fs.existsSync(nestedImgDir)) {
-              // Try exact filename match
-              const exactPath = path.join(nestedImgDir, imageFileName);
-              if (fs.existsSync(exactPath)) {
-                return fs.readFileSync(exactPath).toString('base64');
-              }
-            }
-            
-            // Also check for Images directory in this nested directory
-            const nestedImagesDir = path.join(nestedDir, 'Images');
-            if (fs.existsSync(nestedImagesDir)) {
-              // Try exact filename match
-              const exactPath = path.join(nestedImagesDir, imageFileName);
-              if (fs.existsSync(exactPath)) {
-                return fs.readFileSync(exactPath).toString('base64');
-              }
+            const foundPath = this.findImageInDirectory(itemPath, imageFileName);
+            if (foundPath) {
+              return foundPath;
             }
           }
         } catch (e) {
-          // Silent error
+          // Skip directories we can't access
+          continue;
         }
       }
       
-      // Silent failure when image not found
-      console.log(`❌ Image not found anywhere in docs: ${imageFileName}`);
-      return '';
-    } catch (error: any) {
-      // Silent error
-      return '';
+      return null;
+    } catch (error) {
+      // Silent error for individual directory access issues
+      return null;
     }
   }
 

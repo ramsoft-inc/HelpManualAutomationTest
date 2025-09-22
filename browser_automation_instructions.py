@@ -492,6 +492,87 @@ Document to process:
 ---
 """
 
+def get_prompt_for_translation_mode(doc_content,translated_content):
+    """
+    Generates a language-agnostic prompt for translation mode to capture screenshots 
+    for any language version of the website.
+    """
+    return f"""
+The goal is to take screenshots of the Spanish version of the website to replace each and every image currently shown from the English website in the documentation.
+
+You are going to write instructions that help navigate through the Spanish website to reach the exact position needed to take the screenshot.
+
+The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
+To understand what the image shows, you need to look at both the image filename and the text/content around it.
+
+Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
+- This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
+- If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
+- Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
+
+These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+
+The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+
+When describing the elements to interact with:
+
+Include the English name of the element (it helps match HTML tags).
+Include the Spanish name of the element (it helps find the element in the Spanish website using the text locator function).
+Describe the appearance or position of the element if it helps identify it faster.
+
+---
+
+## Instruction Format Guidelines
+
+Follow these strict formatting rules for each instruction:
+
+- Use a number to define each step starts with 1.
+- Every step must indicate a specific browser action.
+- Each instruction must describe **a single, actionable browser operation**.
+- Use **imperative voice** (e.g., "find", "click", "enter").
+- **CRITICAL: For every element you interact with, you MUST include BOTH the English name AND the Spanish name of the element in the instruction.**
+- Be **explicit** about:
+  - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
+  - **Visual characteristics** (e.g., button color, icons, shapes)
+  - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
+- If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
+- Conserve the order of instruction to match the documentation.
+- Everything you output should be just an instruction and nothing else — no headings or summaries.
+- The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+- If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
+- For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
+- You are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
+- Always add this "Based on the intructions executed If you think some screenshot taken is not right, redo the process to oget that screenshot" at the end of the instructions.
+- IF there is a command to popout window then ignore it do not add it to the instructions.
+- Take screenshots if there are placeholders for it and name them accordingly.
+- If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
+
+---
+
+## Example Output Format
+
+1.look for the worklist table (tabla de lista de trabajo) displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
+2.locate the "Document Viewer" (Visor de Documentos) button on the wheel interface — it appears as a paper/document icon — and click on it
+3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
+
+but the wheel has the document viewer button, image viewer button, study history, billing, etc.
+---
+## Document to Process
+
+Analyze and convert the following content into automation instructions:
+
+---
+{doc_content}
+---
+For reference of what these buttons are named in Spanish, use this Spanish documentation:
+
+---
+{translated_content}
+---
+Also, you are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table.
+## Generate Automation Instructions for the Spanish website below:
+"""
+
 def extract_image_paths_from_md(file_content):
     """Extract all image paths from markdown content using regex."""
     import re
@@ -508,6 +589,60 @@ def extract_image_paths_from_md(file_content):
     local_paths = [p for p in clean_paths if not p.startswith('http')]
     
     return local_paths
+
+def map_to_english_file_path(translated_file_path):
+    """
+    Map a translated file path to its English equivalent.
+    
+    Examples:
+        i18n/pt-BR/docusaurus-plugin-content-docs/current/1-Getting-Started/addorg.md 
+        -> docs/1-Getting-Started/addorg.md
+        
+        docs-es/1-Getting-Started/addorg.md 
+        -> docs/1-Getting-Started/addorg.md
+    
+    Args:
+        translated_file_path (str): Path to the translated file
+        
+    Returns:
+        str: Path to the corresponding English file, or None if mapping fails
+    """
+    import os
+    import re
+    
+    # Normalize path separators
+    path = translated_file_path.replace('\\', '/')
+    
+    # Pattern 1: i18n/[lang]/docusaurus-plugin-content-docs/current/... -> docs/...
+    match = re.match(r'^i18n/[^/]+/docusaurus-plugin-content-docs/current/(.+)$', path)
+    if match:
+        return f"docs/{match.group(1)}"
+    
+    # Pattern 2: docs-[lang]/... -> docs/...
+    match = re.match(r'^docs-[^/]+/(.+)$', path)
+    if match:
+        return f"docs/{match.group(1)}"
+    
+    # Pattern 3: [lang]-docs/... -> docs/...
+    match = re.match(r'^[^/]+-docs/(.+)$', path)
+    if match:
+        return f"docs/{match.group(1)}"
+    
+    # Pattern 4: Already in docs/ folder - return as is
+    if path.startswith('docs/'):
+        return path
+    
+    # If no pattern matches, try to find the file in docs/ folder with the same relative structure
+    # Extract just the filename and look for it in docs/
+    filename = os.path.basename(path)
+    
+    # Try to find the file in docs/ recursively
+    import glob
+    possible_paths = glob.glob(f"docs/**/{filename}", recursive=True)
+    if possible_paths:
+        return possible_paths[0]  # Return the first match
+    
+    return None
 
 def generate_browser_instructions(scenario_type="default", changed_files=None):
     """Generate browser automation instructions based on the scenario type and changed files."""
@@ -556,10 +691,6 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
         # Select the appropriate prompt based on scenario type
         print("1/n/n/n/n/n/n")
         
-        # Default to UI change mode
-        if scenario_type == "default":
-            scenario_type = "ui_change"
-        
         # Augment content with contextual navigation hints based on the files being processed
         try:
             hints_md = build_playbook_hints_for_changed_files(file_to_content)
@@ -576,93 +707,37 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
                 content += f"{i}. {img_path}\n"
             content += f"\nIMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.\n"
         
+        # Select the appropriate prompt based on scenario type
         if scenario_type == "ui_change":
             instruction_generation_prompt = get_prompt_for_ui_change(content)
-        else:
+        elif scenario_type == "new_feature":
             instruction_generation_prompt = get_prompt_for_new_feature(content)
-        # if scenario_type == "ui_change":
-        #     # UI change: replace each image, no Spanish document needed
-        #     instruction_generation_prompt = get_prompt_for_new_feature(content)
-        # elif scenario_type == "new_feature":
-        #     # New feature: find placeholders, only English document needed
-        #     instruction_generation_prompt = get_prompt_for_new_feature(content)
-#         else:
-#             # Fallback: use the existing prompt logic
-#             instruction_generation_prompt = f"""
-# The goal is to take screenshots of the Spanish version of the website to replace each and every image currently shown from the English website in the documentation.
-
-# You are going to write instructions that help navigate through the Spanish website to reach the exact position needed to take the screenshot.
-
-# The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
-# To understand what the image shows, you need to look at both the image filename and the text/content around it.
-
-# Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
-# - This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
-# - If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
-# - Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
-
-# These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
-
-# The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
-
-# When describing the elements to interact with:
-
-# Include the English name of the element (it helps match HTML tags).
-# Include the Spanish name of the element (it helps find the element in the Spanish website using the text locator function).
-# Describe the appearance or position of the element if it helps identify it faster.
-
-# ---
-
-# ## Instruction Format Guidelines
-
-# Follow these strict formatting rules for each instruction:
-
-# - Use a number to define each step starts with 1.
-# - Every step must indicate a specific browser action.
-# - Each instruction must describe **a single, actionable browser operation**.
-# - Use **imperative voice** (e.g., "find", "click", "enter").
-# - **CRITICAL: For every element you interact with, you MUST include BOTH the English name AND the Spanish name of the element in the instruction.**
-# - Be **explicit** about:
-#   - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
-#   - **Visual characteristics** (e.g., button color, icons, shapes)
-#   - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
-# - If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
-# - Conserve the order of instruction to match the documentation.
-# - Everything you output should be just an instruction and nothing else — no headings or summaries.
-# - The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
-# - If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
-# - For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
-# - You are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
-# - Always add this "Based on the intructions executed If you think some screenshot taken is not right, redo the process to oget that screenshot" at the end of the instructions.
-# - IF there is a command to popout window then ignore it do not add it to the instructions.
-# - Take screenshots if there are placeholders for it and name them accordingly.
-# - If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
-
-# ---
-
-# ## Example Output Format
-
-# 1.look for the worklist table (tabla de lista de trabajo) displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
-# 2.locate the "Document Viewer" (Visor de Documentos) button on the wheel interface — it appears as a paper/document icon — and click on it
-# 3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
-
-# but the wheel has the document viewer button, image viewer button, study history, billing, etc.
-# ---
-# ## Document to Process
-
-# Analyze and convert the following content into automation instructions:
-
-# ---
-# {content}
-# ---
-# For reference of what these buttons are named in Spanish, use this Spanish documentation:
-
-# ---
-# {spanish_content}
-# ---
-# Also, you are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table.
-# ## Generate Automation Instructions for the Spanish website below:
-# """
+        else:
+            # Default/translation mode: prepare English and translated content
+            english_content = ""
+            translated_content = content
+            
+            # For translation mode, try to find corresponding English files
+            # The current files are in translation folders, we need to find English equivalents
+            for file_path in changed_files:
+                try:
+                    # Try to map translated file path to English file path
+                    english_file_path = map_to_english_file_path(file_path)
+                    if english_file_path and os.path.exists(english_file_path):
+                        with open(english_file_path, 'r', encoding='utf-8') as file:
+                            file_content = file.read()
+                            english_content += f"\n---\n# {english_file_path} (MD)\n{file_content}"
+                    else:
+                        print(f"    Could not find English equivalent for: {file_path}")
+                except Exception as e:
+                    print(f"    Could not read English file for {file_path}: {e}")
+            
+            # If no English content found, use translated content for both
+            if not english_content.strip():
+                english_content = translated_content
+                print("    Using translated content as English content fallback")
+            
+            instruction_generation_prompt = get_prompt_for_translation_mode(english_content, translated_content)
 
         # Log the exact prompt sent to LLM to a text file
         try:

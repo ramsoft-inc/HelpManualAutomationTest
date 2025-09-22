@@ -52,7 +52,7 @@ function safeStringify(obj: any, indent?: number): string {
 
 export interface APILogEntry {
   timestamp: string;
-  provider: 'gemini' | 'openai';
+  provider: 'gemini' | 'openai' | 'claude';
   model: string;
   rawRequest: any; // Store the exact JSON payload sent to the model
   rawResponse: any; // Store the exact JSON response received from the model
@@ -91,6 +91,7 @@ export class APILogger {
   private logFile: string = '';
   private geminiLogFile: string = '';
   private openaiLogFile: string = '';
+  private claudeLogFile: string = '';
 
   constructor() {
     try {
@@ -102,6 +103,7 @@ export class APILogger {
       this.logFile = path.join(this.logDir, 'all_api_calls.json');
       this.geminiLogFile = path.join(this.logDir, 'gemini_calls.json');
       this.openaiLogFile = path.join(this.logDir, 'openai_calls.json');
+      this.claudeLogFile = path.join(this.logDir, 'claude_calls.json');
       
       // Ensure log directory exists with proper permissions
       if (!fs.existsSync(this.logDir)) {
@@ -186,6 +188,8 @@ export class APILogger {
         this.logToFile(this.geminiLogFile, entry);
       } else if (entry.provider === 'openai') {
         this.logToFile(this.openaiLogFile, entry);
+      } else if (entry.provider === 'claude') {
+        this.logToFile(this.claudeLogFile, entry);
       } else {
         // Silent logging for unknown provider, only to main file
       }
@@ -200,7 +204,7 @@ export class APILogger {
     }
   }
 
-  getLogs(provider?: 'gemini' | 'openai'): APILogEntry[] {
+  getLogs(provider?: 'gemini' | 'openai' | 'claude'): APILogEntry[] {
     try {
       let filePath: string;
       
@@ -208,6 +212,8 @@ export class APILogger {
         filePath = this.geminiLogFile;
       } else if (provider === 'openai') {
         filePath = this.openaiLogFile;
+      } else if (provider === 'claude') {
+        filePath = this.claudeLogFile;
       } else {
         filePath = this.logFile;
       }
@@ -224,7 +230,7 @@ export class APILogger {
     }
   }
 
-  clearLogs(provider?: 'gemini' | 'openai') {
+  clearLogs(provider?: 'gemini' | 'openai' | 'claude') {
     try {
       if (provider === 'gemini') {
         if (fs.existsSync(this.geminiLogFile)) {
@@ -233,6 +239,10 @@ export class APILogger {
       } else if (provider === 'openai') {
         if (fs.existsSync(this.openaiLogFile)) {
           fs.unlinkSync(this.openaiLogFile);
+        }
+      } else if (provider === 'claude') {
+        if (fs.existsSync(this.claudeLogFile)) {
+          fs.unlinkSync(this.claudeLogFile);
         }
       } else {
         if (fs.existsSync(this.logFile)) {
@@ -243,6 +253,9 @@ export class APILogger {
         }
         if (fs.existsSync(this.openaiLogFile)) {
           fs.unlinkSync(this.openaiLogFile);
+        }
+        if (fs.existsSync(this.claudeLogFile)) {
+          fs.unlinkSync(this.claudeLogFile);
         }
       }
     } catch (error) {
