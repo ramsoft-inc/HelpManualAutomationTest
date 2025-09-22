@@ -1,0 +1,1153 @@
+
+===== Token Usage Summary (2025-08-13T13:54:08.768Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-13T16:35:43.256Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-13T17:04:35.849Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-13T18:13:30.270Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-14T12:34:46.544Z) =====
+Script completed with 7 steps
+Input tokens: 97396
+Output tokens: 1711
+Total tokens: 99107
+Average tokens per step: 14158
+=====================================================
+
+
+===== Token Usage Summary (2025-08-14T12:34:46.549Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-14T13:08:10.793Z) =====
+Script completed with 12 steps
+Input tokens: 200406
+Output tokens: 2453
+Total tokens: 202859
+Average tokens per step: 16905
+=====================================================
+
+
+===== Token Usage Summary (2025-08-14T13:08:10.798Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-14T13:53:30.836Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-14T14:28:17.440Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T08:23:19.186Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T09:10:50.314Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T10:38:49.687Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T10:46:16.363Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T12:29:58.754Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T13:10:22.193Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T13:17:02.684Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T13:23:17.514Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-18T16:03:02.786Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-18T17:28:21.798Z) =====
+Script completed with 30 steps
+Input tokens: 545562
+Output tokens: 7884
+Total tokens: 553446
+Average tokens per step: 18448
+=====================================================
+
+
+===== Token Usage Summary (2025-08-18T17:28:21.801Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-19T03:26:54.896Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-19T03:27:39.326Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-19T03:36:49.880Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-19T08:09:16.606Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-19T09:32:19.489Z) =====
+Script completed with 31 steps
+Input tokens: 551410
+Output tokens: 6921
+Total tokens: 558331
+Average tokens per step: 18011
+=====================================================
+
+
+===== Token Usage Summary (2025-08-19T09:32:19.491Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-19T09:44:48.640Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-19T12:58:37.356Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-19T13:14:06.265Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-19T13:39:10.593Z) =====
+Script completed with 15 steps
+Input tokens: 311010
+Output tokens: 3692
+Total tokens: 314702
+Average tokens per step: 20980
+=====================================================
+
+
+===== Token Usage Summary (2025-08-19T13:39:10.594Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-19T14:08:45.724Z) =====
+Script completed with 19 steps
+Input tokens: 366637
+Output tokens: 4717
+Total tokens: 371354
+Average tokens per step: 19545
+=====================================================
+
+
+===== Token Usage Summary (2025-08-19T14:08:45.726Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-20T02:48:56.773Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T03:16:03.288Z) =====
+Script completed with 22 steps
+Input tokens: 367700
+Output tokens: 5521
+Total tokens: 373221
+Average tokens per step: 16965
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T03:16:03.298Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T08:15:43.383Z) =====
+Script completed with 8 steps
+Input tokens: 104309
+Output tokens: 1497
+Total tokens: 105806
+Average tokens per step: 13226
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T08:15:43.385Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T08:31:20.332Z) =====
+Script completed with 8 steps
+Input tokens: 104682
+Output tokens: 1537
+Total tokens: 106219
+Average tokens per step: 13277
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T08:31:20.337Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T09:08:19.904Z) =====
+Script completed with 9 steps
+Input tokens: 127258
+Output tokens: 1610
+Total tokens: 128868
+Average tokens per step: 14319
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T09:08:19.909Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T10:43:51.825Z) =====
+Script completed with 8 steps
+Input tokens: 105139
+Output tokens: 1613
+Total tokens: 106752
+Average tokens per step: 13344
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T10:43:51.827Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T11:06:58.982Z) =====
+Script completed with 6 steps
+Input tokens: 78363
+Output tokens: 1013
+Total tokens: 79376
+Average tokens per step: 13229
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T11:06:58.984Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-20T11:12:47.579Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T11:28:47.609Z) =====
+Script completed with 8 steps
+Input tokens: 106138
+Output tokens: 1500
+Total tokens: 107638
+Average tokens per step: 13455
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T11:28:47.612Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T11:38:33.828Z) =====
+Script completed with 6 steps
+Input tokens: 77943
+Output tokens: 982
+Total tokens: 78925
+Average tokens per step: 13154
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T11:38:33.830Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T12:09:20.246Z) =====
+Script completed with 21 steps
+Input tokens: 349094
+Output tokens: 4037
+Total tokens: 353131
+Average tokens per step: 16816
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T12:09:20.249Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-20T12:41:08.452Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-20T13:11:24.651Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-20T13:31:33.834Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T16:09:08.784Z) =====
+Script completed with 18 steps
+Input tokens: 298080
+Output tokens: 3884
+Total tokens: 301964
+Average tokens per step: 16776
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T16:09:08.787Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-20T17:14:44.295Z) =====
+Script completed with 24 steps
+Input tokens: 431042
+Output tokens: 5359
+Total tokens: 436401
+Average tokens per step: 18183
+=====================================================
+
+
+===== Token Usage Summary (2025-08-20T17:14:44.297Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-20T18:05:40.676Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T03:27:05.352Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T03:44:55.117Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T03:47:04.599Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-21T04:22:13.135Z) =====
+Script completed with 25 steps
+Input tokens: 400112
+Output tokens: 5040
+Total tokens: 405152
+Average tokens per step: 16206
+=====================================================
+
+
+===== Token Usage Summary (2025-08-21T04:22:13.144Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T04:53:01.953Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T05:00:28.226Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T05:17:20.976Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T05:27:34.291Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-21T05:51:16.246Z) =====
+Script completed with 24 steps
+Input tokens: 388285
+Output tokens: 4833
+Total tokens: 393118
+Average tokens per step: 16380
+=====================================================
+
+
+===== Token Usage Summary (2025-08-21T05:51:16.249Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T06:40:19.657Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T07:13:11.161Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T07:33:40.142Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T07:48:21.576Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T08:06:54.656Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T08:16:20.300Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T08:20:34.490Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T08:25:28.608Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T08:53:07.205Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T08:57:54.817Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T09:01:13.346Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T09:10:52.015Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T09:14:26.560Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-21T09:26:24.373Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-21T09:53:11.809Z) =====
+Script completed with 22 steps
+Input tokens: 374507
+Output tokens: 4233
+Total tokens: 378740
+Average tokens per step: 17215
+=====================================================
+
+
+===== Token Usage Summary (2025-08-21T09:53:11.812Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-21T11:26:32.487Z) =====
+Script completed with 31 steps
+Input tokens: 507210
+Output tokens: 7397
+Total tokens: 514607
+Average tokens per step: 16600
+=====================================================
+
+
+===== Token Usage Summary (2025-08-21T11:26:32.490Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-21T12:06:09.444Z) =====
+Script completed with 22 steps
+Input tokens: 375638
+Output tokens: 4848
+Total tokens: 380486
+Average tokens per step: 17295
+=====================================================
+
+
+===== Token Usage Summary (2025-08-21T12:06:09.448Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-25T13:42:18.162Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-26T07:47:06.755Z) =====
+Script completed with 4 steps
+Input tokens: 47083
+Output tokens: 578
+Total tokens: 47661
+Average tokens per step: 11915
+=====================================================
+
+
+===== Token Usage Summary (2025-08-26T07:47:06.758Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-26T08:01:46.643Z) =====
+Script completed with 7 steps
+Input tokens: 117546
+Output tokens: 1359
+Total tokens: 118905
+Average tokens per step: 16986
+=====================================================
+
+
+===== Token Usage Summary (2025-08-26T08:01:46.646Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-26T08:12:19.973Z) =====
+Script completed with 6 steps
+Input tokens: 84286
+Output tokens: 1118
+Total tokens: 85404
+Average tokens per step: 14234
+=====================================================
+
+
+===== Token Usage Summary (2025-08-26T08:12:19.976Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-26T08:30:10.266Z) =====
+Script completed with 3 steps
+Input tokens: 35056
+Output tokens: 573
+Total tokens: 35629
+Average tokens per step: 11876
+=====================================================
+
+
+===== Token Usage Summary (2025-08-26T08:30:10.270Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-26T08:44:13.680Z) =====
+Script completed with 7 steps
+Input tokens: 171796
+Output tokens: 1605
+Total tokens: 173401
+Average tokens per step: 24772
+=====================================================
+
+
+===== Token Usage Summary (2025-08-26T08:44:13.684Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-26T08:59:21.441Z) =====
+Script completed with 8 steps
+Input tokens: 171944
+Output tokens: 1662
+Total tokens: 173606
+Average tokens per step: 21701
+=====================================================
+
+
+===== Token Usage Summary (2025-08-26T08:59:21.446Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-26T10:56:39.339Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-26T13:10:37.989Z) =====
+Script completed with 13 steps
+Input tokens: 327718
+Output tokens: 4472
+Total tokens: 332190
+Average tokens per step: 25553
+=====================================================
+
+
+===== Token Usage Summary (2025-08-26T13:10:37.991Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-28T08:42:52.192Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-28T09:57:56.036Z) =====
+Script completed with 17 steps
+Input tokens: 353681
+Output tokens: 3569
+Total tokens: 357250
+Average tokens per step: 21015
+=====================================================
+
+
+===== Token Usage Summary (2025-08-28T09:57:56.039Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-28T11:43:11.316Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-28T13:01:31.529Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-28T13:28:42.967Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-28T13:45:22.861Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-29T05:42:42.911Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-29T05:54:30.077Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-29T08:16:12.643Z) =====
+Script completed with 37 steps
+Input tokens: 1500382
+Output tokens: 6494
+Total tokens: 1506876
+Average tokens per step: 40726
+=====================================================
+
+
+===== Token Usage Summary (2025-08-29T08:16:12.646Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-29T10:45:37.335Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-08-29T11:39:03.052Z) =====
+Script completed with 26 steps
+Input tokens: 688146
+Output tokens: 4973
+Total tokens: 693119
+Average tokens per step: 26658
+=====================================================
+
+
+===== Token Usage Summary (2025-08-29T11:39:03.054Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-08-29T12:15:30.539Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-01T07:46:12.821Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-09-01T08:02:50.157Z) =====
+Script completed with 1 steps
+Input tokens: 4804
+Output tokens: 127
+Total tokens: 4931
+Average tokens per step: 4931
+=====================================================
+
+
+===== Token Usage Summary (2025-09-01T08:02:50.160Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-01T08:18:34.917Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-01T09:04:50.738Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-01T12:14:35.222Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-01T12:57:10.726Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-01T13:13:46.605Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-03T09:39:21.649Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T07:24:10.860Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T07:43:39.680Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T07:56:00.710Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T08:31:57.856Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T08:44:59.719Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T09:03:52.984Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T09:46:31.149Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-05T10:32:38.333Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-08T06:59:32.198Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-08T07:08:54.188Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-08T08:02:22.689Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-08T08:27:45.521Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-08T09:26:57.675Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-09-08T10:03:10.376Z) =====
+Script completed with 5 steps
+Input tokens: 40847
+Output tokens: 1260
+Total tokens: 42107
+Average tokens per step: 8421
+=====================================================
+
+
+===== Token Usage Summary (2025-09-08T10:03:10.383Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-08T13:42:01.442Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Batch Processing Token Usage Summary (2025-09-09T10:56:21.596Z) =====
+Total Files Processed: 1
+Successful: 0
+Failed: 1
+Success Rate: 0.0%
+============================================================
+
+
+===== Batch Processing Token Usage Summary (2025-09-09T11:19:58.697Z) =====
+Total Files Processed: 1
+Successful: 0
+Failed: 1
+Success Rate: 0.0%
+============================================================
+
+
+===== Batch Processing Token Usage Summary (2025-09-09T11:24:48.207Z) =====
+Total Files Processed: 1
+Successful: 1
+Failed: 0
+Success Rate: 100.0%
+============================================================
+
+
+===== Batch Processing Token Usage Summary (2025-09-09T11:56:28.514Z) =====
+Total Files Processed: 1
+Successful: 1
+Failed: 0
+Success Rate: 100.0%
+============================================================
+
+
+===== Comprehensive Token Usage Summary (2025-09-09T12:42:42.265Z) =====
+Script completed with 4 steps
+Input tokens: 46942
+Output tokens: 1635
+Total tokens: 48577
+Average tokens per step: 12144
+=====================================================
+
+
+===== Token Usage Summary (2025-09-09T12:42:42.269Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-09-09T12:50:14.465Z) =====
+Script completed with 4 steps
+Input tokens: 32044
+Output tokens: 1129
+Total tokens: 33173
+Average tokens per step: 8293
+=====================================================
+
+
+===== Token Usage Summary (2025-09-09T12:50:14.468Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-09T13:08:46.936Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-09-09T13:19:06.156Z) =====
+Script completed with 7 steps
+Input tokens: 89912
+Output tokens: 2542
+Total tokens: 92454
+Average tokens per step: 13208
+=====================================================
+
+
+===== Token Usage Summary (2025-09-09T13:19:06.161Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-09T13:29:05.962Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-09-09T13:50:40.486Z) =====
+Script completed with 5 steps
+Input tokens: 40719
+Output tokens: 1800
+Total tokens: 42519
+Average tokens per step: 8504
+=====================================================
+
+
+===== Token Usage Summary (2025-09-09T13:50:40.488Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Comprehensive Token Usage Summary (2025-09-09T14:06:35.571Z) =====
+Script completed with 4 steps
+Input tokens: 31461
+Output tokens: 661
+Total tokens: 32122
+Average tokens per step: 8031
+=====================================================
+
+
+===== Token Usage Summary (2025-09-09T14:06:35.576Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-10T11:34:20.259Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-10T11:35:51.301Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-10T11:40:29.093Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-10T11:48:47.229Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-10T12:35:50.209Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-10T13:16:42.187Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T10:33:14.691Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T10:36:45.613Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T10:49:48.914Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T10:58:35.674Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T11:05:22.084Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T11:11:56.031Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T11:18:51.308Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T11:25:29.238Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-16T11:34:37.091Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T06:56:41.643Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T07:02:39.941Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T07:24:43.398Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T07:26:41.292Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T07:32:48.737Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T08:18:41.216Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T08:45:17.344Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T09:37:02.196Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-17T09:46:57.695Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-18T08:48:57.251Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-18T10:12:39.952Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-18T10:28:57.723Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-18T12:15:52.056Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-18T12:21:13.588Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-19T12:12:23.156Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-19T12:18:57.060Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+
+
+===== Token Usage Summary (2025-09-19T12:22:48.002Z) =====
+(Note: Detailed statistics not available - using simple summary)
+===========================================
+

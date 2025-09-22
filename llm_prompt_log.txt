@@ -1,0 +1,1375 @@
+
+================================================================================
+TIMESTAMP: 2025-09-09T16:34:38.447415
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md (MD)
+---
+sidebar_position: 3
+title: Adding & Managing Organizations
+tags:
+  - Organizations
+  - Master Organization
+  - Add New Organization
+  - Referring Organizations
+---
+
+# Adding & Managing Organizations
+
+## Accessing Organizations in OmegaAI
+
+### Opening the Organization Panel
+
+To start managing organizations, click on the Organizations tab. This serves as the main gateway for all organization-related functions.
+
+### Master Organizations Tab
+
+The Master Organizations tab on the left shows the master organization(s) you are part of. The number of organizations listed here depends on the user profile settings.
+
+### Adding a New Organization
+
+To add a new organization, click on the '+' icon located at the top of the organization list. The new organization is added as a subordinate to the selected master organization.
+
+### Viewing the Organization Card
+
+The Organization Card displayed on the right provides details of the current organization such as name, type, National Provider Identifier (NPI), time zone, website address, and contact information.
+
+### Managing Organization Details
+
+For more information or to modify the details of the organization, click 'Details'. Here the organization can also be deleted if necessary.
+
+### Managing Referring Organizations
+
+Access and manage referring organizations at the bottom of the panel. Here you can add new referring organizations as needed.
+
+## Creating a New Organization
+
+Perform the below steps to create a new organization.
+
+1. Selecting a Parent Organization
+
+Choose an existing organization to act as a parent for a newly created organization.
+
+2. Entering Organization Details
+
+After clicking the '+', the following details are entered for the new organization:
+- **Name and Parent Organization**: Specify the name and select or modify the parent organization.
+- **Practice Type and Identifiers**: Define the type of practice and add the NPI, tax ID, time zone, and corporate website.
+- **Identity Provider Setup**: Import an XML file to set up an identity provider. 
+  - *Note: Templates for this setup are available for downloading on the same screen.*
+
+![addorg](./img/addingorgs.png)
+
+3. Adding Address Information
+
+The address search feature is utilized to automatically populate address fields.
+
+4. Providing Contact Information
+
+Enter details such as email, phone, and fax numbers in the Contact Information section. 
+- *Note: Multiple entries can be added for each type of contact information.*
+
+5. Finalizing the Creation
+
+Click 'Save' to confirm the creation of the new organization or 'Cancel' to discard changes.
+
+## Understanding Hierarchy and Usage
+
+### Master Organization
+
+This is a top-level organization that manages crucial configurations, patient data, role configurations, status customizations, and workflow automation.
+
+### Sub Organizations
+
+Suborganizations are beneficial for managing different user groups, healthcare resources (particularly with the scheduler feature), and associating devices for imaging data (such as DICOM).
+
+## Accessing and Managing Referring Organizations
+
+### Viewing Referring Organizations
+
+At the bottom of the organization card, a list of referring organizations associated with the organization can be viewed.
+
+### Managing Referring Organization Details
+
+Click on the referring organization's name to view detailed information including the number of referring physicians, type, NPI, time zone, and website.
+
+### Editing or Unlinking Referring Organizations
+
+Click Details for more options to edit or unlink the referring organization.
+
+### Adding/Linking a New Referring Organization
+
+Click the '+' icon to initiate linking to a new or existing referring organization.
+- A search box appears to allow you to find and select a referring organization.
+- After searching, select 'Link' to associate the referring organization with your organization.
+- To create a new referring organization, click on the '+ New Organization' icon and enter the necessary details such as name, time zone, and corporate website. 
+  - *Note: The practice type is set as 'Referring' and cannot be changed.*
+  - The address search feature is used to automatically fill in the address fields.
+  - Add contact information such as email, phone, and fax with the option of including multiple entries.
+  - Click Save to confirm the creation of the new referring organization or Cancel to abort the process.
+
+Upon creation, the new organization is automatically linked to the parent organization.
+
+---
+## Contextual First Steps (auto-detected)
+### First Steps for C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md — 1-Getting-Started
+- From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).
+- Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms).
+---
+
+
+## Available Image Paths to Capture:
+1. ./img/addingorgs.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-09T16:35:56.033737
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md (MD)
+---
+sidebar_position: 3
+title: Adding & Managing Organizations
+tags:
+  - Organizations
+  - Master Organization
+  - Add New Organization
+  - Referring Organizations
+---
+
+# Adding & Managing Organizations
+
+## Accessing Organizations in OmegaAI
+
+### Opening the Organization Panel
+
+To start managing organizations, click on the Organizations tab. This serves as the main gateway for all organization-related functions.
+
+### Master Organizations Tab
+
+The Master Organizations tab on the left shows the master organization(s) you are part of. The number of organizations listed here depends on the user profile settings.
+
+### Adding a New Organization
+
+To add a new organization, click on the '+' icon located at the top of the organization list. The new organization is added as a subordinate to the selected master organization.
+
+### Viewing the Organization Card
+
+The Organization Card displayed on the right provides details of the current organization such as name, type, National Provider Identifier (NPI), time zone, website address, and contact information.
+
+### Managing Organization Details
+
+For more information or to modify the details of the organization, click 'Details'. Here the organization can also be deleted if necessary.
+
+### Managing Referring Organizations
+
+Access and manage referring organizations at the bottom of the panel. Here you can add new referring organizations as needed.
+
+## Creating a New Organization
+
+Perform the below steps to create a new organization.
+
+1. Selecting a Parent Organization
+
+Choose an existing organization to act as a parent for a newly created organization.
+
+2. Entering Organization Details
+
+After clicking the '+', the following details are entered for the new organization:
+- **Name and Parent Organization**: Specify the name and select or modify the parent organization.
+- **Practice Type and Identifiers**: Define the type of practice and add the NPI, tax ID, time zone, and corporate website.
+- **Identity Provider Setup**: Import an XML file to set up an identity provider. 
+  - *Note: Templates for this setup are available for downloading on the same screen.*
+
+![addorg](./img/addingorgs.png)
+
+3. Adding Address Information
+
+The address search feature is utilized to automatically populate address fields.
+
+4. Providing Contact Information
+
+Enter details such as email, phone, and fax numbers in the Contact Information section. 
+- *Note: Multiple entries can be added for each type of contact information.*
+
+5. Finalizing the Creation
+
+Click 'Save' to confirm the creation of the new organization or 'Cancel' to discard changes.
+
+## Understanding Hierarchy and Usage
+
+### Master Organization
+
+This is a top-level organization that manages crucial configurations, patient data, role configurations, status customizations, and workflow automation.
+
+### Sub Organizations
+
+Suborganizations are beneficial for managing different user groups, healthcare resources (particularly with the scheduler feature), and associating devices for imaging data (such as DICOM).
+
+## Accessing and Managing Referring Organizations
+
+### Viewing Referring Organizations
+
+At the bottom of the organization card, a list of referring organizations associated with the organization can be viewed.
+
+### Managing Referring Organization Details
+
+Click on the referring organization's name to view detailed information including the number of referring physicians, type, NPI, time zone, and website.
+
+### Editing or Unlinking Referring Organizations
+
+Click Details for more options to edit or unlink the referring organization.
+
+### Adding/Linking a New Referring Organization
+
+Click the '+' icon to initiate linking to a new or existing referring organization.
+- A search box appears to allow you to find and select a referring organization.
+- After searching, select 'Link' to associate the referring organization with your organization.
+- To create a new referring organization, click on the '+ New Organization' icon and enter the necessary details such as name, time zone, and corporate website. 
+  - *Note: The practice type is set as 'Referring' and cannot be changed.*
+  - The address search feature is used to automatically fill in the address fields.
+  - Add contact information such as email, phone, and fax with the option of including multiple entries.
+  - Click Save to confirm the creation of the new referring organization or Cancel to abort the process.
+
+Upon creation, the new organization is automatically linked to the parent organization.
+
+---
+## Contextual First Steps (auto-detected)
+### First Steps for C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md — 1-Getting-Started
+- From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).
+- Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms).
+---
+
+
+## Available Image Paths to Capture:
+1. ./img/addingorgs.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-09T16:51:00.993679
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md (MD)
+---
+sidebar_position: 3
+title: Adding & Managing Organizations
+tags:
+  - Organizations
+  - Master Organization
+  - Add New Organization
+  - Referring Organizations
+---
+
+# Adding & Managing Organizations
+
+## Accessing Organizations in OmegaAI
+
+### Opening the Organization Panel
+
+To start managing organizations, click on the Organizations tab. This serves as the main gateway for all organization-related functions.
+
+### Master Organizations Tab
+
+The Master Organizations tab on the left shows the master organization(s) you are part of. The number of organizations listed here depends on the user profile settings.
+
+### Adding a New Organization
+
+To add a new organization, click on the '+' icon located at the top of the organization list. The new organization is added as a subordinate to the selected master organization.
+
+### Viewing the Organization Card
+
+The Organization Card displayed on the right provides details of the current organization such as name, type, National Provider Identifier (NPI), time zone, website address, and contact information.
+
+### Managing Organization Details
+
+For more information or to modify the details of the organization, click 'Details'. Here the organization can also be deleted if necessary.
+
+### Managing Referring Organizations
+
+Access and manage referring organizations at the bottom of the panel. Here you can add new referring organizations as needed.
+
+## Creating a New Organization
+
+Perform the below steps to create a new organization.
+
+1. Selecting a Parent Organization
+
+Choose an existing organization to act as a parent for a newly created organization.
+
+2. Entering Organization Details
+
+After clicking the '+', the following details are entered for the new organization:
+- **Name and Parent Organization**: Specify the name and select or modify the parent organization.
+- **Practice Type and Identifiers**: Define the type of practice and add the NPI, tax ID, time zone, and corporate website.
+- **Identity Provider Setup**: Import an XML file to set up an identity provider. 
+  - *Note: Templates for this setup are available for downloading on the same screen.*
+
+![addorg](./img/addingorgs.png)
+
+3. Adding Address Information
+
+The address search feature is utilized to automatically populate address fields.
+
+4. Providing Contact Information
+
+Enter details such as email, phone, and fax numbers in the Contact Information section. 
+- *Note: Multiple entries can be added for each type of contact information.*
+
+5. Finalizing the Creation
+
+Click 'Save' to confirm the creation of the new organization or 'Cancel' to discard changes.
+
+## Understanding Hierarchy and Usage
+
+### Master Organization
+
+This is a top-level organization that manages crucial configurations, patient data, role configurations, status customizations, and workflow automation.
+
+### Sub Organizations
+
+Suborganizations are beneficial for managing different user groups, healthcare resources (particularly with the scheduler feature), and associating devices for imaging data (such as DICOM).
+
+## Accessing and Managing Referring Organizations
+
+### Viewing Referring Organizations
+
+At the bottom of the organization card, a list of referring organizations associated with the organization can be viewed.
+
+### Managing Referring Organization Details
+
+Click on the referring organization's name to view detailed information including the number of referring physicians, type, NPI, time zone, and website.
+
+### Editing or Unlinking Referring Organizations
+
+Click Details for more options to edit or unlink the referring organization.
+
+### Adding/Linking a New Referring Organization
+
+Click the '+' icon to initiate linking to a new or existing referring organization.
+- A search box appears to allow you to find and select a referring organization.
+- After searching, select 'Link' to associate the referring organization with your organization.
+- To create a new referring organization, click on the '+ New Organization' icon and enter the necessary details such as name, time zone, and corporate website. 
+  - *Note: The practice type is set as 'Referring' and cannot be changed.*
+  - The address search feature is used to automatically fill in the address fields.
+  - Add contact information such as email, phone, and fax with the option of including multiple entries.
+  - Click Save to confirm the creation of the new referring organization or Cancel to abort the process.
+
+Upon creation, the new organization is automatically linked to the parent organization.
+
+---
+## Contextual First Steps (auto-detected)
+### First Steps for C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md — 1-Getting-Started
+- From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).
+- Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms).
+---
+
+
+## Available Image Paths to Capture:
+1. ./img/addingorgs.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-09T17:08:04.099490
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md (MD)
+---
+sidebar_position: 3
+title: Adding & Managing Organizations
+tags:
+  - Organizations
+  - Master Organization
+  - Add New Organization
+  - Referring Organizations
+---
+
+# Adding & Managing Organizations
+
+## Accessing Organizations in OmegaAI
+
+### Opening the Organization Panel
+
+To start managing organizations, click on the Organizations tab. This serves as the main gateway for all organization-related functions.
+
+### Master Organizations Tab
+
+The Master Organizations tab on the left shows the master organization(s) you are part of. The number of organizations listed here depends on the user profile settings.
+
+### Adding a New Organization
+
+To add a new organization, click on the '+' icon located at the top of the organization list. The new organization is added as a subordinate to the selected master organization.
+
+### Viewing the Organization Card
+
+The Organization Card displayed on the right provides details of the current organization such as name, type, National Provider Identifier (NPI), time zone, website address, and contact information.
+
+### Managing Organization Details
+
+For more information or to modify the details of the organization, click 'Details'. Here the organization can also be deleted if necessary.
+
+### Managing Referring Organizations
+
+Access and manage referring organizations at the bottom of the panel. Here you can add new referring organizations as needed.
+
+## Creating a New Organization
+
+Perform the below steps to create a new organization.
+
+1. Selecting a Parent Organization
+
+Choose an existing organization to act as a parent for a newly created organization.
+
+2. Entering Organization Details
+
+After clicking the '+', the following details are entered for the new organization:
+- **Name and Parent Organization**: Specify the name and select or modify the parent organization.
+- **Practice Type and Identifiers**: Define the type of practice and add the NPI, tax ID, time zone, and corporate website.
+- **Identity Provider Setup**: Import an XML file to set up an identity provider. 
+  - *Note: Templates for this setup are available for downloading on the same screen.*
+
+![addorg](./img/addingorgs.png)
+
+3. Adding Address Information
+
+The address search feature is utilized to automatically populate address fields.
+
+4. Providing Contact Information
+
+Enter details such as email, phone, and fax numbers in the Contact Information section. 
+- *Note: Multiple entries can be added for each type of contact information.*
+
+5. Finalizing the Creation
+
+Click 'Save' to confirm the creation of the new organization or 'Cancel' to discard changes.
+
+## Understanding Hierarchy and Usage
+
+### Master Organization
+
+This is a top-level organization that manages crucial configurations, patient data, role configurations, status customizations, and workflow automation.
+
+### Sub Organizations
+
+Suborganizations are beneficial for managing different user groups, healthcare resources (particularly with the scheduler feature), and associating devices for imaging data (such as DICOM).
+
+## Accessing and Managing Referring Organizations
+
+### Viewing Referring Organizations
+
+At the bottom of the organization card, a list of referring organizations associated with the organization can be viewed.
+
+### Managing Referring Organization Details
+
+Click on the referring organization's name to view detailed information including the number of referring physicians, type, NPI, time zone, and website.
+
+### Editing or Unlinking Referring Organizations
+
+Click Details for more options to edit or unlink the referring organization.
+
+### Adding/Linking a New Referring Organization
+
+Click the '+' icon to initiate linking to a new or existing referring organization.
+- A search box appears to allow you to find and select a referring organization.
+- After searching, select 'Link' to associate the referring organization with your organization.
+- To create a new referring organization, click on the '+ New Organization' icon and enter the necessary details such as name, time zone, and corporate website. 
+  - *Note: The practice type is set as 'Referring' and cannot be changed.*
+  - The address search feature is used to automatically fill in the address fields.
+  - Add contact information such as email, phone, and fax with the option of including multiple entries.
+  - Click Save to confirm the creation of the new referring organization or Cancel to abort the process.
+
+Upon creation, the new organization is automatically linked to the parent organization.
+
+---
+## Contextual First Steps (auto-detected)
+### First Steps for C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md — 1-Getting-Started
+- From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).
+- Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms).
+---
+
+
+## Available Image Paths to Capture:
+1. ./img/addingorgs.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-09T17:19:54.650140
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md (MD)
+---
+sidebar_position: 3
+title: Adding & Managing Organizations
+tags:
+  - Organizations
+  - Master Organization
+  - Add New Organization
+  - Referring Organizations
+---
+
+# Adding & Managing Organizations
+
+## Accessing Organizations in OmegaAI
+
+### Opening the Organization Panel
+
+To start managing organizations, click on the Organizations tab. This serves as the main gateway for all organization-related functions.
+
+### Master Organizations Tab
+
+The Master Organizations tab on the left shows the master organization(s) you are part of. The number of organizations listed here depends on the user profile settings.
+
+### Adding a New Organization
+
+To add a new organization, click on the '+' icon located at the top of the organization list. The new organization is added as a subordinate to the selected master organization.
+
+### Viewing the Organization Card
+
+The Organization Card displayed on the right provides details of the current organization such as name, type, National Provider Identifier (NPI), time zone, website address, and contact information.
+
+### Managing Organization Details
+
+For more information or to modify the details of the organization, click 'Details'. Here the organization can also be deleted if necessary.
+
+### Managing Referring Organizations
+
+Access and manage referring organizations at the bottom of the panel. Here you can add new referring organizations as needed.
+
+## Creating a New Organization
+
+Perform the below steps to create a new organization.
+
+1. Selecting a Parent Organization
+
+Choose an existing organization to act as a parent for a newly created organization.
+
+2. Entering Organization Details
+
+After clicking the '+', the following details are entered for the new organization:
+- **Name and Parent Organization**: Specify the name and select or modify the parent organization.
+- **Practice Type and Identifiers**: Define the type of practice and add the NPI, tax ID, time zone, and corporate website.
+- **Identity Provider Setup**: Import an XML file to set up an identity provider. 
+  - *Note: Templates for this setup are available for downloading on the same screen.*
+
+![addorg](./img/addingorgs.png)
+
+3. Adding Address Information
+
+The address search feature is utilized to automatically populate address fields.
+
+4. Providing Contact Information
+
+Enter details such as email, phone, and fax numbers in the Contact Information section. 
+- *Note: Multiple entries can be added for each type of contact information.*
+
+5. Finalizing the Creation
+
+Click 'Save' to confirm the creation of the new organization or 'Cancel' to discard changes.
+
+## Understanding Hierarchy and Usage
+
+### Master Organization
+
+This is a top-level organization that manages crucial configurations, patient data, role configurations, status customizations, and workflow automation.
+
+### Sub Organizations
+
+Suborganizations are beneficial for managing different user groups, healthcare resources (particularly with the scheduler feature), and associating devices for imaging data (such as DICOM).
+
+## Accessing and Managing Referring Organizations
+
+### Viewing Referring Organizations
+
+At the bottom of the organization card, a list of referring organizations associated with the organization can be viewed.
+
+### Managing Referring Organization Details
+
+Click on the referring organization's name to view detailed information including the number of referring physicians, type, NPI, time zone, and website.
+
+### Editing or Unlinking Referring Organizations
+
+Click Details for more options to edit or unlink the referring organization.
+
+### Adding/Linking a New Referring Organization
+
+Click the '+' icon to initiate linking to a new or existing referring organization.
+- A search box appears to allow you to find and select a referring organization.
+- After searching, select 'Link' to associate the referring organization with your organization.
+- To create a new referring organization, click on the '+ New Organization' icon and enter the necessary details such as name, time zone, and corporate website. 
+  - *Note: The practice type is set as 'Referring' and cannot be changed.*
+  - The address search feature is used to automatically fill in the address fields.
+  - Add contact information such as email, phone, and fax with the option of including multiple entries.
+  - Click Save to confirm the creation of the new referring organization or Cancel to abort the process.
+
+Upon creation, the new organization is automatically linked to the parent organization.
+
+---
+## Contextual First Steps (auto-detected)
+### First Steps for C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md — 1-Getting-Started
+- From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).
+- Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms).
+---
+
+
+## Available Image Paths to Capture:
+1. ./img/addingorgs.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-09T17:27:55.783440
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md (MD)
+---
+sidebar_position: 3
+title: Adding & Managing Organizations
+tags:
+  - Organizations
+  - Master Organization
+  - Add New Organization
+  - Referring Organizations
+---
+
+# Adding & Managing Organizations
+
+## Accessing Organizations in OmegaAI
+
+### Opening the Organization Panel
+
+To start managing organizations, click on the Organizations tab. This serves as the main gateway for all organization-related functions.
+
+### Master Organizations Tab
+
+The Master Organizations tab on the left shows the master organization(s) you are part of. The number of organizations listed here depends on the user profile settings.
+
+### Adding a New Organization
+
+To add a new organization, click on the '+' icon located at the top of the organization list. The new organization is added as a subordinate to the selected master organization.
+
+### Viewing the Organization Card
+
+The Organization Card displayed on the right provides details of the current organization such as name, type, National Provider Identifier (NPI), time zone, website address, and contact information.
+
+### Managing Organization Details
+
+For more information or to modify the details of the organization, click 'Details'. Here the organization can also be deleted if necessary.
+
+### Managing Referring Organizations
+
+Access and manage referring organizations at the bottom of the panel. Here you can add new referring organizations as needed.
+
+## Creating a New Organization
+
+Perform the below steps to create a new organization.
+
+1. Selecting a Parent Organization
+
+Choose an existing organization to act as a parent for a newly created organization.
+
+2. Entering Organization Details
+
+After clicking the '+', the following details are entered for the new organization:
+- **Name and Parent Organization**: Specify the name and select or modify the parent organization.
+- **Practice Type and Identifiers**: Define the type of practice and add the NPI, tax ID, time zone, and corporate website.
+- **Identity Provider Setup**: Import an XML file to set up an identity provider. 
+  - *Note: Templates for this setup are available for downloading on the same screen.*
+
+![addorg](./img/addingorgs.png)
+
+3. Adding Address Information
+
+The address search feature is utilized to automatically populate address fields.
+
+4. Providing Contact Information
+
+Enter details such as email, phone, and fax numbers in the Contact Information section. 
+- *Note: Multiple entries can be added for each type of contact information.*
+
+5. Finalizing the Creation
+
+Click 'Save' to confirm the creation of the new organization or 'Cancel' to discard changes.
+
+## Understanding Hierarchy and Usage
+
+### Master Organization
+
+This is a top-level organization that manages crucial configurations, patient data, role configurations, status customizations, and workflow automation.
+
+### Sub Organizations
+
+Suborganizations are beneficial for managing different user groups, healthcare resources (particularly with the scheduler feature), and associating devices for imaging data (such as DICOM).
+
+## Accessing and Managing Referring Organizations
+
+### Viewing Referring Organizations
+
+At the bottom of the organization card, a list of referring organizations associated with the organization can be viewed.
+
+### Managing Referring Organization Details
+
+Click on the referring organization's name to view detailed information including the number of referring physicians, type, NPI, time zone, and website.
+
+### Editing or Unlinking Referring Organizations
+
+Click Details for more options to edit or unlink the referring organization.
+
+### Adding/Linking a New Referring Organization
+
+Click the '+' icon to initiate linking to a new or existing referring organization.
+- A search box appears to allow you to find and select a referring organization.
+- After searching, select 'Link' to associate the referring organization with your organization.
+- To create a new referring organization, click on the '+ New Organization' icon and enter the necessary details such as name, time zone, and corporate website. 
+  - *Note: The practice type is set as 'Referring' and cannot be changed.*
+  - The address search feature is used to automatically fill in the address fields.
+  - Add contact information such as email, phone, and fax with the option of including multiple entries.
+  - Click Save to confirm the creation of the new referring organization or Cancel to abort the process.
+
+Upon creation, the new organization is automatically linked to the parent organization.
+
+---
+## Contextual First Steps (auto-detected)
+### First Steps for C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md — 1-Getting-Started
+- From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).
+- Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms).
+---
+
+
+## Available Image Paths to Capture:
+1. ./img/addingorgs.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-09T17:30:30.037398
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/test-document.md (MD)
+# Test Document
+
+This is a test document for tracewright automation.
+
+## Organizations Management
+
+This document demonstrates how to navigate to the Organizations page and manage organizations.
+
+### Navigation Steps
+
+1. Click on the Organizations tab in the navigation
+2. Wait for the Organizations panel to load
+3. Click the + icon to add a new organization
+4. Fill in the organization details
+5. Take a screenshot of the form
+
+![Organizations Page](./img/organizations.png)
+
+<!-- placeholder for a screenshot -->
+
+## Testing
+
+This document is used for testing the enhanced tracewright flow.
+
+
+## Available Image Paths to Capture:
+1. ./img/organizations.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-09-09T17:55:45.307484
+SCENARIO: ui_change
+================================================================================
+
+Goal: Generate step‑by‑step browser actions to retake documentation screenshots where a UI element changed (selector, appearance, or structure).
+
+Use the documentation’s existing image filenames and surrounding text to infer the intended UI state. Retake each screenshot so it matches that state. Do not invent new filenames; reuse the exact filenames provided by the docs.
+
+Output format (strict):
+1) THINKING — A short planning block with:
+   - think of how the isntructions should be structuted what the point of each step is.
+   - Navigation plan from the Worklist to each target screen.
+   - For each screenshot (by filename if provided), a brief description of the expected UI state and the key elements that must be visible (names, icons, positions).
+2) INSTRUCTIONS — Numbered steps starting at 1. Each step is exactly one browser action.
+
+Before any screenshot, ensure the UI is fully visible and in the correct state:
+- Expand panels, open dropdowns/overlays, or toggle features as needed to match the reference.
+- If the element is already visible, do not click it unnecessarily; proceed to capture.
+
+Rules for INSTRUCTIONS:
+- Use imperative voice.
+- Each step is exactly one action (e.g., "click", "type", "open", "hover", "wait until visible").
+- For every interacted element, include its English name; add brief visual/positional cues when helpful (e.g., color, icon, "top‑right").
+- When capturing, say "take a screenshot" and save it using the exact filename from the docs (e.g., images/screenshot1.png).
+- For each screenshot step, include a DETAILED description that explains:
+  * WHAT specific UI elements should be visible in the screenshot
+  * WHY this screenshot is important (what it's documenting)
+  * HOW the UI should be configured (expanded panels, selected tabs, visible data)
+  * WHAT you think the screenshot probably looks like: is it the whole page, or just a part of the page? What is the main focus or area being captured? Briefly describe the likely layout or content shown in the screenshot, based on the context and filename.
+- Example: "take a screenshot of the document explorer panel showing all available document categories, filter options, and search functionality clearly visible, to document the comprehensive document navigation system for users. Save as document-explorer.png"
+- Output only the steps. No headings or summaries.
+Scope and constraints:
+- Include only steps required to reach and capture the screenshots.
+- If choosing among similar rows/buttons, pick one in the middle of the Worklist.
+- You are already at the homepage (Worklist). Do not include login steps.
+- Ignore any command to open a pop‑out window.
+- Always add this "Based on the instructions executed If you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+- If the document assumes a certain website state without providing explicit navigation steps, identify and add the missing obvious steps to reach that state.
+Example (format only):
+THINKING
+- Navigation: Worklist → click a patient name → wheel interface → Document Viewer
+- Screenshot (document_viewer.png): Expected elements — toolbar at top with "Download" and "Print" icons; left panel with document thumbnails; main viewer canvas centered; patient name at top‑left
+
+INSTRUCTIONS
+1. look for the worklist table displayed in the center of the screen showing patient records and click a patient name to open the wheel interface
+2. locate the "Document Viewer" button on the wheel interface — it appears as a paper/document icon — and click it
+3. wait until the "Document Viewer" page is visible
+4. verify the screen matches the expected state with these elements visible: top toolbar with "Download" and "Print" icons; left thumbnail panel; centered document canvas; patient name at top‑left
+5. take a screenshot of the document viewer interface showing the toolbar with Download and Print icons at the top, the document thumbnails panel on the left side, and the main document canvas in the center with clear patient information at the top-left, to document the complete document viewing experience for users navigating patient records. Save it with the name "document_viewer.png"
+
+Notes about navigation in this product:
+- To reach Document Viewer or Image Viewer from the Worklist, click a patient name to open the wheel interface, then click the corresponding button.
+
+Document to process:
+---
+
+---
+# C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md (MD)
+---
+sidebar_position: 3
+title: Adding & Managing Organizations
+tags:
+  - Organizations
+  - Master Organization
+  - Add New Organization
+  - Referring Organizations
+---
+
+# Adding & Managing Organizations
+
+## Accessing Organizations in OmegaAI
+
+### Opening the Organization Panel
+
+To start managing organizations, click on the Organizations tab. This serves as the main gateway for all organization-related functions.
+
+### Master Organizations Tab
+
+The Master Organizations tab on the left shows the master organization(s) you are part of. The number of organizations listed here depends on the user profile settings.
+
+### Adding a New Organization
+
+To add a new organization, click on the '+' icon located at the top of the organization list. The new organization is added as a subordinate to the selected master organization.
+
+### Viewing the Organization Card
+
+The Organization Card displayed on the right provides details of the current organization such as name, type, National Provider Identifier (NPI), time zone, website address, and contact information.
+
+### Managing Organization Details
+
+For more information or to modify the details of the organization, click 'Details'. Here the organization can also be deleted if necessary.
+
+### Managing Referring Organizations
+
+Access and manage referring organizations at the bottom of the panel. Here you can add new referring organizations as needed.
+
+## Creating a New Organization
+
+Perform the below steps to create a new organization.
+
+1. Selecting a Parent Organization
+
+Choose an existing organization to act as a parent for a newly created organization.
+
+2. Entering Organization Details
+
+After clicking the '+', the following details are entered for the new organization:
+- **Name and Parent Organization**: Specify the name and select or modify the parent organization.
+- **Practice Type and Identifiers**: Define the type of practice and add the NPI, tax ID, time zone, and corporate website.
+- **Identity Provider Setup**: Import an XML file to set up an identity provider. 
+  - *Note: Templates for this setup are available for downloading on the same screen.*
+
+![addorg](./img/addingorgs.png)
+
+3. Adding Address Information
+
+The address search feature is utilized to automatically populate address fields.
+
+4. Providing Contact Information
+
+Enter details such as email, phone, and fax numbers in the Contact Information section. 
+- *Note: Multiple entries can be added for each type of contact information.*
+
+5. Finalizing the Creation
+
+Click 'Save' to confirm the creation of the new organization or 'Cancel' to discard changes.
+
+## Understanding Hierarchy and Usage
+
+### Master Organization
+
+This is a top-level organization that manages crucial configurations, patient data, role configurations, status customizations, and workflow automation.
+
+### Sub Organizations
+
+Suborganizations are beneficial for managing different user groups, healthcare resources (particularly with the scheduler feature), and associating devices for imaging data (such as DICOM).
+
+## Accessing and Managing Referring Organizations
+
+### Viewing Referring Organizations
+
+At the bottom of the organization card, a list of referring organizations associated with the organization can be viewed.
+
+### Managing Referring Organization Details
+
+Click on the referring organization's name to view detailed information including the number of referring physicians, type, NPI, time zone, and website.
+
+### Editing or Unlinking Referring Organizations
+
+Click Details for more options to edit or unlink the referring organization.
+
+### Adding/Linking a New Referring Organization
+
+Click the '+' icon to initiate linking to a new or existing referring organization.
+- A search box appears to allow you to find and select a referring organization.
+- After searching, select 'Link' to associate the referring organization with your organization.
+- To create a new referring organization, click on the '+ New Organization' icon and enter the necessary details such as name, time zone, and corporate website. 
+  - *Note: The practice type is set as 'Referring' and cannot be changed.*
+  - The address search feature is used to automatically fill in the address fields.
+  - Add contact information such as email, phone, and fax with the option of including multiple entries.
+  - Click Save to confirm the creation of the new referring organization or Cancel to abort the process.
+
+Upon creation, the new organization is automatically linked to the parent organization.
+
+---
+## Contextual First Steps (auto-detected)
+### First Steps for C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md — 1-Getting-Started
+- From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).
+- Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms).
+---
+
+
+## Available Image Paths to Capture:
+1. ./img/addingorgs.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+---
+
+================================================================================
+

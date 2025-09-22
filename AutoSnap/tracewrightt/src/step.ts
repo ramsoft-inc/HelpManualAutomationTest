@@ -1,17 +1,23 @@
 import { Page } from "@playwright/test";
 import fs from "fs";
-import { CODE_GENERATION_PROMPT, CODE_SYSTEM_INSTRUCTION } from "./llm_providers/base_provider.js";
+import { CODE_GENERATION_PROMPT, CODE_SYSTEM_INSTRUCTION, getCodeGenerationPrompt } from "./llm_providers/base_provider.js";
 import { GeminiProvider } from "./llm_providers/gemini_provider.js";
 import { OpenAIProvider } from "./llm_providers/openai_provider.js";
+import { ClaudeProvider } from "./llm_providers/claude_provider.js";
 import { GenerateCodeResponse, LLMRequestHandler } from "./llm_request.js";
 import { executeCode, getInteractiveHTML } from "./page_helpers.js";
+import { filterLongPaths } from "./html_path_filter.js";
 
-// Allow runtime switch:  LLM_PROVIDER=openai  or gemini (default)
-const providerName = (process.env.LLM_PROVIDER || "gemini").toLowerCase();
+// Allow runtime switch: LLM_PROVIDER=openai, gemini, or claude (default: openai)
+const providerName = (process.env.LLM_PROVIDER || "openai").toLowerCase();
 
 const provider = providerName === "openai"
   ? new OpenAIProvider()
-  : new GeminiProvider();
+  : providerName === "gemini"
+  ? new GeminiProvider()
+  : providerName === "claude"
+  ? new ClaudeProvider()
+  : new OpenAIProvider(); // fallback to OpenAI
 
 const llmHandler = new LLMRequestHandler(provider);
 
@@ -39,15 +45,30 @@ export const generateStep = async (
   }
 
   const domResult = await getInteractiveHTML(page);
-  fs.writeFileSync(`./steps/${stepCount}-source.html`, domResult.visibleElements);
+  
+  // Apply path filtering to clean up long SVG paths and other verbose attributes
+  const filteredDomResult = {
+    ...domResult,
+    visibleElements: filterLongPaths(domResult.visibleElements),
+    hiddenElements: filterLongPaths(domResult.hiddenElements)
+  };
+  
+  fs.writeFileSync(`./steps/${stepCount}-source.html`, filteredDomResult.visibleElements);
+
+  // Get the appropriate prompt based on the current provider
+  const currentPrompt = getCodeGenerationPrompt(providerName);
 
   let screenshot: Buffer;
   if (CAPTURE_STEP_SCREENSHOTS) {
+    // Use PNG format for Claude compatibility
+    const screenshotFormat = providerName === "claude" ? "png" : "jpeg";
+    const screenshotPath = `./steps/${stepCount}-screenshot-mocked.${screenshotFormat}`;
+    
     screenshot = await page.screenshot({
       fullPage: true,
-      path: `./steps/${stepCount}-screenshot-mocked.jpeg`,
-      type: "jpeg",
-      quality: 100,
+      path: screenshotPath,
+      type: screenshotFormat as "png" | "jpeg",
+      ...(screenshotFormat === "jpeg" && { quality: 100 }),
       timeout: SCREENSHOT_TIMEOUT,
     });
   } else {
@@ -67,7 +88,7 @@ ${CODE_SYSTEM_INSTRUCTION}
 ${scenarioText}
 
 -------- Code Generation Prompt --------
-${CODE_GENERATION_PROMPT}
+${currentPrompt}
 
 -------- Context --------
 Page URL: ${page.url()}
@@ -86,8 +107,8 @@ ${previousStepThinking}` : ''}
 
   const codeResponse = await llmHandler.generateWithContext(
     CODE_SYSTEM_INSTRUCTION,
-    scenarioText + "\n\n" + CODE_GENERATION_PROMPT,
-    domResult,
+    scenarioText + "\n\n" + currentPrompt,
+    filteredDomResult,
     page.url(),
     screenshot,
     previouslyExecutedCode,
@@ -105,9 +126,9 @@ ${previousStepThinking}` : ''}
   return codeResponse;
 };
 
-export const performStep = async (page: Page, codeResponse: GenerateCodeResponse): Promise<string | undefined> => {
+export const performStep = async (page: Page, codeResponse: GenerateCodeResponse, aiUtils?: any): Promise<string | undefined> => {
   try {
-    await executeCode(page, codeResponse);
+    await executeCode(page, codeResponse, undefined, undefined, undefined, aiUtils);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     return error.stack;

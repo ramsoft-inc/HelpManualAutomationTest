@@ -5,8 +5,11 @@ import path from 'path';
 /**
  * Run the Python instruction generation script and return the generated instructions
  */
-async function generateInstructions(scenarioType = "default", changedFiles = null) {
+async function generateInstructions(scenarioType = "default", changedFiles = null, currentFile = null) {
     console.log(`🔄 Generating browser automation instructions for mode: ${scenarioType}...`);
+    if (currentFile) {
+        console.log(`📄 Current file being processed: ${currentFile}`);
+    }
     
     return new Promise((resolve, reject) => {
         // Build the argument list
@@ -15,10 +18,24 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
             console.log(`📁 Passing changed files: ${changedFiles}`);
             args.push('--changed-files', changedFiles);
         }
-        // Run the Python script with only supported arguments
+        if (currentFile) {
+            console.log(`📄 Passing current file: ${currentFile}`);
+            args.push('--current-file', currentFile);
+        }
+        // Add scenario type as the first argument
+        args.unshift('--scenario-type', scenarioType);
+        
+        // Run the Python script with scenario type and other arguments
+        console.log(`🔄 Running Python script with args: ${args.join(' ')}`);
         const pythonProcess = spawn('python', ['browser_automation_instructions.py', ...args], {
             stdio: ['pipe', 'pipe', 'pipe']
         });
+        
+        // Add a timeout to prevent hanging
+        const timeout = setTimeout(() => {
+            console.warn('⚠️  Python script timeout after 30 seconds, killing process...');
+            pythonProcess.kill('SIGTERM');
+        }, 30000); // 30 second timeout
         
         let output = '';
         let errorOutput = '';
@@ -34,9 +51,20 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
         });
         
         pythonProcess.on('close', async (code) => {
+            clearTimeout(timeout); // Clear the timeout when process finishes
+            
             if (code !== 0) {
                 console.error(`❌ Python script exited with code ${code}`);
                 console.error(`Error output: ${errorOutput}`);
+                
+                // If it was killed by timeout, use fallback
+                if (code === null || code === 1) {
+                    console.warn('⚠️  Python script may have timed out, using fallback instructions');
+                    const fallbackInstructions = getFallbackInstructions(scenarioType);
+                    resolve(fallbackInstructions.trim());
+                    return;
+                }
+                
                 reject(new Error(`Python script failed with code ${code}`));
                 return;
             }
@@ -56,6 +84,7 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
         });
         
         pythonProcess.on('error', (error) => {
+            clearTimeout(timeout); // Clear the timeout on error
             console.error('❌ Failed to start Python process:', error);
             // Mode-specific fallback instructions if Python fails to start
             const fallbackInstructions = getFallbackInstructions(scenarioType);

@@ -39,7 +39,8 @@ export const executeCode = async (
   codeResponse: GenerateCodeResponse, 
   logger?: any, 
   stepNumber?: number,
-  mdFilePath?: string
+  mdFilePath?: string,
+  aiUtils?: any
 ) => {
   console.log('🚀 Starting code execution...');
   console.log('📍 Page URL:', page.url());
@@ -62,22 +63,28 @@ export const executeCode = async (
     }
 
     if (isScreenshotCommand) {
-      // Create AIUtilsEnhanced instance only for screenshot interception
-      console.log('🤖 Creating AIUtilsEnhanced instance (screenshot detected)...');
-      const aiUtils = new AIUtilsEnhanced(page);
+      let currentAiUtils = aiUtils;
+      
+      if (!currentAiUtils) {
+        // Fallback: Create AIUtilsEnhanced instance only for screenshot interception
+        console.log('🤖 Creating AIUtilsEnhanced instance (screenshot detected)...');
+        currentAiUtils = new AIUtilsEnhanced(page);
 
-      // If a markdown file path is provided, set it
-      if (mdFilePath) {
-        console.log('📄 Using markdown path for image reference:', mdFilePath);
-        aiUtils.setCurrentMdFilePath(mdFilePath);
+        // If a markdown file path is provided, set it
+        if (mdFilePath) {
+          console.log('📄 Using markdown path for image reference:', mdFilePath);
+          currentAiUtils.setCurrentMdFilePath(mdFilePath);
+        }
+
+        console.log('✅ AIUtilsEnhanced instance created successfully');
+      } else {
+        console.log('⚡ Using provided AIUtilsEnhanced instance...');
       }
-
-      console.log('✅ AIUtilsEnhanced instance created successfully');
 
       // Use AIUtilsEnhanced to execute code with screenshot interception (pass thinking, markdown path, and screenshot intent)
       console.log('⚡ Executing code with AIUtilsEnhanced...');
       // Pass the entire codeResponse JSON object instead of extracting individual fields
-      await aiUtils.executeWithEnhancedScreenshotInterception(
+      await currentAiUtils.executeWithEnhancedScreenshotInterception(
         codeResponse.code,
         false,
         logger,
@@ -609,9 +616,19 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           return ""; // No specific state found
         }
 
+        function truncateSvgPaths(html) {
+          // Regex to find SVG path data attributes and other long path-like attributes and replace them with [path]
+          // This includes d=, path=, data=, coords=, and other attributes that might contain long paths
+          return html.replace(/\s(d|path|data|coords|points|clip-path|shape)="[^"]{10,}"/g, function(match, attrName) {
+            return ' ' + attrName + '="[path]"';
+          });
+        }
+
         function elementHtmlWithIndex(element, index) {
           var stateInfo = getInteractiveState(element);
-          return index + ": " + element.outerHTML + stateInfo;
+          var html = element.outerHTML;
+          var truncatedHtml = truncateSvgPaths(html);
+          return index + ": " + truncatedHtml + stateInfo;
         }
 
         function getAllInputs() {
@@ -821,14 +838,15 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
           var element = allElements[i];
           stats.totalScanned++;
 
+          var truncatedOuterHTML = truncateSvgPaths(element.outerHTML);
           var previousVisibleHtml = clickableVisibleElements.length > 0 ? clickableVisibleElements[clickableVisibleElements.length - 1] : '';
-          if (previousVisibleHtml && previousVisibleHtml.includes(element.outerHTML)) {
+          if (previousVisibleHtml && previousVisibleHtml.includes(truncatedOuterHTML)) {
             stats.duplicatesSkipped++;
             continue;
           }
 
           var previousHiddenHtml = clickableHiddenElements.length > 0 ? clickableHiddenElements[clickableHiddenElements.length - 1] : '';
-          if (previousHiddenHtml && previousHiddenHtml.includes(element.outerHTML)) {
+          if (previousHiddenHtml && previousHiddenHtml.includes(truncatedOuterHTML)) {
             stats.duplicatesSkipped++;
             continue;
           }
@@ -864,11 +882,11 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
                 elementIndex++;
                 stats.successfullyProcessed++;
               } else {
-                clickableHiddenElements.push(element.outerHTML);
+                clickableHiddenElements.push(truncatedOuterHTML);
                 stats.notOnTopSkipped++;
               }
             } else {
-              clickableHiddenElements.push(element.outerHTML);
+              clickableHiddenElements.push(truncatedOuterHTML);
               stats.hiddenSkipped++;
             }
           } else {
@@ -886,7 +904,7 @@ const getClickableElements = async (page: Page, elementIndex: number): Promise<C
             elementIndex++;
             stats.inputsProcessed++;
           } else {
-            clickableHiddenElements.push(elem.outerHTML);
+            clickableHiddenElements.push(truncateSvgPaths(elem.outerHTML));
             stats.inputsHidden++;
           }
         }

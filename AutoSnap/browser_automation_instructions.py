@@ -433,7 +433,7 @@ Document to process:
 
 Important: Scan the entire document for all images shown as ![name](./path/to/image) and ensure every single one is included in your instruction sequence. Create one comprehensive set of instructions that captures everything.
 
-Remember: Format your THOUGHT and INSTRUCTIONS as a valid JSON object with the structure shown in the example.
+Remember: Format your THINKING and INSTRUCTIONS as a valid JSON object with the structure shown in the example.
 {{
   "thinking": "text string of your thought",
   "instructions": "one text string which has the whole set of detailed instructions (not a list)"
@@ -451,6 +451,7 @@ Remember: Format your THOUGHT and INSTRUCTIONS as a valid JSON object with the s
 #     print("\n\n\n\n\n2")
 #     print(doc_content)
 #     print("have used the get_prompt_for_new_feature function")
+
 def get_prompt_for_new_feature(doc_content):
     """
     Generates a prompt for taking screenshots only for placeholder comments in documentation.
@@ -470,8 +471,8 @@ Output format (strict):
    - Lists every single placeholder comment found in the document with its context
    - For each placeholder (and filename if provided), a brief description of the expected UI state and the key elements that must be visible to match the placeholder context
    - Plans the most efficient navigation route to capture all placeholder screenshots
-   - Notes the expected UI state and purpose for each screenshot based on surrounding documentation
-2) INSTRUCTIONS — One numbered sequence starting at 1, covering all placeholders. Each step is exactly one browser action.
+   - Note the expected UI state and purpose for each screenshot based on surrounding documentation
+2) INSTRUCTIONS — One numbered sequence starting at 1, covering all placeholders in the document. Each step is exactly one browser action.
 
 Before capturing any screenshot:
 - Navigate to the correct screen/state based on the documentation context
@@ -482,14 +483,13 @@ Rules for INSTRUCTIONS:
 - Use imperative voice for each step
 - Each step = exactly one action ("click", "type", "open", "hover", "wait until visible", "take a screenshot")
 - For every interacted element, include its English name plus brief visual/positional cues (color, icon, "top-right", etc.)
-- When capturing, if a filename/path is specified next to the placeholder, save using that exact name. Do not invent filenames if none are provided.
+- When capturing, if a filename/path is specified next to the placeholder, save using that exact name. Name the screenshot based on the context and purpose of the placeholder.
 - For screenshot steps, analyze the surrounding documentation context to determine:
   * WHAT specific UI elements should be visible
   * WHAT the screenshot should document (based on nearby text)
   * HOW the UI should be configured
   * WHAT filename to use (derived from the context and purpose)
 - Preserve the order of placeholders in the document. Stop after the last placeholder.
-- Steps are grouped in the same order as the placeholders appear in the document.
 
 Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose based on context]. Save as [descriptive-filename.png]"
 
@@ -509,12 +509,10 @@ INSTRUCTIONS:
 Critical requirements:
 - Include every single placeholder comment found in the document - do not miss any
 - Ignore existing image paths (![name](./path/to/image)) - only focus on <!-- placeholder for a screenshot --> comments
-- Organize navigation efficiently (group screenshots from same screens together)  
 - Ensure each screenshot instruction is extremely detailed and specific
 - Every screenshot step must include "screenshot" as the action followed by comprehensive description and descriptive filename
 - Generate appropriate filenames based on the context and purpose of each screenshot
 - You start at homepage (Worklist) - no login steps needed
-- If choosing among similar items, pick the 3rd in the list
 - Ignore pop-out window commands
 
 Navigation notes for this product:
@@ -555,17 +553,73 @@ def extract_image_paths_from_md(file_content):
     
     return local_paths
 
+def get_english_content_path(file_path):
+    """
+    Convert a file path to the corresponding English content path in the docs folder.
+    
+    Example:
+    Input: C:/Users/Rohith.MR/test/HelpManualAutomationTest/spanish/5-Document-Viewer/document_explorer.md
+    Output: C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/5-Document-Viewer/document_explorer.md
+    """
+    import os
+    from pathlib import Path
+    
+    # Convert to Path object for easier manipulation
+    file_path = Path(file_path)
+    
+    # Get the base directory (workspace root)
+    workspace_root = Path("C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest")
+    
+    # Get the relative path from workspace root
+    try:
+        relative_path = file_path.relative_to(workspace_root)
+    except ValueError:
+        # If file is not under workspace root, return None
+        return None
+    
+    # Get the parts of the relative path
+    parts = relative_path.parts
+    
+    # Skip the first directory (e.g., "spanish") and construct the docs path
+    if len(parts) > 1:
+        # Take everything after the first directory
+        relative_docs_path = Path(*parts[1:])
+        english_path = workspace_root / "docs" / relative_docs_path
+        return str(english_path)
+    
+    return None
+
+def read_english_content(file_path):
+    """Read the English content from the corresponding docs file."""
+    english_path = get_english_content_path(file_path)
+    if not english_path:
+        return None
+    
+    try:
+        with open(english_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    except Exception as e:
+        print(f"    Could not read English content from {english_path}: {e}")
+        return None
+
 def generate_browser_instructions(scenario_type="default", changed_files=None):
     """Generate browser automation instructions based on the scenario type and changed files."""
     import os
     import re
     from datetime import datetime
+    
+    # Handle empty or None changed_files
+    if not changed_files:
+        print("WARNING: No files provided, generating fallback instructions")
+        return get_fallback_instructions_for_scenario(scenario_type)
+    
     content = ""
-    spanish_content = ""
+    english_content = ""
+    translated_content = ""
     # For tracking image paths from markdown files
     all_image_paths = []
 
-    print(f"Processing {len(changed_files)} changed files...")
+    print(f"Processing {len(changed_files)} changed files for scenario '{scenario_type}'...")
     
     # Separate MD and MDX files for logging
     md_files = [f for f in changed_files if f.endswith('.md')]
@@ -582,7 +636,26 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
             file_type = "MDX" if file_path.endswith('.mdx') else "MD"
             with open(file_path, 'r', encoding='utf-8') as file:
                 file_content = file.read()
-                content += f"\n---\n# {file_path} ({file_type})\n{file_content}"
+                
+                # Add translated content to the main content for legacy compatibility
+                content += f"\n---\n{file_content}"
+                
+                # Add to the separate translated content variable
+                translated_content += f"\n---\n{file_content}"
+                
+                # Only read English content if scenario is default (translation mode)
+                if scenario_type == "default":
+                    # Read the corresponding English content from docs folder
+                    file_english_content = read_english_content(file_path)
+                    
+                    # Add to the English content variable if available
+                    if file_english_content:
+                        english_path = get_english_content_path(file_path)
+                        english_content += f"\n---\n{file_english_content}"
+                        print(f"  Added English content from {english_path}")
+                    else:
+                        print(f"  No English content found for {file_path}")
+                
                 file_to_content[file_path] = file_content
                 
                 # Extract image paths from this markdown file
@@ -597,118 +670,187 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     llm = AzureChatOpenAI(azure_deployment="gpt-4.1", openai_api_version="2024-02-15-preview")
 
     # Generate instructions from document content based on scenario
-    document_instructions = "Default: No document content was processed or an error occurred during instruction generation."
+    document_instructions = f"Default: No document content was processed for scenario '{scenario_type}' or an error occurred during instruction generation."
+    
     if content and content.strip():  # Check if content is not empty or just whitespace
-        # Select the appropriate prompt based on scenario type
-        print("\n\n\n\n\n\n1")
-        
-        # Default to UI change mode
-        if scenario_type == "default":
-            scenario_type = "ui_change"
+        print(f"Generating instructions for scenario type: {scenario_type}")
         
         # Augment content with contextual navigation hints based on the files being processed
         try:
             hints_md = build_playbook_hints_for_changed_files(file_to_content)
             if hints_md:
                 content += "\n" + hints_md
+                print("Added contextual navigation hints")
         except Exception as _e:
             # Non-fatal: continue without hints if something goes wrong
             logging.warning(f"Failed to build contextual first steps hints: {_e}")
 
         # Add image paths to the content for the LLM to use
         if all_image_paths:
-            content += f"\n\n## Available Image Paths to Capture:\n"
+            image_paths_section = f"\n\n## Available Image Paths to Capture:\n"
             for i, img_path in enumerate(all_image_paths, 1):
-                content += f"{i}. {img_path}\n"
-            content += f"\nIMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.\n"
+                image_paths_section += f"{i}. {img_path}\n"
+            image_paths_section += f"\nIMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.\n"
+            
+            # Add to all content variables
+            content += image_paths_section
+            translated_content += image_paths_section
+            print(f"Added {len(all_image_paths)} image paths to content")
+            
+            # Only add to English content if we're in translation mode and English content exists
+            if scenario_type == "default" and english_content:
+                english_content += image_paths_section
         
+        # Select appropriate prompt based on scenario type
         if scenario_type == "ui_change":
+            print("Using UI Change prompt")
             instruction_generation_prompt = get_prompt_for_ui_change(content)
-        else:
+        elif scenario_type == "new_feature":
+            print("Using New Feature prompt")
             instruction_generation_prompt = get_prompt_for_new_feature(content)
-        # if scenario_type == "ui_change":
-        #     # UI change: replace each image, no Spanish document needed
-        #     instruction_generation_prompt = get_prompt_for_new_feature(content)
-        # elif scenario_type == "new_feature":
-        #     # New feature: find placeholders, only English document needed
-        #     instruction_generation_prompt = get_prompt_for_new_feature(content)
-#         else:
-#             # Fallback: use the existing prompt logic
-#             instruction_generation_prompt = f"""
-# The goal is to take screenshots of the Spanish version of the website to replace each and every image currently shown from the English website in the documentation.
+        else:
+            print("Using Translation/Default prompt")
+            # Translation mode (default): use the Spanish website translation prompt
+            instruction_generation_prompt = f"""
+The goal is to take screenshots of the target language version of the website to replace each and every image currently shown from the source language website in the documentation.
+You are going to write instructions that help navigate through the target language website to reach the exact position needed to take the screenshot.
+The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
+To understand what the image shows, you need to look at both the image filename and the text/content around it.
+Your job is to write all steps needed to reach the screen and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.
 
-# You are going to write instructions that help navigate through the Spanish website to reach the exact position needed to take the screenshot.
+This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
+If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
+Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
 
-# The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
-# To understand what the image shows, you need to look at both the image filename and the text/content around it.
+These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+When describing the elements to interact with:
+Include the source language name of the element (it helps match HTML tags).
+Include the target language name of the element (it helps find the element in the target language website using the text locator function).
+Describe the appearance or position of the element if it helps identify it faster.
 
-# Your job is to write all steps needed to reach the screen **and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.**
-# - This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
-# - If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
-# - Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
+Output Format (strict):
+1) THINKING
+A comprehensive planning block that:
 
-# These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+Screenshots Analysis: Lists every single screenshot found in the document with exact filenames (Show Image) and describes what each screenshot should show based on the surrounding context
+Navigation Planning: Plans the most efficient navigation route through the Spanish website to capture all screenshots in logical order
+UI State Requirements: Notes the expected UI state and configuration needed for each screenshot (expanded menus, selected tabs, active toggles, etc.)
+Target Language Element Mapping: Identifies key UI elements and their target language translations needed for navigation
+Sequence Optimization: Groups screenshots from the same screens together to minimize redundant navigation
 
-# The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+2) INSTRUCTIONS
+One numbered sequence starting at 1, covering every screenshot in the document. Each step is exactly one browser action.
 
-# When describing the elements to interact with:
+Instruction Format Guidelines
+Follow these strict formatting rules for each instruction:
 
-# Include the English name of the element (it helps match HTML tags).
-# Include the Spanish name of the element (it helps find the element in the Spanish website using the text locator function).
-# Describe the appearance or position of the element if it helps identify it faster.
+Use a number to define each step starts with 1.
+Every step must indicate a specific browser action.
+Each instruction must describe a single, actionable browser operation.
+Use imperative voice (e.g., "find", "click", "enter").
+CRITICAL: For every element you interact with, you MUST include BOTH the source language name AND the target language name of the element in the instruction.
+Be explicit about:
 
-# ---
+Element identity (e.g., placeholder text, labels, role, alt text, icons)
+Visual characteristics (e.g., button color, icons, shapes)
+Placement (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
 
-# ## Instruction Format Guidelines
 
-# Follow these strict formatting rules for each instruction:
 
-# - Use a number to define each step starts with 1.
-# - Every step must indicate a specific browser action.
-# - Each instruction must describe **a single, actionable browser operation**.
-# - Use **imperative voice** (e.g., "find", "click", "enter").
-# - **CRITICAL: For every element you interact with, you MUST include BOTH the English name AND the Spanish name of the element in the instruction.**
-# - Be **explicit** about:
-#   - **Element identity** (e.g., placeholder text, labels, role, alt text, icons)
-#   - **Visual characteristics** (e.g., button color, icons, shapes)
-#   - **Placement** (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
-# - If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
-# - Conserve the order of instruction to match the documentation.
-# - Everything you output should be just an instruction and nothing else — no headings or summaries.
-# - The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
-# - If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
-# - For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
-# - You are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table. Do **not** include login steps.
-# - Always add this "Based on the intructions executed If you think some screenshot taken is not right, redo the process to oget that screenshot" at the end of the instructions.
-# - IF there is a command to popout window then ignore it do not add it to the instructions.
-# - Take screenshots if there are placeholders for it and name them accordingly.
-# - If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot. 
+Before capturing any screenshot:
 
-# ---
+Navigate to the correct screen/state
+Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+Verify interactive elements are in the desired state (e.g., collapsed/expanded, inactive/active, unchecked/checked, menu-closed/menu-open) before proceeding to capture the screenshot.
+Verify all required elements are visible before taking the screenshot
 
-# ## Example Output Format
+Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose]. Save as [exact filename]"
 
-# 1.look for the worklist table (tabla de lista de trabajo) displayed in the center of the screen showing patient records and find any patient record row in the worklist table and click on the patient name link to open the wheel interface
-# 2.locate the "Document Viewer" (Visor de Documentos) button on the wheel interface — it appears as a paper/document icon — and click on it
-# 3.take a screenshot of the document viewer interface and save it with the name "document_viewer.png"
+If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
+Conserve the order of instruction to match the documentation.
+Everything you output should be just the THINKING and INSTRUCTIONS sections — no additional headings or summaries.
+The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
+For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
+You are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table. Do not include login steps.
+Always add this "Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+IF there is a command to popout window then ignore it do not add it to the instructions.
+Take screenshots if there are placeholders for it and name them accordingly.
+If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot.
 
-# but the wheel has the document viewer button, image viewer button, study history, billing, etc.
-# ---
-# ## Document to Process
 
-# Analyze and convert the following content into automation instructions:
+Critical Requirements:
 
-# ---
-# {content}
-# ---
-# For reference of what these buttons are named in Spanish, use this Spanish documentation:
+Include every single screenshot found in the document - do not miss any
+Organize navigation efficiently (group screenshots from same screens together)
+Ensure each screenshot instruction is extremely detailed and specific
+Every screenshot step must include "screenshot" as the action followed by comprehensive description and exact filename
+You start at homepage (Worklist) - no login steps needed
+If choosing among similar items, pick the 3rd in the list
+Ignore pop-out window commands
 
-# ---
-# {spanish_content}
-# ---
-# Also, you are already at the Spanish website homepage, logged in — continue from the homepage which shows the worklist table.
-# ## Generate Automation Instructions for the Spanish website below:
-# """
+
+Example Output Format
+THINKING
+Screenshots to capture:
+
+document_viewer.png: Shows the document viewer interface with document list and preview panel
+image_viewer.png: Shows the image viewer with DICOM images loaded and tools visible
+study_history.png: Shows patient study history timeline with previous examinations
+
+Navigation plan:
+
+Homepage (Worklist) → Select patient → Wheel interface → Document Viewer (capture document_viewer.png)
+From wheel → Image Viewer (capture image_viewer.png)
+From wheel → Study History (capture study_history.png)
+
+UI State Requirements:
+
+Document viewer: Ensure document list is expanded and preview panel shows document content
+Image viewer: Ensure DICOM images are loaded and toolbar is visible
+Study history: Ensure timeline view is expanded with study details visible
+
+Target Language Element Mapping:
+
+Document Viewer = "Visor de Documentos" (example target language)
+Image Viewer = "Visor de Imágenes" (example target language)
+Study History = "Historial de Estudios" (example target language)
+Worklist = "Lista de Trabajo" (example target language)
+mention these in the instructions so it helps in finding the elements in the target language website.
+
+INSTRUCTIONS
+
+locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records and find the third patient record row in the worklist table and click on the patient name link to open the wheel interface
+wait until the wheel interface loads completely with all available options visible around the circular menu
+locate the "Document Viewer" (target language equivalent) button on the wheel interface — it appears as a paper/document icon in the wheel menu — and click on it
+wait until the document viewer interface loads showing the document list panel on the left and document preview area on the right
+take a screenshot of the complete document viewer interface showing the left panel with document list and the right panel with document preview area, to document the document viewing functionality. Save as document_viewer.png
+navigate back to the wheel interface by clicking the back button or wheel icon in the top navigation
+locate the "Image Viewer" (target language equivalent) button on the wheel interface — it appears as an image/picture icon in the wheel menu — and click on it
+wait until the image viewer loads with DICOM images displayed and the toolbar visible at the top
+take a screenshot of the complete image viewer interface showing the main image display area with loaded DICOM images and the top toolbar with viewing tools, to document the medical image viewing capabilities. Save as image_viewer.png
+
+Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
+
+Document to Process
+Analyze and convert the following content into automation instructions:
+
+{english_content}
+
+For reference of what these buttons are named in the target language, use this translated documentation:
+
+{translated_content}
+Also, you are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table.
+
+**IMPORTANT: Format your response as a valid JSON object with this structure:**
+{{
+  "thinking": "your comprehensive planning and analysis where list all the screenshots to capture",
+  "instructions": "your complete step-by-step instructions as one text string"
+}}
+
+Generate Automation Instructions for the target language website below:
+"""
 
         # Log the exact prompt sent to LLM to a text file
         try:
@@ -731,6 +873,7 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
                 document_instructions = response.content
             else:
                 document_instructions = str(response)  # Fallback if response is not a standard message object
+            
             # Log all image paths that need to be covered
             if all_image_paths:
                 print(f"Need screenshots for {len(all_image_paths)} images: {', '.join(all_image_paths)}")
@@ -769,61 +912,197 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
 def main():
     """Main function to process command line arguments and generate instructions."""
     parser = argparse.ArgumentParser(description='Generate browser automation instructions')
+    parser.add_argument('--scenario-type', '--mode', default='default', 
+                       choices=['ui_change', 'new_feature', 'default'],
+                       help='Scenario type for instruction generation (default: default)')
     parser.add_argument('--changed-files', help='Path to file containing list of changed files, or a single file path')
+    parser.add_argument('--current-file', help='Path to the current file being processed (for context)')
     args = parser.parse_args()
+    
+    # Get scenario type from arguments
+    scenario_type = args.scenario_type
+    print(f"Scenario Type: {scenario_type}")
+    
+    # Log the current file if provided
+    if args.current_file:
+        print(f"Current file being processed: {args.current_file}")
+        # Set as environment variable for potential use in instruction generation
+        os.environ['CURRENT_PROCESSING_FILE'] = args.current_file
     
     try:
         changed_files = []
         
         if args.changed_files:
-            # Check if it's a single markdown file or a list file
-            if args.changed_files.endswith('.md') or args.changed_files.endswith('.mdx'):
-                # Single markdown file
-                if os.path.exists(args.changed_files):
-                    changed_files = [args.changed_files]
-                else:
-                    pass
-            else:
-                # List file containing paths
-                try:
-                    with open(args.changed_files, 'r', encoding='utf-8') as f:
-                        file_list = [line.strip() for line in f if line.strip()]
-                    
-                    # Filter to only docs markdown files (handle both relative and absolute paths)
-                    docs_md_files = []
-                    docs_mdx_files = []
-                    other_files = []
-                    
-                    for f in file_list:
-                        # Handle absolute paths by checking if they contain docs/ and end with .md/.mdx
-                        if ('docs/' in f and f.endswith('.md')) or (f.startswith('docs/') and f.endswith('.md')):
-                            docs_md_files.append(f)
-                        elif ('docs/' in f and f.endswith('.mdx')) or (f.startswith('docs/') and f.endswith('.mdx')):
-                            docs_mdx_files.append(f)
-                        else:
-                            other_files.append(f)
-                    
-                    # Combine docs files for processing
-                    changed_files = docs_md_files + docs_mdx_files
-                    
-                except Exception as e:
-                    pass
-
-        # Default scenario type
-        scenario_type = "default"
-        import sys
-        if len(sys.argv) > 1 and not args.changed_files:
-            scenario_type = sys.argv[1]
+            changed_files = process_changed_files_input(args.changed_files, scenario_type)
+        else:
+            print("WARNING: No changed files provided. Will generate default instructions.")
         
-        instructions = generate_browser_instructions(scenario_type, changed_files)
+        # Validate files exist and are accessible
+        validated_files = validate_files(changed_files)
         
+        if not validated_files:
+            print("WARNING: No valid markdown files found to process!")
+            print(f"   Provided: --changed-files={args.changed_files}")
+            if args.changed_files and os.path.exists(args.changed_files):
+                print(f"   File exists but may contain no valid .md/.mdx files")
+            # Continue with empty file list - will generate fallback instructions
+        
+        print(f"Generating browser instructions for scenario '{scenario_type}' with {len(validated_files)} files")
+        instructions = generate_browser_instructions(scenario_type, validated_files)
+        
+        # Write instructions to output file
         output_file = "generated_instructions.txt"
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(instructions)
+        
+        print(f"Instructions generated successfully and saved to {output_file}")
+        
     except Exception as e:
         import logging
         logging.error(f"Error in main execution: {e}")
         print(f"Failed to generate instructions: {e}")
+        # Write fallback instructions to prevent JavaScript from failing
+        fallback_instructions = get_fallback_instructions_for_scenario(scenario_type)
+        output_file = "generated_instructions.txt"
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(fallback_instructions)
+        print(f"Fallback instructions written to {output_file}")
+
+
+def process_changed_files_input(changed_files_input, scenario_type):
+    """Process the changed files input based on the scenario type."""
+    changed_files = []
+    
+    # Check if it's a single markdown file or a list file
+    if changed_files_input.endswith('.md') or changed_files_input.endswith('.mdx'):
+        # Single markdown file
+        if os.path.exists(changed_files_input):
+            changed_files = [changed_files_input]
+            print(f"Processing single file: {changed_files_input}")
+        else:
+            print(f"WARNING: Single file not found: {changed_files_input}")
+    else:
+        # List file containing paths
+        try:
+            with open(changed_files_input, 'r', encoding='utf-8') as f:
+                file_list = [line.strip() for line in f if line.strip()]
+            
+            # Process file list based on scenario type
+            changed_files = categorize_and_filter_files(file_list, scenario_type)
+            
+        except Exception as e:
+            print(f"ERROR: Error reading changed files list: {e}")
+            print(f"   Could not read file: {changed_files_input}")
+            raise
+    
+    return changed_files
+
+
+def categorize_and_filter_files(file_list, scenario_type):
+    """Categorize and filter files based on scenario type."""
+    docs_files = []
+    translation_files = []
+    other_files = []
+    
+    print(f"Categorizing {len(file_list)} files for scenario '{scenario_type}'...")
+    
+    for file_path in file_list:
+        if not (file_path.endswith('.md') or file_path.endswith('.mdx')):
+            other_files.append(file_path)
+            continue
+            
+        # Categorize based on path
+        if 'docs/' in file_path or file_path.startswith('docs/'):
+            docs_files.append(file_path)
+        else:
+            # Assume it's a translation file if it's .md/.mdx but not in docs/
+            translation_files.append(file_path)
+    
+    # Select appropriate files based on scenario type
+    if scenario_type in ['ui_change', 'new_feature']:
+        # For UI changes and new features, process English docs files
+        selected_files = docs_files
+        print(f"UI/Feature mode: Selected {len(docs_files)} docs files")
+        if translation_files:
+            print(f"   Ignoring {len(translation_files)} translation files for {scenario_type} mode")
+    else:  # default/translation mode
+        # For translation mode, process translation files (and docs if no translations)
+        if translation_files:
+            selected_files = translation_files
+            print(f"Translation mode: Selected {len(translation_files)} translation files")
+            for tf in translation_files[:5]:  # Show first 5
+                print(f"   - {tf}")
+            if len(translation_files) > 5:
+                print(f"   ... and {len(translation_files) - 5} more")
+        else:
+            selected_files = docs_files
+            print(f"Translation mode: No translation files, using {len(docs_files)} docs files")
+    
+    if other_files:
+        print(f"Skipping {len(other_files)} non-markdown files")
+    
+    return selected_files
+
+
+def validate_files(file_list):
+    """Validate that files exist and are readable."""
+    validated_files = []
+    
+    for file_path in file_list:
+        if os.path.exists(file_path):
+            try:
+                # Try to read the file to ensure it's accessible
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    # Just check if we can open it, don't read content yet
+                    pass
+                validated_files.append(file_path)
+            except Exception as e:
+                print(f"WARNING: Cannot read file {file_path}: {e}")
+        else:
+            print(f"WARNING: File not found: {file_path}")
+    
+    if validated_files:
+        print(f"Validated {len(validated_files)}/{len(file_list)} files")
+    
+    return validated_files
+
+
+def get_fallback_instructions_for_scenario(scenario_type):
+    """Get fallback instructions based on scenario type."""
+    fallback_instructions = {
+        "ui_change": """# UI Change Mode Instructions
+
+- find the Pin place holder and enter the pin 145948
+- find the continue button and click on it
+- find any record in the worklist with a patient name and click on it
+- wait for any loading overlays or spinners to disappear completely
+- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
+- take screenshots of any visible UI elements that need updating
+- if you see dropdowns or menus, take screenshots without clicking them
+Done""",
+        
+        "new_feature": """# New Feature Mode Instructions
+
+- find the Pin place holder and enter the pin 145948
+- find the continue button and click on it
+- find any record in the worklist with a patient name and click on it
+- wait for any loading overlays or spinners to disappear completely
+- navigate to the new feature area
+- take screenshots of the new feature elements
+- look for placeholder areas in the documentation and capture those screenshots
+Done""",
+        
+        "default": """# Default Translation Mode Instructions
+
+- find the Pin place holder and enter the pin 145948
+- find the continue button and click on it
+- find any record in the worklist with a patient name and click on it
+- wait for any loading overlays or spinners to disappear completely
+- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
+Done"""
+    }
+    
+    return fallback_instructions.get(scenario_type, fallback_instructions["default"])
 
 if __name__ == "__main__":
     main() 
