@@ -294,9 +294,10 @@ jobs:
           FILES_TO_PROCESS: ${{ steps.extract.outputs.files }}
           PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/playwright-browsers
           # Node.js ESM and TypeScript support (updated for Node 18+)
-          NODE_OPTIONS: "--loader ts-node/esm --no-warnings"
+          NODE_OPTIONS: "--loader ts-node/esm --no-warnings --experimental-specifier-resolution=node"
           TS_NODE_ESM: true
-          TS_NODE_COMPILER_OPTIONS: '{"module":"ESNext","moduleResolution":"node"}'
+          TS_NODE_COMPILER_OPTIONS: '{"module":"ESNext","moduleResolution":"node","allowSyntheticDefaultImports":true,"esModuleInterop":true}'
+          TS_NODE_PROJECT: "./tracewrightt/tsconfig.json"
           # Add your API keys from secrets
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
@@ -370,15 +371,35 @@ jobs:
             fi
           done < changed_files_temp.txt
           
-          # Temporary fix: Add additional search paths for Tracewright entry points
-          # Since the build creates _virtual/index.js, let's patch the enhanced script to find it
-          if [ -f "tracewrightt/dist/esm/_virtual/index.js" ] && [ ! -f "tracewrightt/dist/esm/index.js" ]; then
-            echo "🔧 Patching: Creating symlink for Tracewright entry point"
-            ln -sf "_virtual/index.js" "tracewrightt/dist/esm/index.js" || {
-              echo "⚠️ Symlink failed, trying copy"
-              cp "tracewrightt/dist/esm/_virtual/index.js" "tracewrightt/dist/esm/index.js" || echo "Copy also failed"
+          # Enhanced fix: Find the actual compiled entry point and create symlinks
+          echo "🔧 Patching: Creating entry points for Tracewright"
+          
+          # Create index.js symlink (primary entry point)
+          if [ -f "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/index.js" ]; then
+            echo "✅ Found actual entry point: AutoSnap/tracewrightt/src/index.js"
+            ln -sf "AutoSnap/tracewrightt/src/index.js" "tracewrightt/dist/esm/index.js" 2>/dev/null || {
+              echo "⚠️ Primary symlink failed, trying copy"
+              cp "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/index.js" "tracewrightt/dist/esm/index.js" || echo "Copy failed"
+            }
+          elif [ -f "tracewrightt/dist/esm/_virtual/index.js" ]; then
+            echo "✅ Using virtual entry point: _virtual/index.js"
+            ln -sf "_virtual/index.js" "tracewrightt/dist/esm/index.js" 2>/dev/null || {
+              echo "⚠️ Fallback symlink failed, trying copy"
+              cp "tracewrightt/dist/esm/_virtual/index.js" "tracewrightt/dist/esm/index.js" || echo "Copy failed"
             }
           fi
+          
+          # Create src/run.js symlink (alternative entry point)
+          if [ -f "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/run.js" ]; then
+            mkdir -p "tracewrightt/dist/esm/src"
+            ln -sf "../AutoSnap/tracewrightt/src/run.js" "tracewrightt/dist/esm/src/run.js" 2>/dev/null || {
+              cp "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/run.js" "tracewrightt/dist/esm/src/run.js" 2>/dev/null || echo "No run.js found"
+            }
+          fi
+          
+          # Force ts-node fallback due to ESM/CommonJS compatibility issues
+          echo "🔧 Forcing ts-node fallback due to module compatibility issues"
+          rm -f "tracewrightt/dist/esm/index.js" 2>/dev/null || true
           
           # Run your actual enhanced flow - exactly like local development
           node enhanced-run-script.js \
