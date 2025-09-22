@@ -75,7 +75,6 @@ of medical imaging documents.
     - Open OmegaAI and navigate to the Document Viewer. The Document
       Explorer is immediately accessible on the left panel.
 
-
       ![document explorer](./img/documentexplorer.png)
 
 2.  **Viewing Patient Details:**
