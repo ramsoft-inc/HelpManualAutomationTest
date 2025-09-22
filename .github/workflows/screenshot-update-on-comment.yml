@@ -243,15 +243,20 @@ jobs:
             echo "📝 Processing specific files/folders: $FILES"
             > changed_files_temp.txt
             
+            # Clean the FILES variable - remove any whitespace/newlines (this is the key fix)
+            FILES_CLEAN=$(echo "$FILES" | tr -d '\n\r' | xargs)
+            echo "🧹 Cleaned FILES pattern: '$FILES_CLEAN'"
+            
             # Check if the FILES pattern is a folder (enhanced detection)
-            echo "🔍 Checking if '$FILES' is a folder..."
+            echo "🔍 Checking if '$FILES_CLEAN' is a folder..."
             
             # Remove trailing slash for directory check
-            files_no_slash="${FILES%/}"
+            files_no_slash="${FILES_CLEAN%/}"
             echo "  - Original pattern: '$FILES'"
+            echo "  - Cleaned pattern: '$FILES_CLEAN'"
             echo "  - Pattern without slash: '$files_no_slash'"
-            echo "  - Ends with slash: $([[ "$FILES" == */ ]] && echo "YES" || echo "NO")"
-            echo "  - Directory exists (with slash): $([ -d "$GITHUB_WORKSPACE/$FILES" ] && echo "YES" || echo "NO")"
+            echo "  - Ends with slash: $([[ "$FILES_CLEAN" == */ ]] && echo "YES" || echo "NO")"
+            echo "  - Directory exists (with slash): $([ -d "$GITHUB_WORKSPACE/$FILES_CLEAN" ] && echo "YES" || echo "NO")"
             echo "  - Directory exists (without slash): $([ -d "$GITHUB_WORKSPACE/$files_no_slash" ] && echo "YES" || echo "NO")"
             echo "  - Full path check: $GITHUB_WORKSPACE/$files_no_slash"
             
@@ -259,7 +264,7 @@ jobs:
             ends_with_slash=false
             dir_exists=false
             
-            if [[ "$FILES" == */ ]]; then
+            if [[ "$FILES_CLEAN" == */ ]]; then
               ends_with_slash=true
               echo "  ✅ Pattern ends with slash"
             else
@@ -276,16 +281,16 @@ jobs:
             
             if [ "$ends_with_slash" = true ] || [ "$dir_exists" = true ]; then
               # It's a folder - let test-enhanced-flow.js handle it directly
-              folder_path="${FILES%/}"
+              folder_path="${FILES_CLEAN%/}"
               echo "📁 Detected folder pattern: $folder_path"
               echo "ℹ️  Will pass directly to test-enhanced-flow.js with --folder parameter"
               
               # Create a simple marker file to indicate folder mode
               echo "FOLDER_MODE:$folder_path" > changed_files_temp.txt
             else
-              echo "📄 Treating as individual file(s): $FILES"
+              echo "📄 Treating as individual file(s): $FILES_CLEAN"
               # Handle individual files
-              echo "$FILES" | tr ' ,' '\n' | grep -v '^$' | while IFS= read -r item; do
+              echo "$FILES_CLEAN" | tr ' ,' '\n' | grep -v '^$' | while IFS= read -r item; do
                 # Remove leading/trailing whitespace
                 item=$(echo "$item" | xargs)
                 [ -z "$item" ] && continue
@@ -354,7 +359,8 @@ jobs:
           elif [ ! -s changed_files_temp.txt ]; then
             echo "❌ No valid files found to process!"
             echo "🔍 Debugging information:"
-            echo "  - Original FILES pattern: $FILES"
+            echo "  - Original FILES pattern: '$FILES'"
+            echo "  - Cleaned FILES pattern: '$FILES_CLEAN'"
             echo "  - GitHub workspace: $GITHUB_WORKSPACE"
             echo "  - Current directory: $(pwd)"
             
@@ -363,8 +369,8 @@ jobs:
             ls -la "$GITHUB_WORKSPACE" | grep "^d" | head -10
             
             # If it's a folder pattern, show what's in it
-            if [[ "$FILES" == */ ]] || [ -d "$GITHUB_WORKSPACE/$FILES" ]; then
-              folder_to_check="${FILES%/}"
+            if [[ "$FILES_CLEAN" == */ ]] || [ -d "$GITHUB_WORKSPACE/$FILES_CLEAN" ]; then
+              folder_to_check="${FILES_CLEAN%/}"
               if [ -d "$GITHUB_WORKSPACE/$folder_to_check" ]; then
                 echo "📁 Contents of $folder_to_check directory:"
                 find "$GITHUB_WORKSPACE/$folder_to_check" -name "*.md" -type f | head -10 || echo "No .md files found"
