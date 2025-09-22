@@ -43,7 +43,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           
       - name: Setup Yarn (for projects using yarn.lock)
@@ -91,7 +91,7 @@ jobs:
               echo "🧶 Using yarn install (frozen lockfile)"
               yarn install --frozen-lockfile || {
                 echo "⚠️ Frozen lockfile failed, trying regular yarn install"
-                yarn install
+                yarn install --ignore-engines || yarn install
               }
             elif [ "$has_package_lock" = true ]; then
               echo "📦 Using npm ci"
@@ -123,7 +123,11 @@ jobs:
           # Check what package manager to use for tracewrightt
           if [ -f "yarn.lock" ] && command -v yarn >/dev/null 2>&1; then
             echo "🧶 Using yarn for tracewrightt"
-            yarn install || yarn install --frozen-lockfile=false
+            # First try with frozen lockfile, then fallback to regular install
+            yarn install --frozen-lockfile || {
+              echo "⚠️ Frozen lockfile failed, trying regular yarn install"
+              yarn install --ignore-engines || yarn install
+            }
           elif [ -f "package-lock.json" ]; then
             echo "📦 Using npm for tracewrightt"
             npm ci || npm install
