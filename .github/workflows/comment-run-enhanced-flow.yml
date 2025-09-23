@@ -65,11 +65,11 @@ jobs:
           echo "🏗️ Building tracewrightt..."
           yarn build || echo "⚠️ tracewrightt build failed, will fallback to ts-node at runtime"
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium and system deps
         working-directory: AutoSnap
         shell: bash
         run: |
-          npx playwright install chromium
+          npx playwright install --with-deps chromium
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -89,6 +89,9 @@ jobs:
           cp test-enhanced-flow.js test-enhanced-flow-ci.js
           # Patch hardcoded Windows fallback path(s) to repo-relative path for CI
           sed -i "s#C:/Users/Rohith\.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg\.md#docs/1-Getting-Started/addorg.md#g" test-enhanced-flow-ci.js
+          # Ensure CI runs headless Chromium and not Chrome channel
+          sed -i "s/headless: false/headless: true/g" test-enhanced-flow-ci.js
+          sed -i "/channel: 'chrome',/d" test-enhanced-flow-ci.js
 
       - name: Ensure Azure env defaults
         shell: bash
