@@ -5,8 +5,33 @@ on:
     types: [created]
 
 jobs:
+  # Debug job to help troubleshoot why jobs might be skipped
+  debug-trigger:
+    if: github.event.issue_comment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug trigger conditions
+        run: |
+          echo "🔍 DEBUGGING WORKFLOW TRIGGER"
+          echo "================================"
+          echo "Event type: ${{ github.event_name }}"
+          echo "Is pull request: ${{ !!github.event.issue.pull_request }}"
+          echo "Comment body: '${{ github.event.comment.body }}'"
+          echo "Contains trigger: ${{ contains(github.event.comment.body, '/update-screenshots') }}"
+          echo "Commenter: ${{ github.event.comment.user.login }}"
+          echo "Issue/PR number: ${{ github.event.issue.number }}"
+          echo ""
+          echo "✅ This debug job should always run on issue comments"
+          echo "❌ Main job will run only if BOTH conditions are true:"
+          echo "   1. Is pull request: ${{ !!github.event.issue.pull_request }}"
+          echo "   2. Contains '/update-screenshots': ${{ contains(github.event.comment.body, '/update-screenshots') }}"
+
   update-screenshots:
     # Only run on pull request comments that contain the trigger phrase
+    # Alternative conditions (uncomment one):
+    # if: github.event.issue.pull_request && contains(github.event.comment.body, '/update-screenshots')  # Exact match
+    # if: github.event.issue.pull_request && (contains(github.event.comment.body, '/update-screenshots') || contains(github.event.comment.body, '/update-screenshot'))  # Multiple triggers
+    # if: github.event.issue.pull_request && contains(github.event.comment.body, 'update-screenshots')  # No slash required
     if: github.event.issue.pull_request && contains(github.event.comment.body, '/update-screenshots')
     runs-on: ubuntu-latest
     
@@ -46,12 +71,19 @@ jobs:
           node-version: '20'
           cache: 'yarn' # Use yarn cache since we have yarn.lock files
 
-      - name: Setup Yarn
+      - name: Setup Yarn with optimized configuration
         run: |
           # Install Yarn globally so it's available if yarn.lock files are present
           echo "📦 Installing Yarn globally..."
           npm install -g yarn
           yarn --version
+          
+          # Configure Yarn to reduce warnings and optimize for CI
+          echo "🔧 Configuring Yarn for CI environment..."
+          yarn config set ignore-optional true
+          yarn config set silent true
+          yarn config set progress false
+          echo "✅ Yarn configuration complete"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -83,10 +115,13 @@ jobs:
             fi
             
             if [ "$has_yarn_lock" = true ] && command -v yarn >/dev/null 2>&1; then
-              echo "  🧶 Using yarn install (frozen lockfile)"
-              yarn install --frozen-lockfile || {
+              echo "  🧶 Using yarn install (frozen lockfile, ignore optional peer deps)"
+              yarn install --frozen-lockfile --ignore-optional 2>/dev/null || {
                 echo "  ⚠️ Yarn frozen lockfile failed, trying regular yarn install"
-                yarn install || { echo "❌ Yarn install failed in $dir"; popd > /dev/null; exit 1; }
+                yarn install --ignore-optional 2>/dev/null || {
+                  echo "  ⚠️ Yarn with ignore-optional failed, trying standard install"
+                  yarn install || { echo "❌ Yarn install failed in $dir"; popd > /dev/null; exit 1; }
+                }
               }
             elif [ "$has_package_lock" = true ]; then
               echo "  📦 Using npm ci"
@@ -134,19 +169,21 @@ jobs:
           echo "🎭 Installing Playwright browsers in AutoSnap..."
           pushd "$GITHUB_WORKSPACE/AutoSnap" > /dev/null || { echo "❌ Failed to change directory to AutoSnap for Playwright"; exit 1; }
           
-          # Install browsers with proper error handling
+          # Install browsers with proper error handling and warning suppression
           echo "📦 Installing Playwright chromium browser..."
           if command -v yarn >/dev/null 2>&1 && [ -f "yarn.lock" ]; then
-            yarn playwright install chromium --with-deps 2>/dev/null || {
-              echo "⚠️ Yarn playwright install with deps failed, trying npx..."
-              npx playwright install chromium --with-deps || {
-                echo "⚠️ Playwright install with --with-deps failed, trying without"
+            echo "  🧶 Using yarn for Playwright installation..."
+            yarn playwright install chromium --with-deps --silent 2>/dev/null || {
+              echo "  ⚠️ Yarn playwright install with deps failed, trying npx..."
+              npx playwright install chromium --with-deps --force 2>/dev/null || {
+                echo "  ⚠️ Playwright install with --with-deps failed, trying without"
                 npx playwright install chromium || { echo "❌ Playwright install failed"; popd > /dev/null; exit 1; }
               }
             }
           else
-            npx playwright install chromium --with-deps || {
-              echo "⚠️ Playwright install with --with-deps failed, trying without"
+            echo "  📦 Using npx for Playwright installation..."
+            npx playwright install chromium --with-deps --force 2>/dev/null || {
+              echo "  ⚠️ Playwright install with --with-deps failed, trying without"
               npx playwright install chromium || { echo "❌ Playwright install failed"; popd > /dev/null; exit 1; }
             }
           fi
@@ -196,6 +233,22 @@ jobs:
           echo "🎭 PW_TEST_SCREENSHOT_NO_FONTS_READY: $PW_TEST_SCREENSHOT_NO_FONTS_READY"
           
           echo "🎯 Environment verification complete."
+
+      - name: Setup virtual display for headless browser
+        run: |
+          echo "🖥️ Setting up virtual display for headless Playwright..."
+          # Install xvfb for virtual display
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb
+          
+          # Start virtual display
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+          
+          # Wait for display to be ready
+          sleep 3
+          
+          echo "✅ Virtual display started on :99 (1920x1080x24)"
 
       - name: Extract command parameters
         id: extract
@@ -370,8 +423,14 @@ jobs:
           PW_TEST_SCREENSHOT_NO_FONTS_READY: 'true'
           NODE_ENV: production
           
-          # Working directory context for the script
+          # CI Environment detection (for headless browser configuration)
+          CI: 'true'
           GITHUB_ACTIONS: 'true'
+          HEADLESS: 'true'
+          
+          # Display settings for headless environment
+          DISPLAY: ':99'
+          XVFB_WHD: '1920x1080x24'
         run: |
           cd "$GITHUB_WORKSPACE/AutoSnap" # Ensure in correct directory
           
@@ -450,6 +509,28 @@ jobs:
           fi
           
           rm -f "$TEMP_FILE" # Clean up temporary file
+
+      - name: Verify screenshot generation
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          echo "🔍 Checking for generated/updated screenshots..."
+          
+          # Check if any image files were modified
+          SCREENSHOT_COUNT=$(find docs/ -name "*.png" -newer AutoSnap/test-enhanced-flow.js 2>/dev/null | wc -l || echo "0")
+          echo "📸 Found $SCREENSHOT_COUNT recently modified screenshot files"
+          
+          if [ "$SCREENSHOT_COUNT" -gt 0 ]; then
+            echo "✅ Screenshots appear to have been generated/updated"
+            echo "📋 Recent screenshot files:"
+            find docs/ -name "*.png" -newer AutoSnap/test-enhanced-flow.js 2>/dev/null | head -10 || echo "  (none found via timestamp)"
+          else
+            echo "⚠️ No recently modified screenshots detected"
+            echo "🔍 This could be normal if no UI changes were needed"
+          fi
+          
+          # Check overall docs directory for any .png files
+          TOTAL_SCREENSHOTS=$(find docs/ -name "*.png" 2>/dev/null | wc -l || echo "0")
+          echo "📊 Total screenshot files in docs/: $TOTAL_SCREENSHOTS"
 
       - name: Check for changes
         id: changes

@@ -27,7 +27,14 @@
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.7.0",
     "@docusaurus/types": "^3.7.0",
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0",
     "openai": "^4.0.0"
+  },
+  "optionalDependencies": {
+    "react-loadable": "^5.5.0",
+    "@algolia/client-search": "^5.0.0",
+    "search-insights": "^2.0.0"
   },
   "browserslist": {
     "production": [

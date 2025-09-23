@@ -45,10 +45,22 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
     if (reason && reason.message && reason.message.includes('Target page, context or browser has been closed')) {
-        console.log('🔍 Browser was closed during promise rejection, ending gracefully.');
+        console.log('🔍 Browser was closed during promise rejection.');
+        console.log('🔧 Environment info:');
+        console.log(`  - CI: ${!!process.env.CI}`);
+        console.log(`  - GITHUB_ACTIONS: ${!!process.env.GITHUB_ACTIONS}`);
+        console.log(`  - NODE_ENV: ${process.env.NODE_ENV}`);
+        console.log(`  - PW_TEST_SCREENSHOT_NO_FONTS_READY: ${process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY}`);
+        console.log('🔍 This may indicate a timeout or resource issue in CI environment.');
+        console.log('✅ Ending gracefully to allow workflow to complete.');
         process.exit(0);
     } else {
         console.error('❌ Unhandled promise rejection:', reason);
+        console.error('🔧 Environment context:', {
+            ci: !!process.env.CI,
+            githubActions: !!process.env.GITHUB_ACTIONS,
+            nodeEnv: process.env.NODE_ENV
+        });
         process.exit(1);
     }
 });
@@ -1973,12 +1985,21 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
 
     const findCompiledEntry = () => {
         const candidatePaths = [
-            // New: direct path to the actual output location
-            path.join(esmDir, 'tracewrightt', 'src', 'run.js'),
-            path.join(esmDir, 'src', 'run.js'),
+            // Direct path to the actual run.js file
             path.join(esmDir, 'run.js'),
+            // Index.js as fallback
             path.join(esmDir, 'index.js'),
+            // Legacy paths (just in case)
+            path.join(esmDir, 'src', 'run.js'),
+            path.join(esmDir, 'tracewrightt', 'src', 'run.js'),
         ];
+        
+        console.log('🔍 Searching for compiled tracewrightt in:');
+        candidatePaths.forEach(p => {
+            const exists = fs.existsSync(p);
+            console.log(`  ${exists ? '✅' : '❌'} ${p}`);
+        });
+        
         return candidatePaths.find(p => fs.existsSync(p));
     };
 
@@ -2004,10 +2025,14 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         // After (possible) build, import the bundle via file URL so that Node can
         // handle absolute Windows paths correctly.
         const twMod = await import(pathToFileURL(compiledPath).href);
-        tracewright = twMod.default || twMod;
+        tracewright = twMod.run || twMod.default || twMod;
+        
+        console.log('✅ Successfully imported compiled tracewrightt bundle');
+        console.log('🔧 Available exports:', Object.keys(twMod));
+        console.log('🔧 Using function:', typeof tracewright);
     } catch (buildErr) {
-        console.warn('⚠️  Could not import compiled bundle. Falling back to ts-node.', buildErr.message);
-        console.log('🔄 Using direct TypeScript transpilation approach...');
+        console.warn('⚠️  Could not import compiled bundle:', buildErr.message);
+        console.log('🔄 Attempting direct TypeScript transpilation approach...');
         
         // Create a child process to transpile TypeScript files to JavaScript
         const { exec } = await import('node:child_process');
@@ -2058,7 +2083,11 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             if (fs.existsSync(jsPath)) {
                 console.log('✅ Found compiled JS file, importing:', jsPath);
                 const twMod = await import(pathToFileURL(jsPath).href);
-                tracewright = twMod.default || twMod;
+                tracewright = twMod.run || twMod.default || twMod;
+                
+                console.log('✅ Successfully imported TypeScript-compiled tracewrightt');
+                console.log('🔧 Available exports:', Object.keys(twMod));
+                console.log('🔧 Using function:', typeof tracewright);
                 
                 // Clean up temporary tsconfig
                 fs.unlinkSync(tempTsConfigPath);
@@ -2067,26 +2096,50 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                 throw new Error('Compiled JavaScript file not found after transpilation');
             }
         } catch (importErr) {
-            console.error('❌ Failed to import TypeScript source:', importErr.message);
-            
-            // Fallback to a simplified approach - create a basic tracewright function
-            console.log('⚠️ Creating fallback tracewright function...');
-            tracewright = async (page, options) => {
-                console.log('🤖 Running fallback tracewright with options:', options);
-                // Just navigate to a URL to test browser functionality
-                await page.goto('https://team-meta-apim.azure-api.net/');
-                console.log('✅ Fallback tracewright completed');
-            };
+            console.error('❌ CRITICAL: Failed to import TypeScript source:', importErr.message);
+            console.error('❌ CRITICAL: tracewrightt is required for browser automation');
+            console.error('❌ CRITICAL: No fallback available - this script cannot continue');
+            throw new Error(`Failed to load tracewrightt: ${importErr.message}`);
         }
     }
     
+    // CRITICAL: Validate that tracewrightt loaded successfully
+    if (!tracewright || typeof tracewright !== 'function') {
+        console.error('❌ CRITICAL: tracewrightt failed to load properly!');
+        console.error('❌ CRITICAL: tracewright type:', typeof tracewright);
+        console.error('❌ CRITICAL: tracewright value:', !!tracewright);
+        throw new Error('tracewrightt is required but failed to load - cannot continue with browser automation');
+    }
+    
+    console.log('✅ tracewrightt loaded successfully');
+    console.log('🔧 tracewrightt type:', typeof tracewright);
+    
+    // Detect if running in CI/GitHub Actions environment
+    const isCI = process.env.CI || process.env.GITHUB_ACTIONS || process.env.NODE_ENV === 'production';
+    console.log(`🎭 Environment detection: CI=${!!isCI}, GITHUB_ACTIONS=${!!process.env.GITHUB_ACTIONS}`);
+    
     const browser = await chromium.launch({
-        headless: false, // Changed to false for testing
-        channel: 'chrome',
+        headless: isCI, // Use headless in CI environments, false for local development
+        channel: isCI ? undefined : 'chrome', // Use default chromium in CI
+        timeout: isCI ? 60000 : 30000, // Longer timeout for CI environments
         args: [
             "--disable-notifications",
             "--use-fake-ui-for-media-stream",
             "--disable-features=PermissionChip,PermissionPrompt",
+            // Additional args for CI/headless environments
+            ...(isCI ? [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-default-apps",
+                "--disable-extensions",
+                "--disable-background-timer-throttling",
+                "--disable-renderer-backgrounding",
+                "--disable-backgrounding-occluded-windows"
+            ] : []),
             "--disable-gpu",
             "--font-render-hinting=none",
             "--disable-web-security",
@@ -2529,4 +2582,5 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.error('❌ Error closing browser:', closeError.message);
         }
     }
+})(); 
 })(); 
