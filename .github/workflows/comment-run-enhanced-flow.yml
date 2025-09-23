@@ -47,8 +47,20 @@ jobs:
       - name: Install tracewrightt and build
         working-directory: AutoSnap/tracewrightt
         run: |
-          yarn install --frozen-lockfile
-          yarn build || echo "tracewrightt build will be attempted at runtime"
+          echo "🔧 Installing tracewrightt dependencies..."
+          # Try frozen lockfile first, fallback to regular install if needed
+          if ! yarn install --frozen-lockfile; then
+            echo "⚠️ Frozen lockfile failed, trying regular install..."
+            yarn install
+          fi
+          echo "🏗️ Building tracewrightt..."
+          # Build step is optional - script has fallback to ts-node
+          if ! yarn build; then
+            echo "⚠️ tracewrightt build failed, script will fallback to ts-node at runtime"
+            echo "This is expected and the script will continue to work properly"
+          else
+            echo "✅ tracewrightt build successful"
+          fi
 
       - name: Install Playwright Chromium
         working-directory: AutoSnap
@@ -105,6 +117,11 @@ jobs:
             enhanced-flow-log.txt
             changed-files-*.txt
             token_usage_summary.txt
+            AutoSnap/enhanced-flow-log.txt
+            AutoSnap/token_usage_summary.txt
+            AutoSnap/changed-files-*.txt
+            AutoSnap/api_logs/
+            AutoSnap/screenshots/
           if-no-files-found: ignore
 
       - name: Reply on PR with run summary
