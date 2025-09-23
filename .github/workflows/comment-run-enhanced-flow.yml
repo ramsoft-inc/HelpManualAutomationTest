@@ -16,7 +16,7 @@ jobs:
   run-enhanced-flow:
     if: >
       ${{ github.event.issue.pull_request != null && contains(github.event.comment.body, 'node test-enhanced-flow.js') }}
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
       - name: Checkout PR head
@@ -35,35 +35,32 @@ jobs:
         run: corepack enable
 
       - name: Install root dependencies (optional)
+        shell: bash
         run: |
-          if (Test-Path yarn.lock) { yarn install --frozen-lockfile } else { echo 'No root yarn.lock, skipping' }
-        shell: pwsh
+          if [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile || yarn install
+          else
+            echo 'No root yarn.lock, skipping'
+          fi
 
       - name: Install AutoSnap dependencies
         working-directory: AutoSnap
+        shell: bash
         run: |
-          yarn install --frozen-lockfile
+          yarn install --frozen-lockfile || yarn install
 
       - name: Install tracewrightt and build
         working-directory: AutoSnap/tracewrightt
+        shell: bash
         run: |
           echo "🔧 Installing tracewrightt dependencies..."
-          # Try frozen lockfile first, fallback to regular install if needed
-          if ! yarn install --frozen-lockfile; then
-            echo "⚠️ Frozen lockfile failed, trying regular install..."
-            yarn install
-          fi
+          yarn install --frozen-lockfile || yarn install
           echo "🏗️ Building tracewrightt..."
-          # Build step is optional - script has fallback to ts-node
-          if ! yarn build; then
-            echo "⚠️ tracewrightt build failed, script will fallback to ts-node at runtime"
-            echo "This is expected and the script will continue to work properly"
-          else
-            echo "✅ tracewrightt build successful"
-          fi
+          yarn build || echo "⚠️ tracewrightt build failed, will fallback to ts-node at runtime"
 
       - name: Install Playwright Chromium
         working-directory: AutoSnap
+        shell: bash
         run: |
           npx playwright install chromium
 
@@ -71,16 +68,20 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install Python requirements
+        working-directory: AutoSnap
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || echo "Python requirements install failed, script has fallbacks"
 
       - name: Create CI clone of test-enhanced-flow.js and patch paths
         working-directory: AutoSnap
-        shell: pwsh
+        shell: bash
         run: |
-          Copy-Item test-enhanced-flow.js test-enhanced-flow-ci.js -Force
+          cp test-enhanced-flow.js test-enhanced-flow-ci.js
           # Patch hardcoded Windows fallback path(s) to repo-relative path for CI
-          $content = Get-Content test-enhanced-flow-ci.js -Raw
-          $content = $content -replace 'C:/Users/Rohith\.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg\.md', 'docs/1-Getting-Started/addorg.md'
-          Set-Content -Path test-enhanced-flow-ci.js -Value $content -Encoding UTF8
+          sed -i "s#C:/Users/Rohith\.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg\.md#docs/1-Getting-Started/addorg.md#g" test-enhanced-flow-ci.js
 
       - name: Extract command args from comment
         id: parse
@@ -94,18 +95,18 @@ jobs:
             core.setOutput('args', args);
 
       - name: Run enhanced flow
-        shell: pwsh
+        shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          $args = "${{ steps.parse.outputs.args }}"
-          if ($args -ne "") {
-            Write-Host "Running: node AutoSnap/test-enhanced-flow-ci.js $args"
-            node AutoSnap/test-enhanced-flow-ci.js $args 2>&1 | Tee-Object -FilePath enhanced-flow-ci-run.log
-          } else {
-            Write-Host "No args provided in comment. Running default: node AutoSnap/test-enhanced-flow-ci.js"
-            node AutoSnap/test-enhanced-flow-ci.js 2>&1 | Tee-Object -FilePath enhanced-flow-ci-run.log
-          }
+          args="${{ steps.parse.outputs.args }}"
+          if [ -n "$args" ]; then
+            echo "Running: node AutoSnap/test-enhanced-flow-ci.js $args"
+            node AutoSnap/test-enhanced-flow-ci.js $args 2>&1 | tee enhanced-flow-ci-run.log
+          else
+            echo "No args provided in comment. Running default: node AutoSnap/test-enhanced-flow-ci.js"
+            node AutoSnap/test-enhanced-flow-ci.js 2>&1 | tee enhanced-flow-ci-run.log
+          fi
 
       - name: Upload logs and outputs
         uses: actions/upload-artifact@v4
