@@ -38,22 +38,20 @@ jobs:
         with:
           ref: ${{ fromJson(steps.pr.outputs.result).head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          fetch-depth: 0 # Fetch all history for git operations
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          
-      - name: Setup Yarn (for projects using yarn.lock)
+          cache: 'yarn' # Use yarn cache since we have yarn.lock files
+
+      - name: Setup Yarn
         run: |
-          # Enable yarn if needed for projects with yarn.lock
-          if [ -f "yarn.lock" ]; then
-            echo "📦 Yarn lock file detected, enabling yarn"
-            npm install -g yarn
-            yarn --version
-          fi
+          # Install Yarn globally so it's available if yarn.lock files are present
+          echo "📦 Installing Yarn globally..."
+          npm install -g yarn
+          yarn --version
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -63,107 +61,141 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Function to install dependencies with GitHub Actions environment considerations
-          install_deps() {
+          # Helper function for installing JS dependencies in a specific directory
+          install_js_deps() {
             local dir=$1
-            echo "📦 Installing dependencies in $dir..."
+            echo "📦 Installing JS dependencies in $dir..."
             
-            # Use absolute path to avoid directory issues in GitHub Actions
-            local abs_dir=$(cd "$dir" && pwd)
-            cd "$abs_dir"
+            # Navigate to the directory, handle errors, and return
+            pushd "$dir" > /dev/null || { echo "❌ Failed to change directory to $dir"; exit 1; }
             
-            # Check what package manager files exist
             local has_yarn_lock=false
             local has_package_lock=false
             
             if [ -f "yarn.lock" ]; then
               has_yarn_lock=true
-              echo "✅ Found yarn.lock in $abs_dir"
+              echo "  ✅ Found yarn.lock in $dir"
             fi
             
             if [ -f "package-lock.json" ]; then
               has_package_lock=true
-              echo "✅ Found package-lock.json in $abs_dir"
+              echo "  ✅ Found package-lock.json in $dir"
             fi
             
-            # Install dependencies based on what's available in GitHub Actions
             if [ "$has_yarn_lock" = true ] && command -v yarn >/dev/null 2>&1; then
-              echo "🧶 Using yarn install (frozen lockfile)"
+              echo "  🧶 Using yarn install (frozen lockfile)"
               yarn install --frozen-lockfile || {
-                echo "⚠️ Frozen lockfile failed, trying regular yarn install"
-                yarn install --ignore-engines || yarn install
+                echo "  ⚠️ Yarn frozen lockfile failed, trying regular yarn install"
+                yarn install || { echo "❌ Yarn install failed in $dir"; popd > /dev/null; exit 1; }
               }
             elif [ "$has_package_lock" = true ]; then
-              echo "📦 Using npm ci"
-              npm ci
+              echo "  📦 Using npm ci"
+              npm ci || { echo "❌ npm ci failed in $dir"; popd > /dev/null; exit 1; }
             else
-              echo "⚠️ No lock file or using fallback npm install"
-              npm install
+              echo "  ⚠️ No lock file found, using fallback npm install"
+              npm install || { echo "❌ npm install failed in $dir"; popd > /dev/null; exit 1; }
             fi
             
             # Return to original directory
-            cd "$GITHUB_WORKSPACE"
+            popd > /dev/null
           }
+
+          # 1. Install root dependencies
+          install_js_deps "$GITHUB_WORKSPACE"
           
-          # Install root dependencies
-          install_deps "."
+          # 2. Install AutoSnap dependencies
+          install_js_deps "$GITHUB_WORKSPACE/AutoSnap"
           
-          # Install AutoSnap dependencies (where test-enhanced-flow.js is located)
-          install_deps "AutoSnap"
+          # 3. Install Python dependencies in AutoSnap
+          echo "🐍 Installing Python dependencies in AutoSnap..."
+          pushd "$GITHUB_WORKSPACE/AutoSnap" > /dev/null || { echo "❌ Failed to change directory to AutoSnap"; exit 1; }
+          pip install -r requirements.txt || { echo "❌ Pip install failed in AutoSnap"; popd > /dev/null; exit 1; }
+          popd > /dev/null
           
-          # Install Python dependencies
-          echo "🐍 Installing Python dependencies..."
-          cd "$GITHUB_WORKSPACE/AutoSnap"
-          pip install -r requirements.txt
+          # 4. Install tracewrightt dependencies and build it
+          echo "🔨 Installing tracewrightt dependencies and building..."
+          pushd "$GITHUB_WORKSPACE/AutoSnap/tracewrightt" > /dev/null || { echo "❌ Failed to change directory to tracewrightt"; exit 1; }
+          install_js_deps "." # This will handle yarn/npm for tracewrightt
           
-          # Install tracewrightt dependencies (TypeScript compilation)
-          echo "🔨 Installing tracewrightt dependencies..."
-          cd "$GITHUB_WORKSPACE/AutoSnap/tracewrightt"
-          
-          # Check what package manager to use for tracewrightt
-          if [ -f "yarn.lock" ] && command -v yarn >/dev/null 2>&1; then
-            echo "🧶 Using yarn for tracewrightt"
-            # First try with frozen lockfile, then fallback to regular install
-            yarn install --frozen-lockfile || {
-              echo "⚠️ Frozen lockfile failed, trying regular yarn install"
-              yarn install --ignore-engines || yarn install
-            }
-          elif [ -f "package-lock.json" ]; then
-            echo "📦 Using npm for tracewrightt"
-            npm ci || npm install
-          else
-            echo "⚠️ Using npm install as fallback for tracewrightt"
-            npm install
-          fi
-          
-          # Pre-compile TypeScript to avoid runtime compilation issues
-          echo "🔨 Building TypeScript..."
-          
-          # Verify rollup dependencies are installed
-          echo "🔍 Checking rollup dependencies..."
-          ls -la node_modules/@rollup/ 2>/dev/null || {
-            echo "⚠️ Missing rollup dependencies, installing manually"
-            npm install @rollup/plugin-node-resolve @rollup/plugin-commonjs @rollup/plugin-terser || true
-          }
-          
-          # Check if we can build TypeScript
+          echo "🔨 Building TypeScript for tracewrightt..."
           if [ -f "package.json" ] && grep -q '"build"' package.json; then
-            npm run build || {
-              echo "⚠️  TypeScript compilation failed, will use ts-node fallback"
-              echo "📋 Available node_modules in tracewrightt:"
-              ls -la node_modules/ | head -10 || echo "No node_modules found"
+            yarn build 2>/dev/null || npm run build || {
+              echo "❌ tracewrightt build failed. This module must be built for AutoSnap to use it. Exiting."
+              popd > /dev/null
+              exit 1
+            }
+            echo "✅ tracewrightt built successfully."
+          else
+            echo "⚠️ No 'build' script found in tracewrightt's package.json. Assuming it's not meant to be built directly or is already transpiled."
+          fi
+          popd > /dev/null
+          
+          # 5. Install Playwright browsers in AutoSnap directory
+          echo "🎭 Installing Playwright browsers in AutoSnap..."
+          pushd "$GITHUB_WORKSPACE/AutoSnap" > /dev/null || { echo "❌ Failed to change directory to AutoSnap for Playwright"; exit 1; }
+          
+          # Install browsers with proper error handling
+          echo "📦 Installing Playwright chromium browser..."
+          if command -v yarn >/dev/null 2>&1 && [ -f "yarn.lock" ]; then
+            yarn playwright install chromium --with-deps 2>/dev/null || {
+              echo "⚠️ Yarn playwright install with deps failed, trying npx..."
+              npx playwright install chromium --with-deps || {
+                echo "⚠️ Playwright install with --with-deps failed, trying without"
+                npx playwright install chromium || { echo "❌ Playwright install failed"; popd > /dev/null; exit 1; }
+              }
             }
           else
-            echo "⚠️  No build script found, will use ts-node"
+            npx playwright install chromium --with-deps || {
+              echo "⚠️ Playwright install with --with-deps failed, trying without"
+              npx playwright install chromium || { echo "❌ Playwright install failed"; popd > /dev/null; exit 1; }
+            }
           fi
           
-          # Install Playwright browsers in AutoSnap directory
-          echo "🎭 Installing Playwright browsers..."
+          popd > /dev/null
+          echo "✅ All dependencies installed."
+
+      - name: Verify environment setup (match local execution)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          PW_TEST_SCREENSHOT_NO_FONTS_READY: 'true'
+        run: |
           cd "$GITHUB_WORKSPACE/AutoSnap"
-          npx playwright install chromium --with-deps || {
-            echo "⚠️ Playwright install failed, trying without --with-deps"
-            npx playwright install chromium
-          }
+          
+          echo "🔍 Verifying environment setup matches local execution..."
+          
+          # Check Node.js and npm/yarn versions
+          echo "📦 Node.js version: $(node --version)"
+          echo "📦 NPM version: $(npm --version)"
+          command -v yarn >/dev/null 2>&1 && echo "🧶 Yarn version: $(yarn --version)" || echo "⚠️ Yarn not available"
+          
+          # Check Python setup
+          echo "🐍 Python version: $(python --version 2>&1 || echo 'Python not found')"
+          echo "📦 Pip version: $(pip --version 2>&1 || echo 'Pip not found')"
+          
+          # Verify Python dependencies (same check as local script)
+          echo "🔍 Checking Python dependencies (langchain-openai, playwright)..."
+          pip show langchain-openai playwright > /dev/null 2>&1 && echo "✅ Python dependencies verified" || echo "⚠️ Python dependencies check failed"
+          
+          # Check tracewrightt build
+          if [ -d "tracewrightt/dist" ]; then
+            echo "✅ Tracewrightt dist directory exists"
+            ls -la tracewrightt/dist/ | head -5
+          else
+            echo "❌ Tracewrightt dist directory missing"
+          fi
+          
+          # Check main script existence
+          [ -f "test-enhanced-flow.js" ] && echo "✅ test-enhanced-flow.js found" || echo "❌ test-enhanced-flow.js missing"
+          
+          # Check API keys (without exposing them)
+          [ -n "$GEMINI_API_KEY" ] && echo "✅ GEMINI_API_KEY is set" || echo "❌ GEMINI_API_KEY is missing"
+          [ -n "$AZURE_OPENAI_API_KEY" ] && echo "✅ AZURE_OPENAI_API_KEY is set" || echo "⚠️ AZURE_OPENAI_API_KEY is missing"
+          
+          # Check Playwright environment variable (critical for font loading bypass)
+          echo "🎭 PW_TEST_SCREENSHOT_NO_FONTS_READY: $PW_TEST_SCREENSHOT_NO_FONTS_READY"
+          
+          echo "🎯 Environment verification complete."
 
       - name: Extract command parameters
         id: extract
@@ -171,17 +203,10 @@ jobs:
           COMMENT="${{ github.event.comment.body }}"
           echo "Original comment: $COMMENT"
           
-          # Extract file patterns from comment
-          # Examples:
-          # /update-screenshots docs/5-Document-Viewer/document_explorer.md
-          # /update-screenshots docs/*/login.md  
-          # /update-screenshots all
-          # /update-screenshots mode:ui_change docs/specific-file.md
-          
-          # Extract mode (default to ui_change) - fixed regex
+          # Extract mode (default to ui_change)
           MODE=$(echo "$COMMENT" | grep -oE 'mode:[a-zA-Z_]+' | cut -d':' -f2 || echo "ui_change")
           
-          # Extract files pattern - improved parsing
+          # Extract files pattern - strip command and mode, then trim whitespace
           FILES=$(echo "$COMMENT" | sed 's|\/update-screenshots||' | sed 's|mode:[a-zA-Z_]*||' | xargs)
           
           if [ -z "$FILES" ] || [ "$FILES" = "all" ]; then
@@ -224,322 +249,207 @@ jobs:
               [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
             });
 
-
       - name: Create temporary changed files list
+        id: create_file_list
         run: |
-          # Ensure we're in the right directory with absolute path
+          # Ensure we're in the AutoSnap directory for path manipulation
           cd "$GITHUB_WORKSPACE/AutoSnap"
-          FILES="${{ steps.extract.outputs.files }}"
           
-          # Create a temporary file with the files to process
-          echo "📁 Creating temporary file list for: $FILES"
+          FILES_INPUT="${{ steps.extract.outputs.files }}"
+          TEMP_FILE="changed_files_temp.txt"
           
-          if [ "$FILES" = "docs/**/*.md" ] || [ "$FILES" = "all" ]; then
-            # Process all markdown files in docs - use paths relative to AutoSnap directory
-            echo "🔍 Finding all markdown files in docs directory..."
-            find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/|../|" > changed_files_temp.txt
+          echo "📁 Preparing file list for input: '$FILES_INPUT'"
+          
+          # Handle 'all' or default pattern
+          if [ -z "$FILES_INPUT" ] || [ "$FILES_INPUT" = "all" ] || [ "$FILES_INPUT" = "docs/**/*.md" ]; then
+            echo "🔍 Processing all markdown files in docs..."
+            # Find all .md files in GITHUB_WORKSPACE/docs and make their paths relative to AutoSnap/
+            # Example: /home/runner/work/repo/repo/docs/file.md -> ../docs/file.md
+            find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|^$GITHUB_WORKSPACE/|../|" > "$TEMP_FILE"
+            
+            # Set output for the next step to indicate folder mode or file mode
+            echo "is_folder_mode=false" >> $GITHUB_OUTPUT
           else
-            # Process specific files/patterns - handle folders and individual files
-            echo "📝 Processing specific files/folders: $FILES"
-            > changed_files_temp.txt
+            # Handle specific files or folders
+            echo "📝 Processing specific input: '$FILES_INPUT'"
             
-            # Clean the FILES variable - remove any whitespace/newlines (this is the key fix)
-            FILES_CLEAN=$(echo "$FILES" | tr -d '\n\r' | xargs)
-            echo "🧹 Cleaned FILES pattern: '$FILES_CLEAN'"
+            # Clean the FILES_INPUT variable
+            FILES_CLEAN=$(echo "$FILES_INPUT" | tr -d '\n\r' | xargs)
+            echo "🧹 Cleaned input pattern: '$FILES_CLEAN'"
             
-            # Check if the FILES pattern is a folder (enhanced detection)
-            echo "🔍 Checking if '$FILES_CLEAN' is a folder..."
-            
-            # Remove trailing slash for directory check
-            files_no_slash="${FILES_CLEAN%/}"
-            echo "  - Original pattern: '$FILES'"
-            echo "  - Cleaned pattern: '$FILES_CLEAN'"
-            echo "  - Pattern without slash: '$files_no_slash'"
-            echo "  - Ends with slash: $([[ "$FILES_CLEAN" == */ ]] && echo "YES" || echo "NO")"
-            echo "  - Directory exists (with slash): $([ -d "$GITHUB_WORKSPACE/$FILES_CLEAN" ] && echo "YES" || echo "NO")"
-            echo "  - Directory exists (without slash): $([ -d "$GITHUB_WORKSPACE/$files_no_slash" ] && echo "YES" || echo "NO")"
-            echo "  - Full path check: $GITHUB_WORKSPACE/$files_no_slash"
-            
-            # Use explicit tests for better debugging
-            ends_with_slash=false
-            dir_exists=false
-            
-            if [[ "$FILES_CLEAN" == */ ]]; then
-              ends_with_slash=true
-              echo "  ✅ Pattern ends with slash"
+            # Check if the cleaned pattern is an existing directory relative to GITHUB_WORKSPACE
+            ABSOLUTE_FOLDER_PATH="$GITHUB_WORKSPACE/$FILES_CLEAN"
+            if [ -d "$ABSOLUTE_FOLDER_PATH" ]; then
+              echo "📁 Detected input as an existing folder: '$FILES_CLEAN'"
+              # Store it as a special marker for folder mode
+              echo "FOLDER_MODE:$FILES_CLEAN" > "$TEMP_FILE"
+              echo "is_folder_mode=true" >> $GITHUB_OUTPUT
             else
-              echo "  ❌ Pattern does not end with slash"
-            fi
-            
-            # Check directory without trailing slash (this is the key fix)
-            if [ -d "$GITHUB_WORKSPACE/$files_no_slash" ]; then
-              dir_exists=true
-              echo "  ✅ Directory exists at path (without slash)"
-            else
-              echo "  ❌ Directory does not exist at path"
-            fi
-            
-            if [ "$ends_with_slash" = true ] || [ "$dir_exists" = true ]; then
-              # It's a folder - let test-enhanced-flow.js handle it directly
-              folder_path="${FILES_CLEAN%/}"
-              echo "📁 Detected folder pattern: $folder_path"
-              echo "ℹ️  Will pass directly to test-enhanced-flow.js with --folder parameter"
+              echo "📄 Treating input as individual file(s) or file pattern(s)."
+              > "$TEMP_FILE" # Clear the temp file for individual files
               
-              # Create a simple marker file to indicate folder mode
-              echo "FOLDER_MODE:$folder_path" > changed_files_temp.txt
-            else
-              echo "📄 Treating as individual file(s): $FILES_CLEAN"
-              # Handle individual files
+              # Split by space or comma, remove empty entries, and process each item
               echo "$FILES_CLEAN" | tr ' ,' '\n' | grep -v '^$' | while IFS= read -r item; do
-                # Remove leading/trailing whitespace
-                item=$(echo "$item" | xargs)
+                item=$(echo "$item" | xargs) # Trim whitespace
                 [ -z "$item" ] && continue
                 
-                echo "📄 Processing individual file: $item"
-                # It's a file path - add ../ prefix for AutoSnap relative paths
-                echo "../$item" >> changed_files_temp.txt
-              done
-            fi
-          fi
-          
-          # Check if we're in folder mode or file mode
-          if grep -q "^FOLDER_MODE:" changed_files_temp.txt 2>/dev/null; then
-            echo "📁 Folder mode detected - skipping file validation"
-            echo "ℹ️  test-enhanced-flow.js will handle folder processing directly"
-          else
-            # Validate files exist and convert to paths relative to AutoSnap directory
-            echo "🔍 Validating files exist relative to AutoSnap directory..."
-            > validated_files_temp.txt
-            
-            if [ -s changed_files_temp.txt ]; then
-              while IFS= read -r file; do
-                # Remove leading/trailing whitespace
-                file=$(echo "$file" | xargs)
+                echo "  - Considering item: '$item'"
                 
-                # Skip empty lines
-                [ -z "$file" ] && continue
-                
-                # Check if file exists using paths relative to AutoSnap directory
-                if [ -f "$file" ]; then
-                  echo "$file" >> validated_files_temp.txt
-                  echo "✅ Found: $file (relative to AutoSnap/)"
+                # Check if it's a file relative to GITHUB_WORKSPACE, then adjust path
+                # Example: docs/file.md -> ../docs/file.md (relative to AutoSnap)
+                if [ -f "$GITHUB_WORKSPACE/$item" ]; then
+                  echo "../$item" >> "$TEMP_FILE"
+                  echo "    ✅ Found file and added: ../$item"
                 else
-                  echo "⚠️ File not found: $file (relative to AutoSnap/)"
-                  # Try absolute path for debugging
-                  absolute_file="$GITHUB_WORKSPACE/${file#../}"
-                  if [ -f "$absolute_file" ]; then
-                    echo "📍 File exists at absolute path: $absolute_file"
-                    echo "$file" >> validated_files_temp.txt
-                  else
-                    echo "❌ File not found at absolute path either: $absolute_file"
-                    # List what's actually in the directory for debugging
-                    if [ -d "$(dirname "$absolute_file")" ]; then
-                      echo "📁 Directory contents of $(dirname "$absolute_file"):"
-                      ls -la "$(dirname "$absolute_file")" | head -10
-                    else
-                      echo "❌ Directory doesn't exist: $(dirname "$absolute_file")"
-                    fi
-                  fi
+                  echo "    ❌ File not found at $GITHUB_WORKSPACE/$item (absolute path checked: $GITHUB_WORKSPACE/$item)"
                 fi
-              done < changed_files_temp.txt
+              done
+              echo "is_folder_mode=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+          
+          echo "📋 Raw content of $TEMP_FILE before validation (from AutoSnap/ perspective):"
+          cat "$TEMP_FILE" || echo "  (empty)"
+          
+          # Validation step (only for file mode, folder mode skips individual file existence check here)
+          IS_FOLDER_MODE=$(grep -q "^FOLDER_MODE:" "$TEMP_FILE" && echo "true" || echo "false")
+          if [ "$IS_FOLDER_MODE" == "false" ]; then
+            echo "🔍 Validating generated file list for existence (relative to AutoSnap/)..."
+            VALIDATED_FILE="validated_files_temp.txt"
+            > "$VALIDATED_FILE"
+            
+            if [ -s "$TEMP_FILE" ]; then
+              while IFS= read -r file_path_rel_to_autosnap; do
+                file_path_rel_to_autosnap=$(echo "$file_path_rel_to_autosnap" | xargs)
+                [ -z "$file_path_rel_to_autosnap" ] && continue
+                
+                if [ -f "$file_path_rel_to_autosnap" ]; then
+                  echo "$file_path_rel_to_autosnap" >> "$VALIDATED_FILE"
+                  echo "  ✅ Validated: $file_path_rel_to_autosnap"
+                else
+                  echo "  ❌ Validation FAILED: File '$file_path_rel_to_autosnap' not found relative to AutoSnap/."
+                  echo "    (Absolute path checked: $GITHUB_WORKSPACE/${file_path_rel_to_autosnap#../})"
+                fi
+              done < "$TEMP_FILE"
+              
+              mv "$VALIDATED_FILE" "$TEMP_FILE"
             else
-              echo "⚠️ No files were found in the initial processing step"
+              echo "⚠️ Initial file list was empty."
             fi
-            
-            # Use validated files
-            mv validated_files_temp.txt changed_files_temp.txt
           fi
           
-          echo "📋 Final files to process:"
-          cat changed_files_temp.txt
+          echo "📋 Final content of $TEMP_FILE after processing (from AutoSnap/ perspective):"
+          cat "$TEMP_FILE" || echo "  (empty)"
           
-          # Check if we have any files to process or if we're in folder mode
-          if grep -q "^FOLDER_MODE:" changed_files_temp.txt 2>/dev/null; then
-            echo "✅ Folder mode confirmed - test-enhanced-flow.js will handle processing"
-          elif [ ! -s changed_files_temp.txt ]; then
+          # Check if we have any valid files to process or if we're in folder mode
+          IS_FOLDER_MODE=$(grep -q "^FOLDER_MODE:" "$TEMP_FILE" && echo "true" || echo "false")
+          if [ "$IS_FOLDER_MODE" == "false" ] && [ ! -s "$TEMP_FILE" ]; then
             echo "❌ No valid files found to process!"
-            echo "🔍 Debugging information:"
-            echo "  - Original FILES pattern: '$FILES'"
-            echo "  - Cleaned FILES pattern: '$FILES_CLEAN'"
-            echo "  - GitHub workspace: $GITHUB_WORKSPACE"
-            echo "  - Current directory: $(pwd)"
-            
-            # Show what directories actually exist
-            echo "📁 Available directories in workspace root:"
-            ls -la "$GITHUB_WORKSPACE" | grep "^d" | head -10
-            
-            # If it's a folder pattern, show what's in it
-            if [[ "$FILES_CLEAN" == */ ]] || [ -d "$GITHUB_WORKSPACE/$FILES_CLEAN" ]; then
-              folder_to_check="${FILES_CLEAN%/}"
-              if [ -d "$GITHUB_WORKSPACE/$folder_to_check" ]; then
-                echo "📁 Contents of $folder_to_check directory:"
-                find "$GITHUB_WORKSPACE/$folder_to_check" -name "*.md" -type f | head -10 || echo "No .md files found"
-              fi
-            fi
-            
             exit 1
+          elif [ "$IS_FOLDER_MODE" == "true" ]; then
+            echo "✅ Folder mode detected: Will pass folder path directly to script."
           else
-            echo "✅ File mode confirmed - found files to process"
+            echo "✅ File mode detected: Found files to process."
           fi
+          
+          # Set output for next step
+          echo "is_folder_mode=$IS_FOLDER_MODE" >> $GITHUB_OUTPUT
 
-      - name: Run enhanced screenshot flow
+      - name: Run enhanced screenshot flow (exact local replication)
         env:
-          GITHUB_ACTIONS: true
-          GITHUB_WORKSPACE: ${{ github.workspace }}
+          # GITHUB_ACTIONS, GITHUB_WORKSPACE are implicitly available
           CURRENT_MODE: ${{ steps.extract.outputs.mode }}
-          FILES_TO_PROCESS: ${{ steps.extract.outputs.files }}
           PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/playwright-browsers
-          # Node.js ESM and TypeScript support (updated for Node 18+)
-          NODE_OPTIONS: "--loader ts-node/esm --no-warnings --experimental-specifier-resolution=node"
-          TS_NODE_ESM: true
-          TS_NODE_COMPILER_OPTIONS: '{"module":"ESNext","moduleResolution":"node","allowSyntheticDefaultImports":true,"esModuleInterop":true}'
-          TS_NODE_PROJECT: "./tracewrightt/tsconfig.json"
-          # Add your API keys from secrets
+          
+          # API Keys - Same as local .env file
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          # Ensure we're in the right directory with absolute path
-          cd "$GITHUB_WORKSPACE/AutoSnap"
           
-          echo "🚀 Starting enhanced screenshot update process..."
+          # Playwright environment - Match local script exactly
+          PW_TEST_SCREENSHOT_NO_FONTS_READY: 'true'
+          NODE_ENV: production
+          
+          # Working directory context for the script
+          GITHUB_ACTIONS: 'true'
+        run: |
+          cd "$GITHUB_WORKSPACE/AutoSnap" # Ensure in correct directory
+          
+          echo "🚀 Starting enhanced screenshot update process (replicating local execution)..."
           echo "Environment: GitHub Actions"
           echo "Workspace: $GITHUB_WORKSPACE"
+          echo "Current working directory: $(pwd)"
           echo "Mode: $CURRENT_MODE"
-          echo "Files to process: $FILES_TO_PROCESS"
           echo "Branch: ${{ fromJson(steps.pr.outputs.result).head_ref }}"
+          echo "PW_TEST_SCREENSHOT_NO_FONTS_READY: $PW_TEST_SCREENSHOT_NO_FONTS_READY"
+          echo "GEMINI_API_KEY: ${GEMINI_API_KEY:0:10}..." # Show first 10 chars for verification
           
-          # Debug: Show current environment
-          echo "📋 Current directory: $(pwd)"
-          echo "📋 Node version: $(node --version)"
-          echo "📋 NPM version: $(npm --version)"
-          echo "📋 Python version: $(python --version)"
-          echo "📋 Files exist check:"
-          ls -la test-enhanced-flow.js || echo "❌ test-enhanced-flow.js not found!"
-          ls -la changed_files_temp.txt || echo "❌ changed_files_temp.txt not found!"
-          ls -la tracewrightt/dist/ || echo "⚠️ tracewrightt/dist/ not found, will use ts-node"
+          if [ ! -f "test-enhanced-flow.js" ]; then
+            echo "❌ Error: test-enhanced-flow.js not found in $(pwd)!"
+            exit 1
+          fi
           
-          # Debug: Check what's actually in the compiled dist directory
-          if [ -d "tracewrightt/dist/esm" ]; then
-            echo "📁 Contents of tracewrightt/dist/esm:"
-            find tracewrightt/dist/esm -name "*.js" | head -15
-            echo "🔍 Looking for specific entry points:"
-            for entry in "tracewrightt/dist/esm/tracewrightt/src/run.js" "tracewrightt/dist/esm/src/run.js" "tracewrightt/dist/esm/run.js" "tracewrightt/dist/esm/index.js"; do
-              if [ -f "$entry" ]; then
-                echo "✅ Found: $entry"
-              else
-                echo "❌ Missing: $entry"
-              fi
-            done
-            
-            # Also check for files in _virtual directory and other patterns
-            echo "🔍 Checking alternative patterns:"
-            for pattern in "tracewrightt/dist/esm/_virtual/index.js" "tracewrightt/dist/esm/_virtual/run.js" "tracewrightt/dist/esm/_virtual/main.js"; do
-              if [ -f "$pattern" ]; then
-                echo "✅ Found alternative: $pattern"
-              else
-                echo "❌ Missing alternative: $pattern"  
-              fi
-            done
-            
-            # Show detailed structure
-            echo "📂 Full directory structure:"
-            ls -la tracewrightt/dist/esm/ || echo "Cannot list esm directory"
-            ls -la tracewrightt/dist/esm/_virtual/ 2>/dev/null || echo "No _virtual directory"
+          # Verify tracewrightt's compiled output if it's meant to be imported
+          if [ -d "tracewrightt/dist" ]; then
+            echo "✅ tracewrightt/dist/ directory found. Assuming compilation was successful."
+            # Debug: List contents of dist to confirm expected files are there
+            echo "🔍 Contents of tracewrightt/dist/ (first 10 files):"
+            find tracewrightt/dist -type f | head -10 || echo "  (empty or failed to list)"
           else
-            echo "❌ tracewrightt/dist/esm directory not found"
+            echo "❌ tracewrightt/dist/ directory NOT found. This indicates a build failure for tracewrightt. AutoSnap may fail to import it."
+            exit 1 # Make this critical, as AutoSnap likely won't run without it
           fi
           
-          # Debug: Check if files in changed_files_temp.txt actually exist (relative to AutoSnap/)
-          echo "🔍 Verifying files in changed_files_temp.txt exist (relative to AutoSnap/):"
-          while IFS= read -r file; do
-            if [ -f "$file" ]; then
-              echo "✅ File exists: $file (relative to AutoSnap/)"
-            else
-              echo "❌ File missing: $file (relative to AutoSnap/)"
-              # Also check absolute path
-              absolute_file="$GITHUB_WORKSPACE/${file#../}"
-              if [ -f "$absolute_file" ]; then
-                echo "✅ File exists at absolute path: $absolute_file"
-              else
-                echo "❌ File also missing at absolute path: $absolute_file"
-              fi
-            fi
-          done < changed_files_temp.txt
+          TEMP_FILE="changed_files_temp.txt"
           
-          # Enhanced fix: Find the actual compiled entry point and create symlinks
-          echo "🔧 Patching: Creating entry points for Tracewright"
-          
-          # Create index.js symlink (primary entry point)
-          if [ -f "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/index.js" ]; then
-            echo "✅ Found actual entry point: AutoSnap/tracewrightt/src/index.js"
-            ln -sf "AutoSnap/tracewrightt/src/index.js" "tracewrightt/dist/esm/index.js" 2>/dev/null || {
-              echo "⚠️ Primary symlink failed, trying copy"
-              cp "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/index.js" "tracewrightt/dist/esm/index.js" || echo "Copy failed"
-            }
-          elif [ -f "tracewrightt/dist/esm/_virtual/index.js" ]; then
-            echo "✅ Using virtual entry point: _virtual/index.js"
-            ln -sf "_virtual/index.js" "tracewrightt/dist/esm/index.js" 2>/dev/null || {
-              echo "⚠️ Fallback symlink failed, trying copy"
-              cp "tracewrightt/dist/esm/_virtual/index.js" "tracewrightt/dist/esm/index.js" || echo "Copy failed"
-            }
-          fi
-          
-          # Create src/run.js symlink (alternative entry point)
-          if [ -f "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/run.js" ]; then
-            mkdir -p "tracewrightt/dist/esm/src"
-            ln -sf "../AutoSnap/tracewrightt/src/run.js" "tracewrightt/dist/esm/src/run.js" 2>/dev/null || {
-              cp "tracewrightt/dist/esm/AutoSnap/tracewrightt/src/run.js" "tracewrightt/dist/esm/src/run.js" 2>/dev/null || echo "No run.js found"
-            }
-          fi
-          
-          # Force ts-node fallback due to ESM/CommonJS compatibility issues
-          echo "🔧 Forcing ts-node fallback due to module compatibility issues"
-          rm -f "tracewrightt/dist/esm/index.js" 2>/dev/null || true
-          
-          # Check if we're in folder mode by looking for the FOLDER_MODE marker
-          if grep -q "^FOLDER_MODE:" changed_files_temp.txt 2>/dev/null; then
-            # Extract folder path from the marker
-            folder_path=$(grep "^FOLDER_MODE:" changed_files_temp.txt | cut -d':' -f2)
-            echo "📁 Running test-enhanced-flow.js in folder mode with folder: $folder_path"
-            
+          # Check if we're in folder mode by examining the temp file
+          IS_FOLDER_MODE=$(grep -q "^FOLDER_MODE:" "$TEMP_FILE" && echo "true" || echo "false")
+
+          if [ "$IS_FOLDER_MODE" == "true" ]; then
+            # Extract folder path which is relative to GITHUB_WORKSPACE
+            folder_path_rel_to_workspace=$(grep "^FOLDER_MODE:" "$TEMP_FILE" | cut -d':' -f2)
             # Convert to absolute path for test-enhanced-flow.js
-            absolute_folder_path="$GITHUB_WORKSPACE/$folder_path"
+            absolute_folder_path="$GITHUB_WORKSPACE/$folder_path_rel_to_workspace"
             
-            echo "📁 Absolute folder path: $absolute_folder_path"
-            echo "📁 Checking folder exists: $([ -d "$absolute_folder_path" ] && echo "YES" || echo "NO")"
+            echo "📁 Running test-enhanced-flow.js in folder mode (exactly as local execution)"
+            echo "📂 Folder: $absolute_folder_path"
+            echo "🎯 Mode: $CURRENT_MODE"
+            echo "📋 Command: node test-enhanced-flow.js --mode $CURRENT_MODE --folder $absolute_folder_path"
             
+            # Run exactly as local execution
             node test-enhanced-flow.js \
               --mode "$CURRENT_MODE" \
               --folder "$absolute_folder_path" || {
-              echo "❌ Test enhanced flow failed in folder mode"
-              echo "📁 Folder path: $absolute_folder_path"
-              echo "📁 Current directory contents:"
-              ls -la
-              echo "📁 Folder contents (if exists):"
-              ls -la "$absolute_folder_path" 2>/dev/null || echo "Folder not accessible"
+              echo "❌ Test enhanced flow failed in folder mode."
               exit 1
             }
           else
             # File mode - use test-enhanced-flow.js with --changed-files parameter
-            echo "📄 Running test-enhanced-flow.js in file mode with changed files list"
+            if [ ! -s "$TEMP_FILE" ]; then
+              echo "❌ Error: No valid files found in $TEMP_FILE to process in file mode!"
+              exit 1
+            fi
             
+            echo "📄 Running test-enhanced-flow.js in file mode (exactly as local execution)"
+            echo "📋 Files list: $TEMP_FILE ($(cat "$TEMP_FILE" | wc -l) files)"
+            echo "🎯 Mode: $CURRENT_MODE"
+            echo "📋 Command: node test-enhanced-flow.js --mode $CURRENT_MODE --changed-files $TEMP_FILE"
+            
+            # Show files being processed (for debugging)
+            echo "📂 Files to process:"
+            cat "$TEMP_FILE" | head -10 | while read -r file; do echo "  - $file"; done
+            [ $(cat "$TEMP_FILE" | wc -l) -gt 10 ] && echo "  ... and $(( $(cat "$TEMP_FILE" | wc -l) - 10 )) more files"
+            
+            # Run exactly as local execution
             node test-enhanced-flow.js \
               --mode "$CURRENT_MODE" \
-              --changed-files "changed_files_temp.txt" || {
-              echo "❌ Test enhanced flow failed in file mode"
-              echo "📁 Contents of changed_files_temp.txt:"
-              cat changed_files_temp.txt || echo "Could not read changed_files_temp.txt"
-              echo "📁 Current directory contents:"
-              ls -la
-              echo "📁 Node modules in AutoSnap:"
-              ls -la node_modules/ | head -10 || echo "No node_modules found"
+              --changed-files "$TEMP_FILE" || {
+              echo "❌ Test enhanced flow failed in file mode."
               exit 1
             }
           fi
           
-          # Clean up temporary file
-          rm -f changed_files_temp.txt
+          rm -f "$TEMP_FILE" # Clean up temporary file
 
       - name: Check for changes
         id: changes
@@ -567,7 +477,7 @@ jobs:
           
           # Create commit with detailed message
           git commit -m "🤖 Update screenshots via GitHub Actions
-
+          
           Triggered by: @${{ github.event.comment.user.login }}
           Comment: ${{ github.event.comment.html_url }}
           Mode: ${{ steps.extract.outputs.mode }}
@@ -603,7 +513,7 @@ jobs:
               - **Commit:** [\`${commit.sha.substring(0, 7)}\`](${commit.html_url})
               
               **Changes committed:**
-              ${process.env.GITHUB_WORKSPACE ? '- Screenshots updated in docs directory' : ''}
+              - Screenshots updated in docs directory
               
               The PR has been updated with the new screenshots. You can now review the changes.
               
@@ -652,9 +562,9 @@ jobs:
               Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
               
               Common issues:
+              - Dependency installation failure
               - Files not found in the specified pattern
-              - Script execution errors
-              - Browser automation failures
+              - Script execution errors (e.g., Playwright or Tracewright errors)
               
               You can retry by commenting \`/update-screenshots\` again.`
             });
