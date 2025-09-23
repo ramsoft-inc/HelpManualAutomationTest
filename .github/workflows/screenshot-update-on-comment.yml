@@ -207,6 +207,7 @@ jobs:
           # /update-screenshots docs/*/login.md  
           # /update-screenshots all
           # /update-screenshots mode:ui_change docs/specific-file.md
+          # /update-screenshots spanish/
           
           # Extract mode (default to ui_change) - fixed regex
           MODE=$(echo "$COMMENT" | grep -oE 'mode:[a-zA-Z_]+' | cut -d':' -f2 || echo "ui_change")
@@ -214,9 +215,12 @@ jobs:
           # Extract files pattern - improved parsing
           FILES=$(echo "$COMMENT" | sed 's|\/update-screenshots||' | sed 's|mode:[a-zA-Z_]*||' | xargs)
           
+          # Set default if no files specified
           if [ -z "$FILES" ] || [ "$FILES" = "all" ]; then
             FILES="docs/**/*.md"
           fi
+          
+          # No hardcoded fallbacks - let the file discovery handle missing paths
           
           echo "mode=$MODE" >> $GITHUB_OUTPUT
           echo "files=$FILES" >> $GITHUB_OUTPUT
@@ -260,15 +264,81 @@ jobs:
           # Create a temporary file with the files to process
           echo "📁 Creating temporary file list for: $FILES"
           
+          # Initialize the temp file
+          > changed_files_temp.txt
+          
           if [ "$FILES" = "docs/**/*.md" ] || [ "$FILES" = "all" ]; then
             # Process all markdown files in docs - use paths relative to AutoSnap directory
             echo "🔍 Finding all markdown files in docs directory..."
-            find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/|../|" > changed_files_temp.txt
+            if [ -d "$GITHUB_WORKSPACE/docs" ]; then
+              find "$GITHUB_WORKSPACE/docs" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/|../|" > changed_files_temp.txt
+            else
+              echo "⚠️ docs directory not found at $GITHUB_WORKSPACE/docs"
+            fi
           else
-            # Process specific files/patterns - prepend ../ for AutoSnap relative paths
-            echo "📝 Processing specific files: $FILES"
-            # Handle both space-separated and comma-separated files
-            echo "$FILES" | tr ' ,' '\n' | grep -v '^$' | sed 's|^|../|' > changed_files_temp.txt
+            # Process specific files/patterns
+            echo "📝 Processing specific files/patterns: $FILES"
+            
+            # First, let's understand the workspace structure
+            echo "🔍 Workspace structure analysis:"
+            echo "   GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+            echo "   Current directory: $(pwd)"
+            echo "   Available directories:"
+            find "$GITHUB_WORKSPACE" -maxdepth 2 -type d | head -10
+            
+            # Handle different input formats
+            for pattern in $(echo "$FILES" | tr ' ,' '\n' | grep -v '^$'); do
+              echo "🔍 Processing pattern: $pattern"
+              
+              # Remove leading/trailing whitespace
+              pattern=$(echo "$pattern" | xargs)
+              
+              # Skip empty patterns
+              [ -z "$pattern" ] && continue
+              
+              # First, search for the pattern anywhere in the workspace
+              echo "🔍 Searching for pattern '$pattern' in workspace..."
+              
+              # Check if it's a directory pattern
+              if [[ "$pattern" == */ ]]; then
+                # Remove trailing slash
+                clean_pattern="${pattern%/}"
+                echo "📂 Looking for directory: $clean_pattern"
+                
+                # Search for the directory anywhere in the workspace
+                found_dirs=$(find "$GITHUB_WORKSPACE" -type d -name "$clean_pattern" 2>/dev/null)
+                
+                if [ -n "$found_dirs" ]; then
+                  echo "$found_dirs" | while read -r dir; do
+                    echo "✅ Found directory: $dir"
+                    find "$dir" -name "*.md" -type f | sed "s|$GITHUB_WORKSPACE/|../|" >> changed_files_temp.txt
+                  done
+                else
+                  echo "❌ Directory '$clean_pattern' not found anywhere in workspace"
+                fi
+              else
+                # Check if it's a specific file or file pattern
+                if [[ "$pattern" == *.md ]] || [[ "$pattern" == *.mdx ]]; then
+                  # Specific file - search for it
+                  found_files=$(find "$GITHUB_WORKSPACE" -name "$pattern" -type f 2>/dev/null)
+                  if [ -n "$found_files" ]; then
+                    echo "$found_files" | sed "s|$GITHUB_WORKSPACE/|../|" >> changed_files_temp.txt
+                  else
+                    echo "❌ File '$pattern' not found"
+                  fi
+                else
+                  # General pattern - search for markdown files matching it
+                  echo "🔍 Searching for markdown files matching pattern: $pattern"
+                  find "$GITHUB_WORKSPACE" -path "*$pattern*" \( -name "*.md" -o -name "*.mdx" \) -type f 2>/dev/null | sed "s|$GITHUB_WORKSPACE/|../|" >> changed_files_temp.txt
+                fi
+              fi
+            done
+          fi
+          
+          # Remove duplicates and empty lines
+          if [ -s changed_files_temp.txt ]; then
+            sort changed_files_temp.txt | uniq > changed_files_temp_unique.txt
+            mv changed_files_temp_unique.txt changed_files_temp.txt
           fi
           
           # Validate files exist and convert to paths relative to AutoSnap directory
@@ -295,13 +365,6 @@ jobs:
                   echo "$file" >> validated_files_temp.txt
                 else
                   echo "❌ File not found at absolute path either: $absolute_file"
-                  # List what's actually in the directory for debugging
-                  if [ -d "$(dirname "$absolute_file")" ]; then
-                    echo "📁 Directory contents of $(dirname "$absolute_file"):"
-                    ls -la "$(dirname "$absolute_file")" | head -10
-                  else
-                    echo "❌ Directory doesn't exist: $(dirname "$absolute_file")"
-                  fi
                 fi
               fi
             done < changed_files_temp.txt
@@ -315,7 +378,25 @@ jobs:
           # Check if we have any files to process
           if [ ! -s changed_files_temp.txt ]; then
             echo "❌ No valid files found to process!"
+            echo ""
+            echo "🔍 DEBUGGING INFORMATION:"
+            echo "📋 Available directories in workspace root:"
+            ls -la "$GITHUB_WORKSPACE" | grep "^d" || echo "No directories found"
+            echo ""
+            echo "📋 Available .md files in workspace (first 10):"
+            find "$GITHUB_WORKSPACE" -name "*.md" -type f | head -10 || echo "No .md files found"
+            echo ""
+            echo "💡 SUGGESTIONS:"
+            echo "   • Use 'all' or 'docs/**/*.md' to process all documentation files"
+            echo "   • Use 'docs/specific-folder/' to process a specific folder"
+            echo "   • Use 'docs/specific-file.md' to process a specific file"
+            echo "   • Check that the files/directories you specified actually exist"
+            echo ""
+            echo "🔄 Original request was: $FILES"
             exit 1
+          else
+            echo "✅ Found $(wc -l < changed_files_temp.txt) files to process:"
+            cat changed_files_temp.txt
           fi
       - name: Run enhanced screenshot update script
         run: |
