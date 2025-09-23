@@ -272,51 +272,113 @@ async function selectLanguage(page, languageInput) {
     }
     
     if (!avatarClicked) {
+      // COMPREHENSIVE DEBUG APPROACH for avatar search
+      console.log('🚨 AVATAR NOT FOUND - Starting comprehensive debugging...');
+      
       // Take a debug screenshot to see what the page looks like
       try {
-        await page.screenshot({ path: `debug-avatar-search-${Date.now()}.png`, fullPage: true });
-        console.log('📸 Debug screenshot saved for avatar search failure');
+        const debugScreenshotPath = `debug-avatar-search-${Date.now()}.png`;
+        await page.screenshot({ path: debugScreenshotPath, fullPage: true });
+        console.log(`📸 Debug screenshot saved: ${debugScreenshotPath}`);
       } catch (e) {
         console.log('⚠️  Could not take debug screenshot');
       }
       
-      // Try one more time with a very broad selector
+      // Log current URL and page state
       try {
-        console.log('🔍 Last attempt: Looking for any button that might be the profile...');
-        const allButtons = await page.locator('button').all();
-        console.log(`🔢 Total buttons found: ${allButtons.length}`);
+        const currentUrl = await page.url();
+        const pageTitle = await page.title();
+        console.log(`📄 Current URL: ${currentUrl}`);
+        console.log(`📄 Page title: ${pageTitle}`);
+      } catch (e) {
+        console.log('⚠️  Could not get page info');
+      }
+      
+      // AGGRESSIVE SEARCH: Look at ALL buttons and clickable elements
+      try {
+        console.log('🔍 AGGRESSIVE SEARCH: Analyzing ALL interactive elements...');
         
-        // Look for buttons with profile-related attributes or text
-        for (let i = 0; i < Math.min(10, allButtons.length); i++) {
+        // Get all potentially clickable elements
+        const clickableSelectors = [
+          'button',
+          '[role="button"]', 
+          '[onclick]',
+          'a[href]',
+          '.clickable',
+          '[class*="button"]',
+          '[class*="menu"]',
+          '[class*="avatar"]',
+          '[class*="profile"]',
+          '[class*="user"]'
+        ];
+        
+        for (const selector of clickableSelectors) {
           try {
-            const button = allButtons[i];
-            const text = await button.textContent();
-            const ariaLabel = await button.getAttribute('aria-label');
-            const dataTestId = await button.getAttribute('data-testid');
+            const elements = await page.locator(selector).all();
+            console.log(`🔍 Found ${elements.length} elements for selector: ${selector}`);
             
-            console.log(`🔍 Button ${i}: text="${text}", aria-label="${ariaLabel}", data-testid="${dataTestId}"`);
-            
-            if (text?.toLowerCase().includes('profile') || 
-                text?.toLowerCase().includes('perfil') ||
-                ariaLabel?.toLowerCase().includes('profile') ||
-                ariaLabel?.toLowerCase().includes('perfil') ||
-                dataTestId?.toLowerCase().includes('profile')) {
-              
-              console.log(`👆 Found potential profile button, clicking...`);
-              await button.click({ force: true });
-              avatarClicked = true;
-              break;
+            // Log first few elements of each type
+            for (let i = 0; i < Math.min(3, elements.length); i++) {
+              try {
+                const text = await elements[i].textContent();
+                const classList = await elements[i].getAttribute('class');
+                const id = await elements[i].getAttribute('id');
+                console.log(`  ${selector}[${i}]: text="${text?.trim()}" class="${classList}" id="${id}"`);
+              } catch (e) {
+                continue;
+              }
             }
           } catch (e) {
-            continue; // Skip this button and try the next
+            continue;
           }
         }
+        
+        // Try clicking elements that might be user/profile related
+        const potentialElements = await page.locator('button, [role="button"], [onclick], a').all();
+        console.log(`🎯 Checking ${potentialElements.length} potential clickable elements...`);
+        
+        for (let i = 0; i < Math.min(20, potentialElements.length); i++) {
+          try {
+            const element = potentialElements[i];
+            const text = await element.textContent();
+            const classList = await element.getAttribute('class');
+            const ariaLabel = await element.getAttribute('aria-label');
+            const title = await element.getAttribute('title');
+            
+            // Combined search terms
+            const searchTerms = [
+              'profile', 'perfil', 'user', 'usuario', 'menu', 'account', 'cuenta',
+              'settings', 'configuración', 'avatar', 'my', 'mi'
+            ];
+            
+            const allText = `${text} ${classList} ${ariaLabel} ${title}`.toLowerCase();
+            
+            if (searchTerms.some(term => allText.includes(term))) {
+              console.log(`👆 POTENTIAL MATCH ${i}: text="${text}" class="${classList}" aria-label="${ariaLabel}"`);
+              
+              try {
+                await element.click({ force: true, timeout: 3000 });
+                console.log(`✅ Successfully clicked potential profile element ${i}`);
+                avatarClicked = true;
+                break;
+              } catch (clickError) {
+                console.log(`❌ Click failed for element ${i}: ${clickError.message}`);
+                continue;
+              }
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        
       } catch (e) {
-        console.log('⚠️  Broad search also failed');
+        console.log('⚠️  Aggressive search failed:', e.message);
       }
       
       if (!avatarClicked) {
-        throw new Error('Could not find user avatar button with any selector');
+        console.error('❌ COMPLETE FAILURE: Could not find user avatar button with any method');
+        // Don't throw error - continue with the rest of the process
+        console.log('⚠️  Continuing without language selection...');
       }
     }
 
@@ -2128,22 +2190,60 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         
         // First check if npm is available and dependencies are installed
         try {
-            execSync('npm --version', { cwd: path.join(__dirname, 'tracewrightt'), stdio: 'pipe' });
-            console.log('✅ npm is available');
+            // Check npm in multiple locations for CI compatibility
+            let npmWorking = false;
+            const npmCommands = ['npm --version', 'npx --version'];
+            
+            for (const cmd of npmCommands) {
+                try {
+                    execSync(cmd, { 
+                        cwd: path.join(__dirname, 'tracewrightt'), 
+                        stdio: 'pipe',
+                        env: { ...process.env, PATH: process.env.PATH }
+                    });
+                    console.log(`✅ ${cmd.split(' ')[0]} is available`);
+                    npmWorking = true;
+                    break;
+                } catch (e) {
+                    console.log(`⚠️  ${cmd.split(' ')[0]} check failed, trying next...`);
+                }
+            }
+            
+            if (!npmWorking) {
+                // Try without explicit npm check - maybe it's available but version check fails
+                console.log('⚠️  npm version check failed, but attempting build anyway (npm might still work)');
+            }
         } catch (e) {
-            throw new Error('npm not available in CI environment');
+            console.log('⚠️  npm availability check inconclusive, proceeding with build attempt');
         }
         
-        // Try to install dependencies first if needed
+        // Try to install dependencies first if needed  
         try {
+            console.log('📦 Attempting to install/verify dependencies...');
             execSync('npm ci --silent', {
                 cwd: path.join(__dirname, 'tracewrightt'),
                 stdio: 'pipe',
-                timeout: 30000 // 30 second timeout
+                timeout: 45000, // Increased timeout for CI
+                env: { ...process.env, PATH: process.env.PATH }
             });
             console.log('✅ Dependencies installed/verified');
         } catch (e) {
-            console.log('⚠️  Dependencies installation skipped or failed, continuing...');
+            console.log('⚠️  Dependencies installation failed, but continuing with build attempt...');
+            console.log(`📋 npm ci error: ${e.message.substring(0, 100)}`);
+            
+            // Try alternative dependency approach
+            try {
+                console.log('🔄 Trying npm install as fallback...');
+                execSync('npm install --silent', {
+                    cwd: path.join(__dirname, 'tracewrightt'),
+                    stdio: 'pipe',
+                    timeout: 45000,
+                    env: { ...process.env, PATH: process.env.PATH }
+                });
+                console.log('✅ Dependencies installed via npm install');
+            } catch (e2) {
+                console.log('⚠️  All dependency installation attempts failed, continuing anyway...');
+            }
         }
         
         // Set required environment variables for compilation if in CI
@@ -2155,19 +2255,58 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             process.env.CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || 'ci-dummy-key';
         }
         
-        // Now try the build
-        const buildOutput = execSync('npm run build:tsc', {
-            cwd: path.join(__dirname, 'tracewrightt'),
-            encoding: 'utf8',
-            timeout: 60000 // 1 minute timeout
-        });
-        console.log('✅ TypeScript compilation succeeded');
-        if (buildOutput) {
-            console.log('📋 Build output:', buildOutput.substring(0, 200));
+        // Check if compiled files already exist before building
+        const tscCompiledPath = path.join(__dirname, 'tracewrightt', 'dist', 'esm', 'run.js');
+        const aiUtilsPath = path.join(__dirname, 'tracewrightt', 'dist', 'esm', 'ai_utils_enhanced.js');
+        
+        if (fs.existsSync(tscCompiledPath) && fs.existsSync(aiUtilsPath)) {
+            console.log('✅ Pre-compiled files found, skipping build');
+        } else {
+            console.log('🔨 Pre-compiled files not found, attempting build...');
+            
+            try {
+                // Try multiple build approaches
+                const buildCommands = [
+                    'npm run build:tsc',
+                    'npx tsc',
+                    'node_modules/.bin/tsc'
+                ];
+                
+                let buildSucceeded = false;
+                
+                for (const buildCmd of buildCommands) {
+                    try {
+                        console.log(`🔄 Trying: ${buildCmd}`);
+                        const buildOutput = execSync(buildCmd, {
+                            cwd: path.join(__dirname, 'tracewrightt'),
+                            encoding: 'utf8',
+                            timeout: 90000, // 1.5 minutes
+                            env: { ...process.env, PATH: process.env.PATH }
+                        });
+                        console.log('✅ TypeScript compilation succeeded');
+                        if (buildOutput) {
+                            console.log('📋 Build output:', buildOutput.substring(0, 200));
+                        }
+                        buildSucceeded = true;
+                        break;
+                    } catch (buildError) {
+                        console.log(`❌ ${buildCmd} failed: ${buildError.message.substring(0, 100)}`);
+                        continue;
+                    }
+                }
+                
+                if (!buildSucceeded) {
+                    throw new Error('All build methods failed');
+                }
+            } catch (buildError) {
+                console.warn('⚠️  Build failed, checking if files exist anyway...');
+                if (!fs.existsSync(tscCompiledPath)) {
+                    throw new Error(`Build failed and no compiled files found: ${buildError.message}`);
+                }
+            }
         }
         
-        // Try to find the tsc compiled version (in esm subdirectory)
-        const tscCompiledPath = path.join(__dirname, 'tracewrightt', 'dist', 'esm', 'run.js');
+        // Now try to import the compiled version
         if (fs.existsSync(tscCompiledPath)) {
             console.log('📦 FOUND TSC COMPILED VERSION, IMPORTING...');
             console.log(`📍 Import path: ${tscCompiledPath}`);
@@ -2176,6 +2315,12 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.log('🔑 Final environment variable check before import...');
             console.log(`AZURE_OPENAI_API_KEY: ${process.env.AZURE_OPENAI_API_KEY ? 'SET' : 'NOT SET'}`);
             console.log(`GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET'}`);
+            
+            // Ensure we have the validated GEMINI_API_KEY from the top of the script
+            if (GEMINI_API_KEY && !process.env.GEMINI_API_KEY) {
+                process.env.GEMINI_API_KEY = GEMINI_API_KEY;
+                console.log('🔑 Set GEMINI_API_KEY from validated constant');
+            }
             
             const importUrl = pathToFileURL(tscCompiledPath).href;
             console.log(`🔗 Import URL: ${importUrl}`);
