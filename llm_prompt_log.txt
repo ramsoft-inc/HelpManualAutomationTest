@@ -1373,3 +1373,730 @@ IMPORTANT: Use these exact image paths when generating screenshot instructions. 
 
 ================================================================================
 
+
+================================================================================
+TIMESTAMP: 2025-09-23T19:03:20.106422
+SCENARIO: default
+================================================================================
+
+The goal is to take screenshots of the target language version of the website to replace each and every image currently shown from the source language website in the documentation.
+You are going to write instructions that help navigate through the target language website to reach the exact position needed to take the screenshot.
+The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
+To understand what the image shows, you need to look at both the image filename and the text/content around it.
+Your job is to write all steps needed to reach the screen and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.
+
+This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
+If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
+Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
+
+These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+When describing the elements to interact with:
+Include the source language name of the element (it helps match HTML tags).
+Include the target language name of the element (it helps find the element in the target language website using the text locator function).
+Describe the appearance or position of the element if it helps identify it faster.
+
+Output Format (strict):
+1) THINKING
+A comprehensive planning block that:
+
+Screenshots Analysis: Lists every single screenshot found in the document with exact filenames (Show Image) and describes what each screenshot should show based on the surrounding context
+Navigation Planning: Plans the most efficient navigation route through the Spanish website to capture all screenshots in logical order
+UI State Requirements: Notes the expected UI state and configuration needed for each screenshot (expanded menus, selected tabs, active toggles, etc.)
+Target Language Element Mapping: Identifies key UI elements and their target language translations needed for navigation
+Sequence Optimization: Groups screenshots from the same screens together to minimize redundant navigation
+
+2) INSTRUCTIONS
+One numbered sequence starting at 1, covering every screenshot in the document. Each step is exactly one browser action.
+
+Instruction Format Guidelines
+Follow these strict formatting rules for each instruction:
+
+Use a number to define each step starts with 1.
+Every step must indicate a specific browser action.
+Each instruction must describe a single, actionable browser operation.
+Use imperative voice (e.g., "find", "click", "enter").
+CRITICAL: For every element you interact with, you MUST include BOTH the source language name AND the target language name of the element in the instruction.
+Be explicit about:
+
+Element identity (e.g., placeholder text, labels, role, alt text, icons)
+Visual characteristics (e.g., button color, icons, shapes)
+Placement (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
+
+
+
+Before capturing any screenshot:
+
+Navigate to the correct screen/state
+Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+Verify interactive elements are in the desired state (e.g., collapsed/expanded, inactive/active, unchecked/checked, menu-closed/menu-open) before proceeding to capture the screenshot.
+Verify all required elements are visible before taking the screenshot
+
+Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose]. Save as [exact filename]"
+
+If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
+Conserve the order of instruction to match the documentation.
+Everything you output should be just the THINKING and INSTRUCTIONS sections — no additional headings or summaries.
+The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
+For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
+You are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table. Do not include login steps.
+Always add this "Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+IF there is a command to popout window then ignore it do not add it to the instructions.
+Take screenshots if there are placeholders for it and name them accordingly.
+If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot.
+
+
+Critical Requirements:
+
+Include every single screenshot found in the document - do not miss any
+Organize navigation efficiently (group screenshots from same screens together)
+Ensure each screenshot instruction is extremely detailed and specific
+Every screenshot step must include "screenshot" as the action followed by comprehensive description and exact filename
+You start at homepage (Worklist) - no login steps needed
+If choosing among similar items, pick the 3rd in the list
+Ignore pop-out window commands
+
+
+Example Output Format
+THINKING
+Screenshots to capture:
+
+document_viewer.png: Shows the document viewer interface with document list and preview panel
+image_viewer.png: Shows the image viewer with DICOM images loaded and tools visible
+study_history.png: Shows patient study history timeline with previous examinations
+
+Navigation plan:
+
+Homepage (Worklist) → Select patient → Wheel interface → Document Viewer (capture document_viewer.png)
+From wheel → Image Viewer (capture image_viewer.png)
+From wheel → Study History (capture study_history.png)
+
+UI State Requirements:
+
+Document viewer: Ensure document list is expanded and preview panel shows document content
+Image viewer: Ensure DICOM images are loaded and toolbar is visible
+Study history: Ensure timeline view is expanded with study details visible
+
+Target Language Element Mapping:
+
+Document Viewer = "Visor de Documentos" (example target language)
+Image Viewer = "Visor de Imágenes" (example target language)
+Study History = "Historial de Estudios" (example target language)
+Worklist = "Lista de Trabajo" (example target language)
+mention these in the instructions so it helps in finding the elements in the target language website.
+
+INSTRUCTIONS
+
+locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records and find the third patient record row in the worklist table and click on the patient name link to open the wheel interface
+wait until the wheel interface loads completely with all available options visible around the circular menu
+locate the "Document Viewer" (target language equivalent) button on the wheel interface — it appears as a paper/document icon in the wheel menu — and click on it
+wait until the document viewer interface loads showing the document list panel on the left and document preview area on the right
+take a screenshot of the complete document viewer interface showing the left panel with document list and the right panel with document preview area, to document the document viewing functionality. Save as document_viewer.png
+navigate back to the wheel interface by clicking the back button or wheel icon in the top navigation
+locate the "Image Viewer" (target language equivalent) button on the wheel interface — it appears as an image/picture icon in the wheel menu — and click on it
+wait until the image viewer loads with DICOM images displayed and the toolbar visible at the top
+take a screenshot of the complete image viewer interface showing the main image display area with loaded DICOM images and the top toolbar with viewing tools, to document the medical image viewing capabilities. Save as image_viewer.png
+
+Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
+
+Document to Process
+Analyze and convert the following content into automation instructions:
+
+
+---
+---
+sidebar_position: 1
+title: Document Explorer
+tags:
+  - Document Explorer
+  - Patient Details
+  - Studies
+  - Reports
+  - Preliminary
+  - Final
+  - Visit documents
+  - Worklist
+---
+
+# Document Explorer
+
+## Overview
+
+The Document Explorer is an essential component of the OmegaAI Document
+Viewer, primarily located in the left panel. This tool provides a
+structured and detailed view of various studies associated with selected
+patients from the work list, enhancing the management and accessibility
+of medical imaging documents.
+
+
+![document explorer](./img/documentviewer.png)
+
+## Layout and Functionality
+
+1.  **Patient Details:**
+
+    - At the top of the Document Explorer, patient-specific details are
+      displayed. These details include patient identifiers and relevant
+      medical information, providing a quick reference at a glance.
+
+2.  **Study Categories:**
+
+    - The studies are organized into three distinct sections:
+
+      - **Current:** Displays the currently selected study.
+
+      - **Prior:** Lists all previous studies related to the patient,
+        facilitating historical data review.
+
+      - **All:** Combines both current and prior studies for access and
+        comparison.
+
+3.  **Report Management:**
+
+    - Each study in the Document Explorer includes three types of
+      documents:
+
+      - **Preliminary Reports:**
+
+        - Start here to draft new reports. Options for using templates,
+          editing names, and deleting the report are available via icons
+          that appear when you hover over the report entry.
+
+      - **Final Reports:**
+
+        - Once a preliminary report is signed, it becomes a final
+          report. Final reports can be uploaded, renamed, or deleted as
+          necessary. These reside in a dedicated 'Final Report' section
+          within the explorer.
+
+      - **Visit documents:**
+
+        - Essential for maintaining patient records, visit documents can
+          be uploaded for each study. Similar to reports, hovering over
+          these documents provides options for deletion.
+
+## Step-by-Step Guide
+
+1.  **Accessing Document Explorer:**
+
+    - Open OmegaAI and navigate to the Document Viewer. The Document
+      Explorer is immediately accessible on the left panel.
+
+      ![document explorer](./img/documentexplorer.png)
+
+2.  **Viewing Patient Details:**
+
+    - Look at the top section of the Document Explorer to see the
+      details of the patient whose studies you are examining.
+
+
+      ![patient details](./img/patientdetails.png)
+
+3.  **Navigating Studies:**
+
+    - Click on the desired category (Current, Prior, All) to view the
+      respective studies. Each category helps in sorting and accessing
+      the studies based on their relevance and time frame.
+
+4.  **Managing Reports:**
+
+    - To create or draft a preliminary report, select the study and
+      click on the 'Preliminary Report' section. Use the hover-over
+      icons to customize, edit, or delete the report.
+
+    - After finalizing and signing a preliminary report, it will shift
+      to the 'Final Reports' section where further actions like
+      uploading a new version or renaming can be performed.
+
+    - For visit documents, select the appropriate document under the
+      study and use the hover options to manage these records.
+
+5. **Upload Reports:** 
+
+   - Click the upload icon to open the file explorer. 
+
+   - Select a document to upload. 
+
+   - Upload widget will be displayed, Rename the file if needed 
+
+   - Choose to upload as a Final Report or Study Document.  
+
+   - Click **Upload** to complete the process 
+
+6. **Pop Out Report:** 
+
+   - Click the pop out icon on the report card.
+
+   - Report will open in a new window.
+
+
+## Accessing and Using the Patient Chart Module in Document Viewer
+
+### Accessing the Patient Chart
+
+Patient chart can be accessed in the left panel inside document viewer.
+
+There will be 3 sections in the chart- Patient information card, Patient documents, & Notes.
+
+Hover or click on any section to expand the section.
+
+1. **Viewing Patient Information**
+   
+   - **Patient Name**: Displayed prominently at the top of the patient card.
+
+   - **Pop out patient details**: Clicking on pop out icon opens patient page in a new tab
+
+  ![Popup Patient Info](./img/popuppatientinfo.png)
+  
+   - **Demographic Details**: Includes gender, age, and date of birth, displayed below the patient emoji card with icons.
+
+   - **BMI Measurement**: Displayed with an indicator (normal or abnormal) in a tooltip.
+     
+  ![BMI Status](./img/bmistatus.png)
+    
+   - **Vital Signs**: Includes height, weight, heart rate, and blood pressure, listed below the BMI measurement.
+  
+     ![patient cards](./img/patientcards.png)
+     
+   
+
+2. **Patient Document Access Interface** 
+
+   - View and manage patient documents (e.g., reg forms, treatment plans, medical history etc.). 
+
+   - Click on a particular section to filter desired document type (All, uploaded documents & registration forms).
+
+   - Click on any document or form to view it in the viewport or drag and drop to the desired viewport.
+
+   - Click on upload icon to upload any document from the file explorer.
+
+     ![Filter Document](./img/filterdocument.png)
+
+     ![Upload Document](./img/uploaddocument.png)
+     
+<!--
+3. **Accessing Notes**
+
+   - Access the unified notes (ex- patient notes, Study notes, clinical comments, Clinical history).
+
+   - Ability to create and update the notes.
+  
+     ![Add Notes](./img/addnotes.png)
+
+     ![Edit Delete Notes](./img/editdeletenotes.png)
+ 
+-->
+
+## Creating more than one report 
+
+When the study comprises of an existing final report or a preliminary report then the user tries to create an additional report, an alert with following message appears. 
+
+![alert](./img/alert.png)
+
+*Report already exists* 
+
+*Do you still want to proceed with creating another report?* 
+
+Click on **Cancel** to discard and **Proceed** to continue. 
+
+
+
+## Display of Linked Patient Record on Document Viewer
+
+1.  **Open the Document Viewer:**
+
+    - Launch **Omega AI Document Viewer**.
+
+     ![LPR](./img/LPR1.png)
+
+2.  **View Linked Patient Studies:**
+
+    - Linked patient studies will appear as **prior studies** in
+      Document Viewer.
+
+     ![LPR](./img/LPR2.png) ![LPR](./img/LPR3.png)
+
+- Prior studies will include **all associated reports**.
+
+  ![LPR](./img/LPR4.png)
+
+3.  **Identify Linked Patient Information:**
+
+    - When a report is displayed in the viewport, the **specific linked
+      patients name** will be shown for clear identification.
+
+      ![LPR](./img/LPR5.png)
+
+4.  **Navigate and Review:**
+
+    - Users can switch between the **primary patient record** and
+      **linked patient records** for efficient study comparison.
+
+![alert2](./img/alert2.png)
+
+## Report Access Indicator
+
+**Overview**
+
+The Report Editing Lock and Alert System is a new OmegaAI feature designed to prevent simultaneous editing of medical reports. It ensures data integrity by
+locking reports when a user is editing them and notifying others of the editing status. This feature integrates seamlessly with existing OmegaAI tools, streamlining workflows and
+enhancing collaboration across user roles, particularly for radiologists, technologists, and administrators.
+
+1.  **Start Editing a Report:**
+
+    - A user opens a study in **Document viewer**.
+
+    ![RAI](./img/RAI1.png)
+
+- If any report in the editable form is opened, the report and study
+  will be **automatically locked**.
+
+  ![RAI](./img/RAI2New.png)
+
+2.  **View Editing Indicator:**
+
+    - The **active editors name** is displayed as an indicator,
+      notifying other users that the report is in use.
+
+    - Also, user will see the text You are editing.
+
+![RAI](./img/RAI3.png)
+
+
+3.  **Attempt to Edit a Locked Report:**
+
+    - Another user will not be able to edit the same report, they will
+      be seeing the lock symbol without any editing tools for the
+      report.
+
+4.  **Automatic Unlock:**
+
+    - If the active editor remains inactive for **15 minutes**, the
+      report is **automatically unlocked**.
+
+![RAI](./img/RAI4.png)
+
+
+- If user exit the study or close the browser, the report is
+  automatically unlocked.
+
+5.  **Take Over Editing:**
+
+    - If the report is unlocked due to inactivity, another user can
+      **take over editing** by clicking on the button.
+
+![RAI](./img/RAI5.png)
+
+
+## Available Image Paths to Capture:
+1. img_as/documentviewer_E.png
+2. img_as/documentexplorer_E.png
+3. img_as/patientdetails_E.png
+4. ./img/popuppatientinfo.png
+5. ./img/bmistatus.png
+6. ./img/patientcards.png
+7. ./img/filterdocument.png
+8. ./img/uploaddocument.png
+9. ./img/addnotes.png
+10. ./img/editdeletenotes.png
+11. ./img/alert.png
+12. ./img/LPR1.png
+13. ./img/LPR2.png
+14. ./img/LPR3.png
+15. ./img/LPR4.png
+16. ./img/LPR5.png
+17. ./img/alert2.png
+18. ./img/RAI1.png
+19. ./img/RAI2New.png
+20. ./img/RAI3.png
+21. ./img/RAI4.png
+22. ./img/RAI5.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+
+For reference of what these buttons are named in the target language, use this translated documentation:
+
+
+---
+---
+sidebar_position: 1
+title: Explorador de Documentos
+tags:
+  - Explorador de Documentos
+  - Detalhes do Paciente
+  - Estudos
+  - Relatórios
+  - Preliminar
+  - Final
+  - Documentos da visita
+  - Lista de trabalho
+---
+
+# Explorador de Documentos
+
+## Visão Geral
+
+O Explorador de Documentos é um componente essencial do Visualizador de Documentos OmegaAI, localizado principalmente no painel esquerdo. Esta ferramenta fornece uma visão estruturada e detalhada de vários estudos associados aos pacientes selecionados da lista de trabalho, aprimorando o gerenciamento e a acessibilidade de documentos de imagens médicas.
+
+![document explorer](img_as/documentviewer_E.png)
+
+## Layout e Funcionalidade
+
+1.  **Detalhes do Paciente:**
+
+    - No topo do Explorador de Documentos, são exibidos detalhes específicos do paciente. Esses detalhes incluem identificadores do paciente e informações médicas relevantes, fornecendo uma referência rápida à primeira vista.
+
+2.  **Categorias de Estudos:**
+
+    - Os estudos são organizados em três seções distintas:
+
+      - **Atual:** Exibe o estudo atualmente selecionado.
+
+      - **Anterior:** Lista todos os estudos anteriores relacionados ao paciente, facilitando a revisão de dados históricos.
+
+      - **Todos:** Combina estudos atuais e anteriores para acesso e comparação.
+
+3.  **Gerenciamento de Relatórios:**
+
+    - Cada estudo no Explorador de Documentos inclui três tipos de documentos:
+
+      - **Relatórios Preliminares:**
+
+        - Comece aqui para rascunhar novos relatórios. Opções para usar modelos, editar nomes e excluir o relatório estão disponíveis por meio de ícones que aparecem ao passar o mouse sobre a entrada do relatório.
+
+      - **Relatórios Finais:**
+
+        - Uma vez que um relatório preliminar é assinado, ele se torna um relatório final. Relatórios finais podem ser enviados, renomeados ou excluídos conforme necessário. Estes ficam em uma seção dedicada de 'Relatório Final' dentro do explorador.
+
+      - **Documentos da visita:**
+
+        - Essenciais para a manutenção dos registros do paciente, documentos da visita podem ser enviados para cada estudo. Assim como nos relatórios, ao passar o mouse sobre esses documentos são exibidas opções para exclusão.
+
+## Guia Passo a Passo
+
+1.  **Acessando o Explorador de Documentos:**
+
+    - Abra o OmegaAI e navegue até o Visualizador de Documentos. O Explorador de Documentos está imediatamente acessível no painel esquerdo.
+
+    ![document explorer](img_as/documentexplorer_E.png)
+
+2.  **Visualizando Detalhes do Paciente:**
+
+    - Olhe para a seção superior do Explorador de Documentos para ver os detalhes do paciente cujos estudos você está examinando.
+
+
+    ![patient details](img_as/patientdetails_E.png)
+
+3.  **Navegando entre Estudos:**
+
+    - Clique na categoria desejada (Atual, Anterior, Todos) para visualizar os respectivos estudos. Cada categoria ajuda a classificar e acessar os estudos com base em sua relevância e período.
+
+4.  **Gerenciando Relatórios:**
+
+    - Para criar ou rascunhar um relatório preliminar, selecione o estudo e clique na seção 'Relatório Preliminar'. Use os ícones que aparecem ao passar o mouse para personalizar, editar ou excluir o relatório.
+
+    - Após finalizar e assinar um relatório preliminar, ele será movido para a seção 'Relatórios Finais', onde outras ações como envio de uma nova versão ou renomeação podem ser realizadas.
+
+    - Para documentos da visita, selecione o documento apropriado sob o estudo e use as opções ao passar o mouse para gerenciar esses registros.
+
+5. **Enviar Relatórios:** 
+
+   - Clique no ícone de upload para abrir o explorador de arquivos. 
+
+   - Selecione um documento para enviar. 
+
+   - O widget de upload será exibido, renomeie o arquivo se necessário. 
+
+   - Escolha enviar como Relatório Final ou Documento do Estudo.  
+
+   - Clique em **Enviar** para concluir o processo. 
+
+6. **Abrir Relatório em Nova Janela:** 
+
+   - Clique no ícone de pop out no cartão do relatório.
+
+   - O relatório será aberto em uma nova janela.
+
+## Acessando e Usando o Módulo de Prontuário do Paciente no Visualizador de Documentos
+
+### Acessando o Prontuário do Paciente
+
+O prontuário do paciente pode ser acessado no painel esquerdo dentro do visualizador de documentos.
+
+Haverá 3 seções no prontuário: cartão de informações do paciente, documentos do paciente e notas.
+
+Passe o mouse ou clique em qualquer seção para expandi-la.
+
+1. **Visualizando Informações do Paciente**
+   
+   - **Nome do Paciente**: Exibido de forma destacada no topo do cartão do paciente.
+
+   - **Abrir detalhes do paciente em nova aba**: Clicar no ícone de pop out abre a página do paciente em uma nova aba.
+
+   ![Popup Patient Info](./img/popuppatientinfo.png)
+  
+   - **Detalhes Demográficos**: Inclui gênero, idade e data de nascimento, exibidos abaixo do cartão emoji do paciente com ícones.
+
+   - **Medição de IMC**: Exibida com um indicador (normal ou anormal) em um tooltip.
+     
+   ![BMI Status](./img/bmistatus.png)
+    
+   - **Sinais Vitais**: Inclui altura, peso, frequência cardíaca e pressão arterial, listados abaixo da medição de IMC.
+  
+   ![patient cards](./img/patientcards.png)
+     
+   
+
+2. **Interface de Acesso a Documentos do Paciente** 
+
+   - Visualize e gerencie documentos do paciente (ex.: formulários de registro, planos de tratamento, histórico médico etc.). 
+
+   - Clique em uma seção específica para filtrar o tipo de documento desejado (Todos, documentos enviados e formulários de registro).
+
+   ![Filter Document](./img/filterdocument.png)
+
+   - Clique em qualquer documento ou formulário para visualizá-lo no visor ou arraste e solte para o visor desejado.
+
+   - Clique no ícone de upload para enviar qualquer documento do explorador de arquivos.
+
+   ![Upload Document](./img/uploaddocument.png)
+     
+<!--
+3. **Acessando Notas**
+
+   - Acesse as notas unificadas (ex.: notas do paciente, notas do estudo, comentários clínicos, histórico clínico).
+
+   - Capacidade de criar e atualizar as notas.
+  
+     ![Add Notes](./img/addnotes.png)
+
+     ![Edit Delete Notes](./img/editdeletenotes.png)
+ 
+-->
+
+## Criando mais de um relatório 
+
+Quando o estudo já possui um relatório final ou um relatório preliminar existente e o usuário tenta criar um relatório adicional, um alerta com a seguinte mensagem aparece: 
+
+![alert](./img/alert.png)
+
+*Relatório já existe* 
+
+*Você ainda deseja continuar criando outro relatório?* 
+
+Clique em **Cancelar** para descartar e **Continuar** para prosseguir. 
+
+## Exibição de Registro de Paciente Vinculado no Visualizador de Documentos
+
+1.  **Abra o Visualizador de Documentos:**
+
+    - Inicie o **Visualizador de Documentos Omega AI**.
+
+    ![LPR](./img/LPR1.png)
+
+2.  **Visualize Estudos de Pacientes Vinculados:**
+
+    - Estudos de pacientes vinculados aparecerão como **estudos anteriores** no Visualizador de Documentos.
+
+    ![LPR](./img/LPR2.png) ![LPR](./img/LPR3.png)
+
+- Estudos anteriores incluirão **todos os relatórios associados**.
+
+  ![LPR](./img/LPR4.png)
+
+3.  **Identifique Informações do Paciente Vinculado:**
+
+    - Quando um relatório é exibido no visor, o **nome específico do paciente vinculado** será mostrado para identificação clara.
+
+    ![LPR](./img/LPR5.png)
+
+4.  **Navegue e Revise:**
+
+    - Os usuários podem alternar entre o **registro principal do paciente** e **registros de pacientes vinculados** para comparação eficiente de estudos.
+
+![alert2](./img/alert2.png)
+
+## Indicador de Acesso ao Relatório
+
+**Visão Geral**
+
+O Sistema de Bloqueio e Alerta de Edição de Relatórios é um novo recurso do OmegaAI projetado para evitar a edição simultânea de relatórios médicos. Ele garante a integridade dos dados bloqueando os relatórios quando um usuário está editando e notificando outros sobre o status da edição. Este recurso se integra perfeitamente às ferramentas existentes do OmegaAI, otimizando fluxos de trabalho e aprimorando a colaboração entre funções de usuários, especialmente para radiologistas, técnicos e administradores.
+
+1.  **Iniciar Edição de um Relatório:**
+
+    - Um usuário abre um estudo no **Visualizador de Documentos**.
+
+    ![RAI](./img/RAI1.png)
+
+- Se qualquer relatório em modo editável for aberto, o relatório e o estudo serão **automaticamente bloqueados**.
+
+  ![RAI](./img/RAI2New.png)
+
+2.  **Visualizar Indicador de Edição:**
+
+    - O **nome do editor ativo** é exibido como um indicador, notificando outros usuários de que o relatório está em uso.
+
+    - Além disso, o usuário verá o texto "Você está editando".
+
+![RAI](./img/RAI3.png)
+
+
+3.  **Tentar Editar um Relatório Bloqueado:**
+
+    - Outro usuário não poderá editar o mesmo relatório, verá o símbolo de cadeado sem nenhuma ferramenta de edição para o relatório.
+
+4.  **Desbloqueio Automático:**
+
+    - Se o editor ativo permanecer inativo por **15 minutos**, o relatório será **automaticamente desbloqueado**.
+
+![RAI](./img/RAI4.png)
+
+
+- Se o usuário sair do estudo ou fechar o navegador, o relatório é desbloqueado automaticamente.
+
+5.  **Assumir Edição:**
+
+    - Se o relatório for desbloqueado devido à inatividade, outro usuário pode **assumir a edição** clicando no botão.
+
+![RAI](./img/RAI5.png)
+
+## Available Image Paths to Capture:
+1. img_as/documentviewer_E.png
+2. img_as/documentexplorer_E.png
+3. img_as/patientdetails_E.png
+4. ./img/popuppatientinfo.png
+5. ./img/bmistatus.png
+6. ./img/patientcards.png
+7. ./img/filterdocument.png
+8. ./img/uploaddocument.png
+9. ./img/addnotes.png
+10. ./img/editdeletenotes.png
+11. ./img/alert.png
+12. ./img/LPR1.png
+13. ./img/LPR2.png
+14. ./img/LPR3.png
+15. ./img/LPR4.png
+16. ./img/LPR5.png
+17. ./img/alert2.png
+18. ./img/RAI1.png
+19. ./img/RAI2New.png
+20. ./img/RAI3.png
+21. ./img/RAI4.png
+22. ./img/RAI5.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+Also, you are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table.
+
+**IMPORTANT: Format your response as a valid JSON object with this structure:**
+{
+  "thinking": "your comprehensive planning and analysis where list all the screenshots to capture",
+  "instructions": "your complete step-by-step instructions as one text string"
+}
+
+Generate Automation Instructions for the target language website below:
+
+================================================================================
+
