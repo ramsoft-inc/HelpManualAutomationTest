@@ -1,0 +1,130 @@
+name: PR Comment - Run Enhanced Flow
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-comment-enhanced-flow-${{ github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  run-enhanced-flow:
+    if: >
+      ${{ github.event.issue.pull_request != null && contains(github.event.comment.body, 'node test-enhanced-flow.js') }}
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: refs/pull/${{ github.event.issue.number }}/head
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Enable Corepack (Yarn)
+        run: corepack enable
+
+      - name: Install root dependencies (optional)
+        run: |
+          if (Test-Path yarn.lock) { yarn install --frozen-lockfile } else { echo 'No root yarn.lock, skipping' }
+        shell: pwsh
+
+      - name: Install AutoSnap dependencies
+        working-directory: AutoSnap
+        run: |
+          yarn install --frozen-lockfile
+
+      - name: Install tracewrightt and build
+        working-directory: AutoSnap/tracewrightt
+        run: |
+          yarn install --frozen-lockfile
+          yarn build || echo "tracewrightt build will be attempted at runtime"
+
+      - name: Install Playwright Chromium
+        working-directory: AutoSnap
+        run: |
+          npx playwright install chromium
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create CI clone of test-enhanced-flow.js and patch paths
+        working-directory: AutoSnap
+        shell: pwsh
+        run: |
+          Copy-Item test-enhanced-flow.js test-enhanced-flow-ci.js -Force
+          # Patch hardcoded Windows fallback path(s) to repo-relative path for CI
+          $content = Get-Content test-enhanced-flow-ci.js -Raw
+          $content = $content -replace 'C:/Users/Rohith\.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg\.md', 'docs/1-Getting-Started/addorg.md'
+          Set-Content -Path test-enhanced-flow-ci.js -Value $content -Encoding UTF8
+
+      - name: Extract command args from comment
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.comment.body || '';
+            const re = /node\s+test-enhanced-flow\.js(?:\s+([\s\S]*))?/i; // capture everything after the command on the first line
+            const m = body.match(re);
+            const args = m && m[1] ? m[1].trim() : '';
+            core.setOutput('args', args);
+
+      - name: Run enhanced flow
+        shell: pwsh
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          $args = "${{ steps.parse.outputs.args }}"
+          if ($args -ne "") {
+            Write-Host "Running: node AutoSnap/test-enhanced-flow-ci.js $args"
+            node AutoSnap/test-enhanced-flow-ci.js $args 2>&1 | Tee-Object -FilePath enhanced-flow-ci-run.log
+          } else {
+            Write-Host "No args provided in comment. Running default: node AutoSnap/test-enhanced-flow-ci.js"
+            node AutoSnap/test-enhanced-flow-ci.js 2>&1 | Tee-Object -FilePath enhanced-flow-ci-run.log
+          }
+
+      - name: Upload logs and outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: enhanced-flow-artifacts
+          path: |
+            enhanced-flow-ci-run.log
+            enhanced-flow-log.txt
+            changed-files-*.txt
+            token_usage_summary.txt
+          if-no-files-found: ignore
+
+      - name: Reply on PR with run summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const args = `${{ steps.parse.outputs.args }}` || '(none)';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `▶️ Ran: node test-enhanced-flow.js ${args}`.trim(),
+              `• Status: ${process.env.STATE || 'completed (see job result above)'}`,
+              `• Logs & outputs uploaded as artifact: enhanced-flow-artifacts`,
+              `• Workflow run: ${runUrl}`
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+
