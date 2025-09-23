@@ -34,6 +34,13 @@ jobs:
       - name: Enable Corepack (Yarn)
         run: corepack enable
 
+      - name: Remove npm lockfiles to avoid Yarn conflicts
+        shell: bash
+        run: |
+          rm -f package-lock.json || true
+          rm -f AutoSnap/package-lock.json || true
+          rm -f AutoSnap/tracewrightt/package-lock.json || true
+
       - name: Install root dependencies (optional)
         shell: bash
         run: |
@@ -83,6 +90,14 @@ jobs:
           # Patch hardcoded Windows fallback path(s) to repo-relative path for CI
           sed -i "s#C:/Users/Rohith\.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg\.md#docs/1-Getting-Started/addorg.md#g" test-enhanced-flow-ci.js
 
+      - name: Ensure Azure env defaults
+        shell: bash
+        run: |
+          : "${AZURE_OPENAI_API_KEY:=placeholder}"
+          : "${AZURE_OPENAI_ENDPOINT:=https://example.invalid/}"
+          echo "AZURE_OPENAI_API_KEY=$AZURE_OPENAI_API_KEY" >> $GITHUB_ENV
+          echo "AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT" >> $GITHUB_ENV
+
       - name: Extract command args from comment
         id: parse
         uses: actions/github-script@v7
@@ -98,6 +113,9 @@ jobs:
         shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          LLM_PROVIDER: gemini
         run: |
           args="${{ steps.parse.outputs.args }}"
           if [ -n "$args" ]; then
