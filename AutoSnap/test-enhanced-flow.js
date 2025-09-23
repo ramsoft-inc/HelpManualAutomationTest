@@ -1985,10 +1985,10 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
 
     const findCompiledEntry = () => {
         const candidatePaths = [
-            // Direct path to the actual run.js file
-            path.join(esmDir, 'run.js'),
-            // Index.js as fallback
+            // Primary path - index.js is the main entry point
             path.join(esmDir, 'index.js'),
+            // Fallback to run.js directly
+            path.join(esmDir, 'run.js'),
             // Legacy paths (just in case)
             path.join(esmDir, 'src', 'run.js'),
             path.join(esmDir, 'tracewrightt', 'src', 'run.js'),
@@ -2000,10 +2000,22 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.log(`  ${exists ? '✅' : '❌'} ${p}`);
         });
         
-        return candidatePaths.find(p => fs.existsSync(p));
+        const foundPath = candidatePaths.find(p => fs.existsSync(p));
+        if (foundPath) {
+            console.log(`🎯 Selected entry point: ${foundPath}`);
+        }
+        return foundPath;
     };
 
     let compiledPath = findCompiledEntry();
+
+    // Ensure environment variables are set before importing tracewrightt
+    if (!process.env.GEMINI_API_KEY) {
+        console.warn('⚠️ GEMINI_API_KEY not set - this may cause import issues');
+    }
+    if (!process.env.AZURE_OPENAI_API_KEY) {
+        console.warn('⚠️ AZURE_OPENAI_API_KEY not set - this may cause import issues');
+    }
 
     let tracewright;
     try {
@@ -2025,11 +2037,21 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         // After (possible) build, import the bundle via file URL so that Node can
         // handle absolute Windows paths correctly.
         const twMod = await import(pathToFileURL(compiledPath).href);
-        tracewright = twMod.run || twMod.default || twMod;
+        
+        // Try different export patterns based on the file imported
+        if (compiledPath.endsWith('index.js')) {
+            // index.js exports run as default
+            tracewright = twMod.default || twMod.run || twMod;
+        } else {
+            // run.js exports run as named export
+            tracewright = twMod.run || twMod.default || twMod;
+        }
         
         console.log('✅ Successfully imported compiled tracewrightt bundle');
+        console.log('🔧 Import path:', compiledPath);
         console.log('🔧 Available exports:', Object.keys(twMod));
         console.log('🔧 Using function:', typeof tracewright);
+        console.log('🔧 Function name:', tracewright?.name || 'anonymous');
     } catch (buildErr) {
         console.warn('⚠️  Could not import compiled bundle:', buildErr.message);
         console.log('🔄 Attempting direct TypeScript transpilation approach...');
@@ -2083,11 +2105,15 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             if (fs.existsSync(jsPath)) {
                 console.log('✅ Found compiled JS file, importing:', jsPath);
                 const twMod = await import(pathToFileURL(jsPath).href);
+                
+                // Use same import logic as main build
                 tracewright = twMod.run || twMod.default || twMod;
                 
                 console.log('✅ Successfully imported TypeScript-compiled tracewrightt');
+                console.log('🔧 Import path:', jsPath);
                 console.log('🔧 Available exports:', Object.keys(twMod));
                 console.log('🔧 Using function:', typeof tracewright);
+                console.log('🔧 Function name:', tracewright?.name || 'anonymous');
                 
                 // Clean up temporary tsconfig
                 fs.unlinkSync(tempTsConfigPath);
