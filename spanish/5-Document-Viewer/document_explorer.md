@@ -18,7 +18,6 @@ tags:
 
 O Explorador de Documentos é um componente essencial do Visualizador de Documentos OmegaAI, localizado principalmente no painel esquerdo. Esta ferramenta fornece uma visão estruturada e detalhada de vários estudos associados aos pacientes selecionados da lista de trabalho, aprimorando o gerenciamento e a acessibilidade de documentos de imagens médicas.
 
-
 ![document explorer](img_as/documentviewer_E.png)
 
 ## Layout e Funcionalidade
