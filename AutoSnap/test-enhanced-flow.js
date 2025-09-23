@@ -2583,4 +2583,3 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         }
     }
 })(); 
-})(); 
