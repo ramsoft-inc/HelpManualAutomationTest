@@ -245,142 +245,9 @@ async function selectLanguage(page, languageInput) {
 
     // Step 1: Click on the Avatar to open user menu
     console.log('🔍 Looking for user avatar...');
-    
-    // Try multiple selectors for the avatar button
-    let avatarClicked = false;
-    const avatarSelectors = [
-      () => page.getByRole('button', { name: 'My Profile' }),
-      () => page.getByRole('button', { name: 'Mi Perfil' }), // Spanish version
-      () => page.locator('button[aria-label*="Profile"]'),
-      () => page.locator('button[aria-label*="Perfil"]'),
-      () => page.locator('[data-testid*="profile"]'),
-      () => page.locator('button').filter({ hasText: /Profile|Perfil/i }).first()
-    ];
-    
-    for (const selector of avatarSelectors) {
-      try {
-        const element = selector();
-        await element.waitFor({ state: 'visible', timeout: 5000 });
-        console.log('👆 Clicking user avatar...');
-        await element.click({ force: true });
-        avatarClicked = true;
-        break;
-      } catch (e) {
-        console.log('⏭️  Avatar selector failed, trying next...');
-        continue;
-      }
-    }
-    
-    if (!avatarClicked) {
-      // COMPREHENSIVE DEBUG APPROACH for avatar search
-      console.log('🚨 AVATAR NOT FOUND - Starting comprehensive debugging...');
-      
-      // Take a debug screenshot to see what the page looks like
-      try {
-        const debugScreenshotPath = `debug-avatar-search-${Date.now()}.png`;
-        await page.screenshot({ path: debugScreenshotPath, fullPage: true });
-        console.log(`📸 Debug screenshot saved: ${debugScreenshotPath}`);
-      } catch (e) {
-        console.log('⚠️  Could not take debug screenshot');
-      }
-      
-      // Log current URL and page state
-      try {
-        const currentUrl = await page.url();
-        const pageTitle = await page.title();
-        console.log(`📄 Current URL: ${currentUrl}`);
-        console.log(`📄 Page title: ${pageTitle}`);
-      } catch (e) {
-        console.log('⚠️  Could not get page info');
-      }
-      
-      // AGGRESSIVE SEARCH: Look at ALL buttons and clickable elements
-      try {
-        console.log('🔍 AGGRESSIVE SEARCH: Analyzing ALL interactive elements...');
-        
-        // Get all potentially clickable elements
-        const clickableSelectors = [
-          'button',
-          '[role="button"]', 
-          '[onclick]',
-          'a[href]',
-          '.clickable',
-          '[class*="button"]',
-          '[class*="menu"]',
-          '[class*="avatar"]',
-          '[class*="profile"]',
-          '[class*="user"]'
-        ];
-        
-        for (const selector of clickableSelectors) {
-          try {
-            const elements = await page.locator(selector).all();
-            console.log(`🔍 Found ${elements.length} elements for selector: ${selector}`);
-            
-            // Log first few elements of each type
-            for (let i = 0; i < Math.min(3, elements.length); i++) {
-              try {
-                const text = await elements[i].textContent();
-                const classList = await elements[i].getAttribute('class');
-                const id = await elements[i].getAttribute('id');
-                console.log(`  ${selector}[${i}]: text="${text?.trim()}" class="${classList}" id="${id}"`);
-              } catch (e) {
-                continue;
-              }
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-        
-        // Try clicking elements that might be user/profile related
-        const potentialElements = await page.locator('button, [role="button"], [onclick], a').all();
-        console.log(`🎯 Checking ${potentialElements.length} potential clickable elements...`);
-        
-        for (let i = 0; i < Math.min(20, potentialElements.length); i++) {
-          try {
-            const element = potentialElements[i];
-            const text = await element.textContent();
-            const classList = await element.getAttribute('class');
-            const ariaLabel = await element.getAttribute('aria-label');
-            const title = await element.getAttribute('title');
-            
-            // Combined search terms
-            const searchTerms = [
-              'profile', 'perfil', 'user', 'usuario', 'menu', 'account', 'cuenta',
-              'settings', 'configuración', 'avatar', 'my', 'mi'
-            ];
-            
-            const allText = `${text} ${classList} ${ariaLabel} ${title}`.toLowerCase();
-            
-            if (searchTerms.some(term => allText.includes(term))) {
-              console.log(`👆 POTENTIAL MATCH ${i}: text="${text}" class="${classList}" aria-label="${ariaLabel}"`);
-              
-              try {
-                await element.click({ force: true, timeout: 3000 });
-                console.log(`✅ Successfully clicked potential profile element ${i}`);
-                avatarClicked = true;
-                break;
-              } catch (clickError) {
-                console.log(`❌ Click failed for element ${i}: ${clickError.message}`);
-                continue;
-              }
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-        
-      } catch (e) {
-        console.log('⚠️  Aggressive search failed:', e.message);
-      }
-      
-      if (!avatarClicked) {
-        console.error('❌ COMPLETE FAILURE: Could not find user avatar button with any method');
-        // Don't throw error - continue with the rest of the process
-        console.log('⚠️  Continuing without language selection...');
-      }
-    }
+    await page.getByRole('button', { name: 'My Profile' }).waitFor({ state: 'visible', timeout: 15000 });
+    console.log('👆 Clicking user avatar...');
+    await page.getByRole('button', { name: 'My Profile' }).click({ force: true });
 
     // Wait for user menu to appear
     console.log('⏳ Waiting for user menu to appear...');
@@ -388,37 +255,10 @@ async function selectLanguage(page, languageInput) {
 
     // Step 2: Click on USER SETTINGS button
     console.log('🔍 Looking for USER SETTINGS button...');
-    
-    // Try multiple selectors for the settings button
-    let settingsClicked = false;
-    const settingsSelectors = [
-      () => page.getByRole('button', { name: /USER SETTINGS|CONFIGURACIÓN DE USUARIO/i }),
-      () => page.getByRole('button', { name: /Settings|Configuración/i }),
-      () => page.locator('button.MuiButton-outlinedPrimary').nth(-2),
-      () => page.locator('button.MuiButton-outlinedPrimary').nth(-1),
-      () => page.locator('button').filter({ hasText: /Settings|Configuración|USER SETTINGS/i }).first(),
-      () => page.locator('[data-testid*="settings"]'),
-      () => page.locator('button[aria-label*="Settings"]'),
-      () => page.locator('button[aria-label*="Configuración"]')
-    ];
-    
-    for (const selector of settingsSelectors) {
-      try {
-        const element = selector();
-        await element.waitFor({ state: 'visible', timeout: 5000 });
-        console.log('👆 Clicking user settings button...');
-        await element.click();
-        settingsClicked = true;
-        break;
-      } catch (e) {
-        console.log('⏭️  Settings selector failed, trying next...');
-        continue;
-      }
-    }
-    
-    if (!settingsClicked) {
-      throw new Error('Could not find user settings button with any selector');
-    }
+    // After clicking avatar and opening the menu
+    const userSettingsButton = page.locator('button.MuiButton-outlinedPrimary').nth(-2);
+    await userSettingsButton.waitFor({ state: 'visible', timeout: 15000 });
+    await userSettingsButton.click();
     
     
 
@@ -443,36 +283,9 @@ async function selectLanguage(page, languageInput) {
 
     // Step 3: Click on Language Icon
     console.log('🔍 Looking for language icon...');
-    
-    // Try multiple selectors for the language icon
-    let languageIconClicked = false;
-    const languageSelectors = [
-      () => page.getByTestId('LanguageIcon'),
-      () => page.locator('[data-testid="LanguageIcon"]'),
-      () => page.locator('svg[data-testid="LanguageIcon"]'),
-      () => page.locator('[aria-label*="Language"]'),
-      () => page.locator('[aria-label*="Idioma"]'),
-      () => page.locator('button').filter({ has: page.locator('[data-testid="LanguageIcon"]') }),
-      () => page.locator('svg').filter({ hasText: /language|idioma/i }).first()
-    ];
-    
-    for (const selector of languageSelectors) {
-      try {
-        const element = selector();
-        await element.waitFor({ state: 'visible', timeout: 5000 });
-        console.log('👆 Clicking language icon...');
-        await element.click({ force: true });
-        languageIconClicked = true;
-        break;
-      } catch (e) {
-        console.log('⏭️  Language icon selector failed, trying next...');
-        continue;
-      }
-    }
-    
-    if (!languageIconClicked) {
-      throw new Error('Could not find language icon with any selector');
-    }
+    await page.getByTestId('LanguageIcon').waitFor({ state: 'visible', timeout: 15000 });
+    console.log('👆 Clicking language icon...');
+    await page.getByTestId('LanguageIcon').click({ force: true });
 
     // --- CRITICAL CHANGE START ---
     // After clicking LanguageIcon, the dropdown menu itself should appear.
@@ -2140,9 +1953,11 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
     // Step 3: Initialize browser and tracewright
     console.log('🌐 Launching browser...');
     
-    // ----- FORCE TRACEWRIGHT COMPILATION AND IMPORT ---------------------------------------
-    console.log('🚀 STARTING TRACEWRIGHT IMPORT SECTION');
-    console.log('🎯 This message should appear in the log if we reach this section');
+    // ----- Lazy-load Tracewright ---------------------------------------
+    // 1. Try the compiled bundle (dist/esm/index.js).
+    // 2. If it does not exist, build it on the fly (`npm run build` inside tracewrightt).
+    // 3. If the build fails (or you are editing TypeScript and prefer zero-build),
+    //    fall back to ts-node and import the .ts source directly.
 
     const { chromium, devices } = await import('playwright');
     const fs = await import('node:fs');
@@ -2170,372 +1985,103 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
     let compiledPath = findCompiledEntry();
 
     let tracewright;
-    
-    // FORCE COMPILATION - Try a more comprehensive approach to get tracewright working
-    console.log('🔄 ATTEMPTING COMPREHENSIVE TRACEWRIGHT IMPORT STRATEGY...');
-    console.log('🎯 This should show the real tracewright compilation attempt');
-    
-    // ALWAYS try to build with tsc - don't skip compilation
     try {
-        console.log('🔨 ATTEMPTING TYPESCRIPT COMPILATION WITH TSC...');
-        
-        // Set environment variables FIRST before any operations
-        console.log('🔑 Setting environment variables for compilation...');
-        // Use the actual GEMINI_API_KEY that's already validated at the top of this script
-        process.env.AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || 'compilation-dummy-key';
-        process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || GEMINI_API_KEY || 'compilation-dummy-key';
-        process.env.CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || 'compilation-dummy-key';
-        console.log('✅ Environment variables set for compilation (using real GEMINI_API_KEY)');
-        console.log(`🔑 GEMINI_API_KEY available: ${process.env.GEMINI_API_KEY ? 'YES' : 'NO'}`);
-        
-        // First check if npm is available and dependencies are installed
-        try {
-            // Check npm in multiple locations for CI compatibility
-            let npmWorking = false;
-            const npmCommands = ['npm --version', 'npx --version'];
-            
-            for (const cmd of npmCommands) {
-                try {
-                    execSync(cmd, { 
-                        cwd: path.join(__dirname, 'tracewrightt'), 
-                        stdio: 'pipe',
-                        env: { ...process.env, PATH: process.env.PATH }
-                    });
-                    console.log(`✅ ${cmd.split(' ')[0]} is available`);
-                    npmWorking = true;
-                    break;
-                } catch (e) {
-                    console.log(`⚠️  ${cmd.split(' ')[0]} check failed, trying next...`);
-                }
-            }
-            
-            if (!npmWorking) {
-                // Try without explicit npm check - maybe it's available but version check fails
-                console.log('⚠️  npm version check failed, but attempting build anyway (npm might still work)');
-            }
-        } catch (e) {
-            console.log('⚠️  npm availability check inconclusive, proceeding with build attempt');
-        }
-        
-        // Try to install dependencies first if needed  
-        try {
-            console.log('📦 Attempting to install/verify dependencies...');
-            execSync('npm ci --silent', {
+        if (!compiledPath) {
+            console.log('ℹ️  Compiled Tracewright not found. Building locally...');
+            execSync('npm run build', {
                 cwd: path.join(__dirname, 'tracewrightt'),
-                stdio: 'pipe',
-                timeout: 45000, // Increased timeout for CI
-                env: { ...process.env, PATH: process.env.PATH }
+                stdio: 'inherit',
             });
-            console.log('✅ Dependencies installed/verified');
-        } catch (e) {
-            console.log('⚠️  Dependencies installation failed, but continuing with build attempt...');
-            console.log(`📋 npm ci error: ${e.message.substring(0, 100)}`);
-            
-            // Try alternative dependency approach
-            try {
-                console.log('🔄 Trying npm install as fallback...');
-                execSync('npm install --silent', {
-                    cwd: path.join(__dirname, 'tracewrightt'),
-                    stdio: 'pipe',
-                    timeout: 45000,
-                    env: { ...process.env, PATH: process.env.PATH }
-                });
-                console.log('✅ Dependencies installed via npm install');
-            } catch (e2) {
-                console.log('⚠️  All dependency installation attempts failed, continuing anyway...');
-            }
+
+            // Re-evaluate compiledPath after the build
+            compiledPath = findCompiledEntry();
         }
-        
-        // Set required environment variables for compilation if in CI
-        const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
-        if (isCI) {
-            console.log('🤖 CI environment detected, setting required environment variables');
-            process.env.AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || 'ci-dummy-key';
-            process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'ci-dummy-key';
-            process.env.CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || 'ci-dummy-key';
+
+        if (!compiledPath) {
+            throw new Error('Compiled bundle still not found after build');
         }
+
+        // After (possible) build, import the bundle via file URL so that Node can
+        // handle absolute Windows paths correctly.
+        const twMod = await import(pathToFileURL(compiledPath).href);
+        tracewright = twMod.default || twMod;
+    } catch (buildErr) {
+        console.warn('⚠️  Could not import compiled bundle. Falling back to ts-node.', buildErr.message);
+        console.log('🔄 Using direct TypeScript transpilation approach...');
         
-        // Check if compiled files already exist before building
-        const tscCompiledPath = path.join(__dirname, 'tracewrightt', 'dist', 'esm', 'run.js');
-        const aiUtilsPath = path.join(__dirname, 'tracewrightt', 'dist', 'esm', 'ai_utils_enhanced.js');
-        
-        if (fs.existsSync(tscCompiledPath) && fs.existsSync(aiUtilsPath)) {
-            console.log('✅ Pre-compiled files found, skipping build');
-        } else {
-            console.log('🔨 Pre-compiled files not found, attempting build...');
-            
-            try {
-                // Try multiple build approaches
-                const buildCommands = [
-                    'npm run build:tsc',
-                    'npx tsc',
-                    'node_modules/.bin/tsc'
-                ];
-                
-                let buildSucceeded = false;
-                
-                for (const buildCmd of buildCommands) {
-                    try {
-                        console.log(`🔄 Trying: ${buildCmd}`);
-                        const buildOutput = execSync(buildCmd, {
-                            cwd: path.join(__dirname, 'tracewrightt'),
-                            encoding: 'utf8',
-                            timeout: 90000, // 1.5 minutes
-                            env: { ...process.env, PATH: process.env.PATH }
-                        });
-                        console.log('✅ TypeScript compilation succeeded');
-                        if (buildOutput) {
-                            console.log('📋 Build output:', buildOutput.substring(0, 200));
-                        }
-                        buildSucceeded = true;
-                        break;
-                    } catch (buildError) {
-                        console.log(`❌ ${buildCmd} failed: ${buildError.message.substring(0, 100)}`);
-                        continue;
-                    }
-                }
-                
-                if (!buildSucceeded) {
-                    throw new Error('All build methods failed');
-                }
-            } catch (buildError) {
-                console.warn('⚠️  Build failed, checking if files exist anyway...');
-                if (!fs.existsSync(tscCompiledPath)) {
-                    throw new Error(`Build failed and no compiled files found: ${buildError.message}`);
-                }
-            }
-        }
-        
-        // Now try to import the compiled version
-        if (fs.existsSync(tscCompiledPath)) {
-            console.log('📦 FOUND TSC COMPILED VERSION, IMPORTING...');
-            console.log(`📍 Import path: ${tscCompiledPath}`);
-            
-            // Double-check environment variables are set
-            console.log('🔑 Final environment variable check before import...');
-            console.log(`AZURE_OPENAI_API_KEY: ${process.env.AZURE_OPENAI_API_KEY ? 'SET' : 'NOT SET'}`);
-            console.log(`GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET'}`);
-            
-            // Ensure we have the validated GEMINI_API_KEY from the top of the script
-            if (GEMINI_API_KEY && !process.env.GEMINI_API_KEY) {
-                process.env.GEMINI_API_KEY = GEMINI_API_KEY;
-                console.log('🔑 Set GEMINI_API_KEY from validated constant');
-            }
-            
-            const importUrl = pathToFileURL(tscCompiledPath).href;
-            console.log(`🔗 Import URL: ${importUrl}`);
-            
-            const twMod = await import(importUrl);
-            console.log('📋 Import successful, checking exports:', Object.keys(twMod));
-            
-            tracewright = twMod.default || twMod.run || twMod;
-            
-            if (tracewright) {
-                console.log('✅ SUCCESSFULLY IMPORTED TSC COMPILED TRACEWRIGHT!');
-                console.log('🎉 Real tracewright will be used instead of fallback');
-            } else {
-                throw new Error('No valid tracewright function found in module exports');
-            }
-        } else {
-            console.error(`❌ TSC compiled file not found at: ${tscCompiledPath}`);
-            throw new Error('tsc compiled file not found');
-        }
-    } catch (tscError) {
-        console.warn('⚠️  tsc compilation failed:', tscError.message);
-        console.log('🔄 Falling back to enhanced simulation...');
-        
-        // Create a more functional tracewright fallback that attempts basic automation
-        tracewright = async (page, options) => {
-            console.log('🤖 Running enhanced fallback tracewright...');
-            const { script, aiUtils, currentFile } = options || {};
+        // Create a child process to transpile TypeScript files to JavaScript
+        const { exec } = await import('node:child_process');
+        const { promisify } = await import('node:util');
+        const execPromise = promisify(exec);
         
         try {
-            // Check if browser is still accessible
-            const isClosed = await page.isClosed();
-            if (isClosed) {
-                console.log('🔍 Browser is closed, skipping tracewright execution');
-                return;
+            // Run the TypeScript compiler directly to generate JavaScript files
+            console.log('🔄 Transpiling TypeScript to JavaScript...');
+            
+            // Use tsc directly to compile the TypeScript files
+            const tscPath = path.join(__dirname, 'tracewrightt', 'node_modules', '.bin', 'tsc');
+            
+            // Create a temporary tsconfig for transpilation
+            const tempTsConfigPath = path.join(__dirname, 'tracewrightt', 'tsconfig.temp.json');
+            const tsConfig = {
+                compilerOptions: {
+                    target: "ESNext",
+                    module: "ESNext",
+                    moduleResolution: "Node",
+                    esModuleInterop: true,
+                    allowSyntheticDefaultImports: true,
+                    strict: true,
+                    skipLibCheck: true,
+                    resolveJsonModule: true,
+                    isolatedModules: true,
+                    outDir: "./dist/js",
+                    rootDir: "./src",
+                    declaration: false
+                },
+                include: ["src/**/*.ts"],
+                exclude: ["node_modules", "dist"]
+            };
+            
+            fs.writeFileSync(tempTsConfigPath, JSON.stringify(tsConfig, null, 2));
+            console.log('✅ Created temporary tsconfig for transpilation');
+            
+            // Execute tsc with the temporary config
+            const command = `"${tscPath}" --project ${tempTsConfigPath}`;
+            console.log('🔄 Executing command:', command);
+            
+            const { stdout, stderr } = await execPromise(command);
+            if (stdout) console.log(stdout);
+            if (stderr) console.error(stderr);
+            
+            // Import the compiled JavaScript file
+            const jsPath = path.join(__dirname, 'tracewrightt', 'dist', 'js', 'run.js');
+            if (fs.existsSync(jsPath)) {
+                console.log('✅ Found compiled JS file, importing:', jsPath);
+                const twMod = await import(pathToFileURL(jsPath).href);
+                tracewright = twMod.default || twMod;
+                
+                // Clean up temporary tsconfig
+                fs.unlinkSync(tempTsConfigPath);
+                console.log('✅ Temporary tsconfig removed');
+            } else {
+                throw new Error('Compiled JavaScript file not found after transpilation');
             }
+        } catch (importErr) {
+            console.error('❌ Failed to import TypeScript source:', importErr.message);
             
-            console.log(`📍 Current page URL: ${await page.url()}`);
-            console.log(`📋 Script to execute: ${script?.substring(0, 200)}...`);
-            console.log(`📄 Current file: ${currentFile}`);
-            
-            // Wait for page to be stable
-            await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-            console.log('✅ Page is ready for interaction');
-            
-            // Simulate basic automation steps
-            console.log('🎯 Starting basic automation simulation...');
-            
-            // Step 1: Take initial screenshot if aiUtils is available
-            if (aiUtils && aiUtils.getCurrentMdFilePath) {
-                try {
-                    console.log('📸 Taking initial page screenshot...');
-                    const screenshot = await page.screenshot({ 
-                        fullPage: true,
-                        type: 'png'
-                    });
-                    console.log('✅ Initial screenshot captured');
-                } catch (screenshotError) {
-                    console.log('⚠️  Screenshot failed:', screenshotError.message);
-                }
-            }
-            
-            // Step 2: Basic page interaction simulation
-            console.log('🔍 Analyzing page elements...');
-            try {
-                // Get page title and basic info
-                const title = await page.title();
-                console.log(`📄 Page title: ${title}`);
-                
-                // Count interactive elements
-                const buttonCount = await page.locator('button').count();
-                const linkCount = await page.locator('a').count();
-                const inputCount = await page.locator('input').count();
-                
-                console.log(`🔢 Found ${buttonCount} buttons, ${linkCount} links, ${inputCount} inputs`);
-                
-                // Wait a bit to simulate processing time
-                await page.waitForTimeout(3000);
-                
-            } catch (analysisError) {
-                console.log('⚠️  Page analysis failed:', analysisError.message);
-            }
-            
-            // Step 3: Enhanced script interpretation and interaction
-            if (script) {
-                console.log('🎬 Attempting to interpret script instructions...');
-                
-                // Parse JSON script if it's in JSON format
-                let parsedScript = null;
-                try {
-                    if (script.trim().startsWith('{') || script.includes('"thinking"')) {
-                        const jsonMatch = script.match(/\{[\s\S]*\}/);
-                        if (jsonMatch) {
-                            parsedScript = JSON.parse(jsonMatch[0]);
-                            console.log('📋 Parsed JSON script successfully');
-                        }
-                    }
-                } catch (e) {
-                    console.log('⚠️  Could not parse JSON script, treating as plain text');
-                }
-                
-                // Look for specific UI element mentions
-                const scriptText = parsedScript?.thinking || script;
-                const scriptLower = scriptText.toLowerCase();
-                
-                // Look for document viewer related elements
-                if (scriptLower.includes('document viewer') || scriptLower.includes('document list')) {
-                    console.log('📄 Script mentions document viewer - looking for document elements...');
-                    try {
-                        const docElements = await page.locator('[class*="document"], [id*="document"], [data-testid*="document"]').count();
-                        console.log(`📋 Found ${docElements} potential document-related elements`);
-                    } catch (e) {
-                        console.log('⚠️  Document element search failed');
-                    }
-                }
-                
-                // Look for specific UI components mentioned in the script
-                if (scriptLower.includes('left panel') || scriptLower.includes('sidebar')) {
-                    console.log('🗂️  Script mentions left panel/sidebar - analyzing layout...');
-                    try {
-                        const panels = await page.locator('[class*="panel"], [class*="sidebar"], [class*="nav"]').count();
-                        console.log(`🗂️  Found ${panels} potential panel elements`);
-                    } catch (e) {
-                        console.log('⚠️  Panel analysis failed');
-                    }
-                }
-                
-                // Enhanced screenshot handling based on script content
-                if (scriptLower.includes('screenshot') || scriptLower.includes('image') || scriptLower.includes('img_as')) {
-                    console.log('📸 Script mentions screenshots - taking targeted screenshots...');
-                    
-                    // Try to take screenshots based on the context
-                    if (scriptLower.includes('document viewer') || scriptLower.includes('documentviewer')) {
-                        try {
-                            // Look for document viewer area
-                            const viewerArea = page.locator('[class*="viewer"], [class*="document-view"], [id*="viewer"]').first();
-                            const viewerExists = await viewerArea.count() > 0;
-                            
-                            if (viewerExists) {
-                                console.log('📸 Taking document viewer area screenshot...');
-                                await viewerArea.screenshot({ 
-                                    path: `document-viewer-${Date.now()}.png` 
-                                });
-                                console.log('✅ Document viewer screenshot saved');
-                            } else {
-                                console.log('📸 Taking full page screenshot as document viewer fallback...');
-                                await page.screenshot({ 
-                                    fullPage: true,
-                                    path: `full-page-${Date.now()}.png`
-                                });
-                                console.log('✅ Full page screenshot saved');
-                            }
-                        } catch (e) {
-                            console.log('⚠️  Document viewer screenshot failed');
-                        }
-                    } else {
-                        // General screenshot
-                        try {
-                            await page.screenshot({ 
-                                fullPage: true,
-                                type: 'png',
-                                path: `fallback-screenshot-${Date.now()}.png`
-                            });
-                            console.log('✅ General screenshot saved');
-                        } catch (e) {
-                            console.log('⚠️  General screenshot failed');
-                        }
-                    }
-                }
-                
-                // Look for click instructions
-                if (scriptLower.includes('click') || scriptLower.includes('button')) {
-                    console.log('🔘 Script mentions clicking - analyzing interactive elements...');
-                    try {
-                        const visibleButtons = await page.locator('button:visible').all();
-                        console.log(`👆 Found ${visibleButtons.length} visible buttons`);
-                        
-                        // Log first few button texts for debugging
-                        for (let i = 0; i < Math.min(5, visibleButtons.length); i++) {
-                            try {
-                                const text = await visibleButtons[i].textContent();
-                                console.log(`🔘 Button ${i}: "${text?.trim()}"`);
-                            } catch (e) {
-                                continue;
-                            }
-                        }
-                    } catch (e) {
-                        console.log('⚠️  Button analysis failed');
-                    }
-                }
-                
-                // Enhanced processing time based on script complexity
-                const processingTime = parsedScript ? 3000 : 2000;
-                await page.waitForTimeout(processingTime);
-            }
-            
-            console.log('✅ Enhanced fallback tracewright completed successfully');
-            console.log('ℹ️  Note: This was a simplified simulation - full AI automation requires compiled tracewright');
-            
-        } catch (fallbackError) {
-            console.error('❌ Enhanced fallback tracewright failed:', fallbackError.message);
-            
-            // Check if the error is due to browser closure
-            if (fallbackError.message.includes('Target page, context or browser has been closed')) {
-                console.log('🔍 Browser was closed during tracewright execution');
-                throw fallbackError; // Re-throw to trigger cleanup
-            }
-            
-            // For other errors, just log and continue
-            console.log('⚠️  Continuing despite tracewright error...');
+            // Fallback to a simplified approach - create a basic tracewright function
+            console.log('⚠️ Creating fallback tracewright function...');
+            tracewright = async (page, options) => {
+                console.log('🤖 Running fallback tracewright with options:', options);
+                // Just navigate to a URL to test browser functionality
+                await page.goto('https://team-meta-apim.azure-api.net/');
+                console.log('✅ Fallback tracewright completed');
+            };
         }
-        };
     }
     
     const browser = await chromium.launch({
-        headless: true, // Set to true for CI environment to prevent random closures
+        headless: false, // Changed to false for testing
         channel: 'chrome',
         args: [
             "--disable-notifications",
@@ -2545,8 +2091,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             "--font-render-hinting=none",
             "--disable-web-security",
             "--disable-site-isolation-trials",
-            "--disable-dev-shm-usage", // Add this for CI stability
-            "--no-sandbox", // Add this for CI environment
+            "--remote-debugging-port=9222",
             "--window-size=1280,800"
         ]
     });
@@ -2575,22 +2120,9 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
     page.setDefaultTimeout(120000);
 
     try {
-        // Add browser closure detection
-        browser.on('disconnected', () => {
-            console.log('🔍 Browser disconnected event detected');
-        });
-        
-        context.on('close', () => {
-            console.log('🔍 Browser context closed event detected');
-        });
-        
-        page.on('close', () => {
-            console.log('🔍 Page closed event detected');
-        });
-        
         // Step 4: Navigate to the website
         console.log('🔗 Opening website...');
-        await page.goto('https://team-meta-apim.azure-api.net/', { timeout: 60000 }); // Reduced timeout for CI
+        await page.goto('https://team-meta-apim.azure-api.net/', { timeout: 6000000 });
         
         // Wait for page to fully load and settle
         console.log('⏳ Waiting for page to load and settle...');
@@ -2751,61 +2283,21 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // Import the enhanced AI utils from compiled version
             // Try different possible paths for the compiled version
             let AIUtilsEnhanced;
-            let aiUtils = null;
-            
             try {
-                // First try the correct tsc output path (esm subdirectory)
-                const aiUtilsModule = await import('./tracewrightt/dist/esm/ai_utils_enhanced.js');
+                // First try the standard rollup output path
+                const aiUtilsModule = await import('./tracewrightt/dist/esm/tracewrightt/src/ai_utils_enhanced.js');
                 AIUtilsEnhanced = aiUtilsModule.AIUtilsEnhanced;
             } catch (e) {
                 try {
-                    // Try the standard rollup output path
-                    const aiUtilsModule = await import('./tracewrightt/dist/esm/tracewrightt/src/ai_utils_enhanced.js');
+                    // Try the tsc output path
+                    const aiUtilsModule = await import('./tracewrightt/dist/js/ai_utils_enhanced.js');
                     AIUtilsEnhanced = aiUtilsModule.AIUtilsEnhanced;
                 } catch (e2) {
-                    try {
-                        // Try the old incorrect path for compatibility
-                        const aiUtilsModule = await import('./tracewrightt/dist/js/ai_utils_enhanced.js');
-                        AIUtilsEnhanced = aiUtilsModule.AIUtilsEnhanced;
-                    } catch (e3) {
-                        console.warn('⚠️  Could not import AIUtilsEnhanced from compiled versions:', e3.message);
-                        console.log('🔄 Creating minimal AI utils fallback...');
-                        
-                        // Create a minimal AI utils fallback
-                        AIUtilsEnhanced = class {
-                        constructor(page) {
-                            this.page = page;
-                            this.currentMdFilePath = null;
-                        }
-                        
-                        setCurrentMdFilePath(filePath) {
-                            this.currentMdFilePath = filePath;
-                            console.log(`📄 Set current MD file path: ${filePath}`);
-                        }
-                        
-                        getCurrentMdFilePath() {
-                            return this.currentMdFilePath;
-                        }
-                        
-                        getImgAsPath() {
-                            return this.currentMdFilePath ? `${this.currentMdFilePath}/img` : './img';
-                        }
-                        
-                        async writeTokenUsageSummary(logPath) {
-                            const fs = await import('node:fs');
-                            const summary = `\n===== Token Usage Summary (${new Date().toISOString()}) =====\n(Fallback mode - detailed statistics not available)\n==========================================\n`;
-                            fs.appendFileSync(logPath, summary);
-                            console.log('✅ Basic token usage log created (fallback mode)');
-                        }
-                        };
-                    }
+                    console.error('❌ Could not import AIUtilsEnhanced:', e2.message);
+                    throw new Error('Could not import AIUtilsEnhanced from any location');
                 }
             }
-            
-            // Create the AI utils instance
-            if (!aiUtils) {
-                aiUtils = new AIUtilsEnhanced(page);
-            }
+            const aiUtils = new AIUtilsEnhanced(page);
             
             // Set the current markdown file path for image reference
             // Priority order: processedFileResults -> processedFiles -> testDocPath -> default
@@ -2894,13 +2386,6 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.log(`🚀   aiUtils currentMdPath: ${aiUtils.getCurrentMdFilePath ? aiUtils.getCurrentMdFilePath() : 'method not available'}`);
             console.log(`🚀   aiUtils imgAsPath: ${aiUtils.getImgAsPath ? aiUtils.getImgAsPath() : 'method not available'}`);
             
-            // Check browser state before running tracewright
-            const browserAccessible = await checkBrowserState(page);
-            if (!browserAccessible) {
-                console.log('🔍 Browser is not accessible before tracewright execution, skipping...');
-                return;
-            }
-            
             await tracewright(page, {
                 script: generatedInstructions,
                 // Use the enhanced AI utils
@@ -2936,29 +2421,17 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.log('✅ Batch post-processing skipped - relying on immediate updates after successful screenshots');
         } catch (tracewrightError) {
             console.log('⚠️  Tracewright with enhanced AI utils failed');
-            console.error('Tracewright error details:', tracewrightError.message);
+            console.error('Tracewright error details:', tracewrightError);
             
-            // Check if the error is due to browser closure
-            if (tracewrightError.message.includes('Target page, context or browser has been closed')) {
-                console.log('🔍 Browser was closed during tracewright execution');
-                // Don't try to continue, just clean up and exit
-                return;
-            }
-            
-            // Check if browser is still accessible for other errors
+            // Check if browser is still accessible
             try {
                 const isClosed = await page.isClosed();
                 console.log(`🔍 Browser closed status: ${isClosed}`);
                 if (!isClosed) {
                     console.log('🔄 Browser is still open, attempting to continue...');
-                } else {
-                    console.log('🔍 Browser is closed, ending execution gracefully');
-                    return;
                 }
             } catch (checkError) {
                 console.log('❌ Cannot check browser status:', checkError.message);
-                console.log('🔍 Assuming browser is closed, ending execution gracefully');
-                return;
             }
         }
  
@@ -2976,7 +2449,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // Get AI Utils instance if available
             if (typeof AIUtilsEnhanced !== 'undefined' && aiUtils) {
                 console.log('\n📊 GENERATING FINAL TOKEN REPORT 📊');
-                await aiUtils.writeTokenUsageSummary(tokenLogPath);
+                aiUtils.writeTokenUsageSummary(tokenLogPath);
                 // The report is printed directly by the writeTokenUsageSummary method
             } else {
                 // Fallback to simple token logging
