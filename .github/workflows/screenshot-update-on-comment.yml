@@ -150,16 +150,56 @@ jobs:
           # 4. Install tracewrightt dependencies and build it
           echo "🔨 Installing tracewrightt dependencies and building..."
           pushd "$GITHUB_WORKSPACE/AutoSnap/tracewrightt" > /dev/null || { echo "❌ Failed to change directory to tracewrightt"; exit 1; }
-          install_js_deps "." # This will handle yarn/npm for tracewrightt
+          
+          # Clean up conflicting lock files
+          echo "🧹 Cleaning up conflicting lock files..."
+          [ -f "package-lock.json" ] && rm -f package-lock.json && echo "  ✅ Removed package-lock.json"
+          
+          # Also clean up any package-lock.json files in subdirectories that might interfere
+          find . -name "package-lock.json" -not -path "./node_modules/*" -delete 2>/dev/null || true
+          echo "  🧹 Cleaned up any remaining package-lock.json files in subdirectories"
+          
+          # Install missing peer dependencies first
+          echo "📦 Installing missing peer dependencies..."
+          echo "  📋 Current directory: $(pwd)"
+          echo "  📋 Files in directory:"
+          ls -la | head -10
+          
+          yarn add --dev @babel/core prettier @modelcontextprotocol/sdk 2>/dev/null || echo "  ⚠️ Some peer deps may already be installed"
+          
+          # Install dependencies with proper error handling
+          echo "📦 Installing tracewrightt dependencies..."
+          yarn install --frozen-lockfile 2>/dev/null || {
+            echo "  ⚠️ Frozen lockfile failed, trying regular yarn install..."
+            yarn install || {
+              echo "  ❌ Yarn install failed, falling back to npm..."
+              npm install || {
+                echo "❌ All package managers failed for tracewrightt"
+                popd > /dev/null
+                exit 1
+              }
+            }
+          }
           
           echo "🔨 Building TypeScript for tracewrightt..."
           if [ -f "package.json" ] && grep -q '"build"' package.json; then
-            yarn build 2>/dev/null || npm run build || {
+            echo "  🔧 Running build command..."
+            yarn build || npm run build || {
               echo "❌ tracewrightt build failed. This module must be built for AutoSnap to use it. Exiting."
               popd > /dev/null
               exit 1
             }
-            echo "✅ tracewrightt built successfully."
+            # Verify the build worked
+            if [ -f "dist/esm/run.js" ]; then
+              echo "✅ tracewrightt built successfully - run.js found!"
+              echo "📁 Build artifacts:"
+              ls -la dist/esm/ | head -5
+            else
+              echo "❌ Build failed - dist/esm/run.js not found"
+              echo "📁 Available files in dist/:"
+              ls -la dist/ 2>/dev/null || echo "  No dist directory found"
+              exit 1
+            fi
           else
             echo "⚠️ No 'build' script found in tracewrightt's package.json. Assuming it's not meant to be built directly or is already transpiled."
           fi
@@ -215,11 +255,19 @@ jobs:
           pip show langchain-openai playwright > /dev/null 2>&1 && echo "✅ Python dependencies verified" || echo "⚠️ Python dependencies check failed"
           
           # Check tracewrightt build
-          if [ -d "tracewrightt/dist" ]; then
-            echo "✅ Tracewrightt dist directory exists"
-            ls -la tracewrightt/dist/ | head -5
+          if [ -f "tracewrightt/dist/esm/run.js" ]; then
+            echo "✅ Tracewrightt build verified - run.js exists"
+            echo "📁 Tracewrightt dist contents:"
+            ls -la tracewrightt/dist/esm/ | head -5
           else
-            echo "❌ Tracewrightt dist directory missing"
+            echo "❌ Tracewrightt build verification failed - run.js missing"
+            if [ -d "tracewrightt/dist" ]; then
+              echo "📁 Available in dist/:"
+              ls -la tracewrightt/dist/
+            else
+              echo "📁 No dist directory found"
+            fi
+            exit 1
           fi
           
           # Check main script existence
