@@ -2078,11 +2078,9 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
     // Step 3: Initialize browser and tracewright
     console.log('🌐 Launching browser...');
     
-    // ----- Lazy-load Tracewright ---------------------------------------
-    // 1. Try the compiled bundle (dist/esm/index.js).
-    // 2. If it does not exist, build it on the fly (`npm run build` inside tracewrightt).
-    // 3. If the build fails (or you are editing TypeScript and prefer zero-build),
-    //    fall back to ts-node and import the .ts source directly.
+    // ----- FORCE TRACEWRIGHT COMPILATION AND IMPORT ---------------------------------------
+    console.log('🚀 STARTING TRACEWRIGHT IMPORT SECTION');
+    console.log('🎯 This message should appear in the log if we reach this section');
 
     const { chromium, devices } = await import('playwright');
     const fs = await import('node:fs');
@@ -2111,12 +2109,22 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
 
     let tracewright;
     
-    // Try a more comprehensive approach to get tracewright working
-    console.log('🔄 Attempting comprehensive tracewright import strategy...');
+    // FORCE COMPILATION - Try a more comprehensive approach to get tracewright working
+    console.log('🔄 ATTEMPTING COMPREHENSIVE TRACEWRIGHT IMPORT STRATEGY...');
+    console.log('🎯 This should show the real tracewright compilation attempt');
     
-    // First, try to build with tsc instead of rollup
+    // ALWAYS try to build with tsc - don't skip compilation
     try {
-        console.log('🔨 Attempting TypeScript compilation with tsc...');
+        console.log('🔨 ATTEMPTING TYPESCRIPT COMPILATION WITH TSC...');
+        
+        // Set environment variables FIRST before any operations
+        console.log('🔑 Setting environment variables for compilation...');
+        // Use the actual GEMINI_API_KEY that's already validated at the top of this script
+        process.env.AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || 'compilation-dummy-key';
+        process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || GEMINI_API_KEY || 'compilation-dummy-key';
+        process.env.CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || 'compilation-dummy-key';
+        console.log('✅ Environment variables set for compilation (using real GEMINI_API_KEY)');
+        console.log(`🔑 GEMINI_API_KEY available: ${process.env.GEMINI_API_KEY ? 'YES' : 'NO'}`);
         
         // First check if npm is available and dependencies are installed
         try {
@@ -2161,22 +2169,30 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         // Try to find the tsc compiled version (in esm subdirectory)
         const tscCompiledPath = path.join(__dirname, 'tracewrightt', 'dist', 'esm', 'run.js');
         if (fs.existsSync(tscCompiledPath)) {
-            console.log('📦 Found tsc compiled version, importing...');
+            console.log('📦 FOUND TSC COMPILED VERSION, IMPORTING...');
+            console.log(`📍 Import path: ${tscCompiledPath}`);
             
-            // Set minimal environment variables to prevent import errors
-            if (!process.env.AZURE_OPENAI_API_KEY) {
-                process.env.AZURE_OPENAI_API_KEY = 'dummy-key-for-import';
-                console.log('🔑 Set dummy AZURE_OPENAI_API_KEY for import compatibility');
-            }
-            if (!process.env.GEMINI_API_KEY && !process.env.CLAUDE_API_KEY) {
-                process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'dummy-key';
-                console.log('🔑 Set fallback API keys for import compatibility');
-            }
+            // Double-check environment variables are set
+            console.log('🔑 Final environment variable check before import...');
+            console.log(`AZURE_OPENAI_API_KEY: ${process.env.AZURE_OPENAI_API_KEY ? 'SET' : 'NOT SET'}`);
+            console.log(`GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET'}`);
             
-            const twMod = await import(pathToFileURL(tscCompiledPath).href);
+            const importUrl = pathToFileURL(tscCompiledPath).href;
+            console.log(`🔗 Import URL: ${importUrl}`);
+            
+            const twMod = await import(importUrl);
+            console.log('📋 Import successful, checking exports:', Object.keys(twMod));
+            
             tracewright = twMod.default || twMod.run || twMod;
-            console.log('✅ Successfully imported tsc compiled tracewright');
+            
+            if (tracewright) {
+                console.log('✅ SUCCESSFULLY IMPORTED TSC COMPILED TRACEWRIGHT!');
+                console.log('🎉 Real tracewright will be used instead of fallback');
+            } else {
+                throw new Error('No valid tracewright function found in module exports');
+            }
         } else {
+            console.error(`❌ TSC compiled file not found at: ${tscCompiledPath}`);
             throw new Error('tsc compiled file not found');
         }
     } catch (tscError) {
