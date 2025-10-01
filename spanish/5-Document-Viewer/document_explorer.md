@@ -18,7 +18,8 @@ tags:
 
 O Explorador de Documentos é um componente essencial do Visualizador de Documentos OmegaAI, localizado principalmente no painel esquerdo. Esta ferramenta fornece uma visão estruturada e detalhada de vários estudos associados aos pacientes selecionados da lista de trabalho, aprimorando o gerenciamento e a acessibilidade de documentos de imagens médicas.
 
-![document explorer](img_as/documentviewer_E.png)
+
+![document explorer](img_as/documentviewer_S.png)
 
 ## Layout e Funcionalidade
 
@@ -113,7 +114,7 @@ Passe o mouse ou clique em qualquer seção para expandi-la.
 
    - **Abrir detalhes do paciente em nova aba**: Clicar no ícone de pop out abre a página do paciente em uma nova aba.
 
-   ![Popup Patient Info](./img/popuppatientinfo.png)
+   ![Popup Patient Info](img_as/popuppatientinfo_E.png)
   
    - **Detalhes Demográficos**: Inclui gênero, idade e data de nascimento, exibidos abaixo do cartão emoji do paciente com ícones.
 

@@ -5,7 +5,7 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 concurrency:
@@ -145,6 +145,45 @@ jobs:
             AutoSnap/api_logs/
             AutoSnap/screenshots/
           if-no-files-found: ignore
+
+      - name: Get PR head info
+        id: pr_info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            core.setOutput('head_ref', pr.data.head.ref);
+            core.setOutput('head_repo', pr.data.head.repo.full_name);
+            const canPush = pr.data.head.repo.full_name === `${context.repo.owner}/${context.repo.repo}`;
+            core.setOutput('can_push', canPush ? 'true' : 'false');
+
+      - name: Commit screenshots to PR branch
+        if: ${{ steps.pr_info.outputs.can_push == 'true' }}
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REPO: ${{ steps.pr_info.outputs.head_repo }}
+          HEAD_REF: ${{ steps.pr_info.outputs.head_ref }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Stage only image files under AutoSnap/screenshots
+          if [ -d AutoSnap/screenshots ]; then
+            find AutoSnap/screenshots -type f \
+              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) -print0 \
+              | xargs -0 -r git add --
+          fi
+          if git diff --staged --quiet; then
+            echo "No screenshots to commit."
+            exit 0
+          fi
+          git commit -m "chore(ci): add screenshots from enhanced flow run [skip ci]"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${HEAD_REPO}.git" HEAD:${HEAD_REF}
 
       - name: Reply on PR with run summary
         if: always()
