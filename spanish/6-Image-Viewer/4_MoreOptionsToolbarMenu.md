@@ -158,7 +158,6 @@ Permite alterar as configurações do Visualizador de Imagens para várias categ
 - **Finalidade:** Controla a visibilidade do menu do viewport.
 - **Funcionalidade:** Os usuários podem ativar ou desativar esta configuração para ocultar ou mostrar automaticamente o menu do viewport, proporcionando um espaço de trabalho mais limpo. Quando ativada, o menu permanece oculto até que o usuário interaja com ele.
 
-
 ![More%20Settings.png](./img/More%20Settings.png)
 
 **Abrir em Janela Separada**
