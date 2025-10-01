@@ -139,6 +139,7 @@ jobs:
             enhanced-flow-ci-run.log
             enhanced-flow-log.txt
             changed-files-*.txt
+            changed-files-screenshots.txt
             token_usage_summary.txt
             AutoSnap/enhanced-flow-log.txt
             AutoSnap/token_usage_summary.txt
@@ -177,6 +178,15 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Prefer explicit list if available
+          if [ -f changed-files-screenshots.txt ]; then
+            echo "Using changed-files-screenshots.txt for staging..."
+            sed -e 's/\r$//' changed-files-screenshots.txt | while IFS= read -r f; do
+              if [ -n "$f" ] && [ -f "$f" ]; then
+                git add -- "$f"
+              fi
+            done
+          fi
           # Stage images from common output locations
           if [ -d AutoSnap/screenshots ]; then
             find AutoSnap/screenshots -type f \

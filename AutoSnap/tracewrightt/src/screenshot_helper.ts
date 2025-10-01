@@ -11,6 +11,8 @@ import { Page } from '@playwright/test';
 export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtils?: any): Promise<void> {
   const MAX_RETRIES = 1;
   let lastError: Error | null = null;
+  const fs = require('fs');
+  const path = require('path');
 
   // Extract the screenshot path from the command string for logging and fallback use.
   const pathMatch = cmd.match(/path:\s*['"]([^'"]+)['"]/);
@@ -99,6 +101,17 @@ export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtil
 
       // If the command succeeds, we log it and update markdown immediately
       console.log(`✅ Success on attempt ${attempt}! Screenshot saved to ${screenshotPath}`);
+
+      // Append repo-relative screenshot path to a changed files list for CI commit step
+      try {
+        const repoRoot = process.cwd();
+        const relative = path.relative(repoRoot, String(screenshotPath)).replace(/\\/g, '/');
+        const listPath = path.join(repoRoot, 'changed-files-screenshots.txt');
+        fs.appendFileSync(listPath, `${relative}\n`, { encoding: 'utf8' });
+        console.log(`📝 Appended screenshot to list: ${relative}`);
+      } catch (appendErr) {
+        console.warn('⚠️ Could not append screenshot path to list:', appendErr);
+      }
       
       // Update markdown file path immediately after successful screenshot
       if (aiUtils && aiUtils.updateSingleImagePath) {
