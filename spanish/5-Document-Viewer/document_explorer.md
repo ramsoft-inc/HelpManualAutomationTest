@@ -19,6 +19,8 @@ tags:
 O Explorador de Documentos é um componente essencial do Visualizador de Documentos OmegaAI, localizado principalmente no painel esquerdo. Esta ferramenta fornece uma visão estruturada e detalhada de vários estudos associados aos pacientes selecionados da lista de trabalho, aprimorando o gerenciamento e a acessibilidade de documentos de imagens médicas.
 
 
+![document explorer](img_as/documentviewer_S.png)
+
 ## Layout e Funcionalidade
 
 1.  **Detalhes do Paciente:**
@@ -57,13 +59,14 @@ O Explorador de Documentos é um componente essencial do Visualizador de Documen
 
     - Abra o OmegaAI e navegue até o Visualizador de Documentos. O Explorador de Documentos está imediatamente acessível no painel esquerdo.
 
-
+    ![document explorer](img_as/documentexplorer_E.png)
 
 2.  **Visualizando Detalhes do Paciente:**
 
     - Olhe para a seção superior do Explorador de Documentos para ver os detalhes do paciente cujos estudos você está examinando.
 
 
+    ![patient details](img_as/patientdetails_E.png)
 
 3.  **Navegando entre Estudos:**
 
@@ -111,17 +114,17 @@ Passe o mouse ou clique em qualquer seção para expandi-la.
 
    - **Abrir detalhes do paciente em nova aba**: Clicar no ícone de pop out abre a página do paciente em uma nova aba.
 
-
+   ![Popup Patient Info](img_as/popuppatientinfo_E.png)
   
    - **Detalhes Demográficos**: Inclui gênero, idade e data de nascimento, exibidos abaixo do cartão emoji do paciente com ícones.
 
    - **Medição de IMC**: Exibida com um indicador (normal ou anormal) em um tooltip.
      
-
+   ![BMI Status](./img/bmistatus.png)
     
    - **Sinais Vitais**: Inclui altura, peso, frequência cardíaca e pressão arterial, listados abaixo da medição de IMC.
   
-
+   ![patient cards](./img/patientcards.png)
      
    
 
@@ -131,13 +134,13 @@ Passe o mouse ou clique em qualquer seção para expandi-la.
 
    - Clique em uma seção específica para filtrar o tipo de documento desejado (Todos, documentos enviados e formulários de registro).
 
-
+   ![Filter Document](./img/filterdocument.png)
 
    - Clique em qualquer documento ou formulário para visualizá-lo no visor ou arraste e solte para o visor desejado.
 
    - Clique no ícone de upload para enviar qualquer documento do explorador de arquivos.
 
-
+   ![Upload Document](./img/uploaddocument.png)
      
 <!--
 3. **Acessando Notas**
@@ -156,7 +159,7 @@ Passe o mouse ou clique em qualquer seção para expandi-la.
 
 Quando o estudo já possui um relatório final ou um relatório preliminar existente e o usuário tenta criar um relatório adicional, um alerta com a seguinte mensagem aparece: 
 
-
+![alert](./img/alert.png)
 
 *Relatório já existe* 
 
@@ -170,23 +173,29 @@ Clique em **Cancelar** para descartar e **Continuar** para prosseguir.
 
     - Inicie o **Visualizador de Documentos Omega AI**.
 
+    ![LPR](./img/LPR1.png)
 
 2.  **Visualize Estudos de Pacientes Vinculados:**
 
     - Estudos de pacientes vinculados aparecerão como **estudos anteriores** no Visualizador de Documentos.
 
+    ![LPR](./img/LPR2.png) ![LPR](./img/LPR3.png)
+
 - Estudos anteriores incluirão **todos os relatórios associados**.
 
+  ![LPR](./img/LPR4.png)
 
 3.  **Identifique Informações do Paciente Vinculado:**
 
     - Quando um relatório é exibido no visor, o **nome específico do paciente vinculado** será mostrado para identificação clara.
 
+    ![LPR](./img/LPR5.png)
 
 4.  **Navegue e Revise:**
 
     - Os usuários podem alternar entre o **registro principal do paciente** e **registros de pacientes vinculados** para comparação eficiente de estudos.
 
+![alert2](./img/alert2.png)
 
 ## Indicador de Acesso ao Relatório
 
@@ -198,9 +207,11 @@ O Sistema de Bloqueio e Alerta de Edição de Relatórios é um novo recurso do 
 
     - Um usuário abre um estudo no **Visualizador de Documentos**.
 
+    ![RAI](./img/RAI1.png)
 
 - Se qualquer relatório em modo editável for aberto, o relatório e o estudo serão **automaticamente bloqueados**.
 
+  ![RAI](./img/RAI2New.png)
 
 2.  **Visualizar Indicador de Edição:**
 
@@ -208,6 +219,7 @@ O Sistema de Bloqueio e Alerta de Edição de Relatórios é um novo recurso do 
 
     - Além disso, o usuário verá o texto "Você está editando".
 
+![RAI](./img/RAI3.png)
 
 
 3.  **Tentar Editar um Relatório Bloqueado:**
@@ -218,6 +230,7 @@ O Sistema de Bloqueio e Alerta de Edição de Relatórios é um novo recurso do 
 
     - Se o editor ativo permanecer inativo por **15 minutos**, o relatório será **automaticamente desbloqueado**.
 
+![RAI](./img/RAI4.png)
 
 
 - Se o usuário sair do estudo ou fechar o navegador, o relatório é desbloqueado automaticamente.
@@ -225,3 +238,5 @@ O Sistema de Bloqueio e Alerta de Edição de Relatórios é um novo recurso do 
 5.  **Assumir Edição:**
 
     - Se o relatório for desbloqueado devido à inatividade, outro usuário pode **assumir a edição** clicando no botão.
+
+![RAI](./img/RAI5.png)
