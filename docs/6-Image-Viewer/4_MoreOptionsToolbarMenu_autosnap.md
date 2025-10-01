@@ -182,7 +182,6 @@ seen below).
 
 Allows you to open the current image in a separate window.
 
-
 ![mo7](./img_as/mo7_E.png)
 
 **Fullscreen Mode (Toggle Button)**
