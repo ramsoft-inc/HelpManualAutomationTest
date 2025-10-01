@@ -119,6 +119,7 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           LLM_PROVIDER: gemini
+          DISABLE_IMG_AS: "true"
         run: |
           args="${{ steps.parse.outputs.args }}"
           if [ -n "$args" ]; then
@@ -144,6 +145,10 @@ jobs:
             AutoSnap/changed-files-*.txt
             AutoSnap/api_logs/
             AutoSnap/screenshots/
+            docs/**/img_as/**
+            spanish/**/img_as/**
+            docs/**/img/**
+            spanish/**/img/**
           if-no-files-found: ignore
 
       - name: Get PR head info
@@ -172,9 +177,19 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Stage only image files under AutoSnap/screenshots
+          # Stage images from common output locations
           if [ -d AutoSnap/screenshots ]; then
             find AutoSnap/screenshots -type f \
+              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) -print0 \
+              | xargs -0 -r git add --
+          fi
+          if [ -d docs ]; then
+            find docs -type f \( -path '*/img_as/*' -o -path '*/img/*' \) \
+              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) -print0 \
+              | xargs -0 -r git add --
+          fi
+          if [ -d spanish ]; then
+            find spanish -type f \( -path '*/img_as/*' -o -path '*/img/*' \) \
               \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) -print0 \
               | xargs -0 -r git add --
           fi

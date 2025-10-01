@@ -191,6 +191,10 @@ export class AIUtilsEnhanced {
    * Get the img_as folder path for the current markdown file
    */
   public getImgAsPath(): string | null {
+    // Allow disabling img_as behavior entirely via env flag
+    if (process.env.DISABLE_IMG_AS === 'true') {
+      return null;
+    }
     if (!this.currentMdPath) {
       return null;
     }

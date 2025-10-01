@@ -75,6 +75,16 @@ AutoSnap/test_workflow.py
 !docs/**/*.ico
 !docs/**/*.webp
 
+# Allow images in spanish folder
+!spanish/**/*.png
+!spanish/**/*.jpg
+!spanish/**/*.jpeg
+!spanish/**/*.gif
+!spanish/**/*.bmp
+!spanish/**/*.svg
+!spanish/**/*.ico
+!spanish/**/*.webp
+
 # Allow images in specific image folders
 !static/img/**
 
