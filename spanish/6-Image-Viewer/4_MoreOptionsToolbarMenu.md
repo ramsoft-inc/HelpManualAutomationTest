@@ -160,6 +160,7 @@ Permite alterar as configurações do Visualizador de Imagens para várias categ
 
 ![More%20Settings.png](./img/More%20Settings.png)
 
+
 **Abrir em Janela Separada**
 
 Permite abrir a imagem atual em uma janela separada.
