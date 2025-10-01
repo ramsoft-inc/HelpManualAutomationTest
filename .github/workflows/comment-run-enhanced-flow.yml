@@ -183,7 +183,7 @@ jobs:
             echo "Using changed-files-screenshots.txt for staging..."
             sed -e 's/\r$//' changed-files-screenshots.txt | while IFS= read -r f; do
               if [ -n "$f" ] && [ -f "$f" ]; then
-                git add -- "$f"
+                git add -f -- "$f"
               fi
             done
           fi

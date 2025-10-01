@@ -105,7 +105,15 @@ export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtil
       // Append repo-relative screenshot path to a changed files list for CI commit step
       try {
         const repoRoot = process.cwd();
-        const relative = path.relative(repoRoot, String(screenshotPath)).replace(/\\/g, '/');
+        const isAbsolute = typeof screenshotPath === 'string' && (screenshotPath.startsWith('/') || /:\\|:\//.test(screenshotPath));
+        // If path is relative, resolve it against the current markdown file directory when available
+        let absolutePath = String(screenshotPath);
+        if (!isAbsolute) {
+          const currentMdPath = aiUtils && aiUtils.getCurrentMdFilePath ? aiUtils.getCurrentMdFilePath() : null;
+          const baseDir = currentMdPath ? path.dirname(currentMdPath) : repoRoot;
+          absolutePath = path.resolve(baseDir, absolutePath);
+        }
+        const relative = path.relative(repoRoot, absolutePath).replace(/\\/g, '/');
         const listPath = path.join(repoRoot, 'changed-files-screenshots.txt');
         fs.appendFileSync(listPath, `${relative}\n`, { encoding: 'utf8' });
         console.log(`📝 Appended screenshot to list: ${relative}`);
