@@ -245,9 +245,16 @@ async function selectLanguage(page, languageInput) {
 
     // Step 1: Click on the Avatar to open user menu
     console.log('🔍 Looking for user avatar...');
-    await page.getByRole('button', { name: 'My Profile' }).waitFor({ state: 'visible', timeout: 15000 });
-    console.log('👆 Clicking user avatar...');
-    await page.getByRole('button', { name: 'My Profile' }).click({ force: true });
+    try {
+      const avatarByTestId = page.locator('[data-testid^="Avatar "]').first();
+      await avatarByTestId.waitFor({ state: 'visible', timeout: 15000 });
+      await avatarByTestId.click({ force: true });
+    } catch {
+      console.log('⚠️  Fallback: avatar container with avatar inside (language-agnostic)');
+      const avatarContainer = page.locator('[aria-label]:has(.MuiAvatar-root)').first();
+      await avatarContainer.waitFor({ state: 'visible', timeout: 20000 });
+      await avatarContainer.click({ force: true });
+    }
 
     // Wait for user menu to appear
     console.log('⏳ Waiting for user menu to appear...');
@@ -286,16 +293,9 @@ async function selectLanguage(page, languageInput) {
     await page.getByTestId('LanguageIcon').waitFor({ state: 'visible', timeout: 15000 });
     console.log('👆 Clicking language icon...');
     await page.getByTestId('LanguageIcon').click({ force: true });
-
-    // --- CRITICAL CHANGE START ---
-    // After clicking LanguageIcon, the dropdown menu itself should appear.
-    // We should *not* try to click the '.MuiSelect-select' dropdown trigger again.
-    // Instead, directly wait for the language options to become visible.
-
+    // Wait for the language options to be visible directly
     console.log('⏳ Waiting for language options (e.g., li[role="option"]) to appear...');
-    // Wait for at least one language option to be visible, indicating the menu is open
     await page.locator('li[role="option"][data-value]').first().waitFor({ state: 'visible', timeout: 10000 });
-    // --- CRITICAL CHANGE END ---
 
     // Step 5: Pick option by data-value
     console.log(`🔍 Looking for language option: ${langCode}...`);
@@ -326,6 +326,10 @@ async function selectLanguage(page, languageInput) {
     await languageOption.click({ timeout: 15000 });
 
     console.log(`✅ Successfully selected language: ${languageName} (${langCode})`);
+
+    // Navigate to Worklist/Home
+    await page.locator('div:has(svg[name="home"])').click({ timeout: 15000 });
+    console.log('✅ Clicked on the Worklist / Lista de trabajo navigation item.');
 
     // Wait for the language change to take effect with fallback strategy
     console.log('⏳ Waiting for language change to take effect...');
@@ -1966,6 +1970,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
     const { execSync } = await import('node:child_process');
 
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || !!process.env.SKIP_TW_BUILD;
 
     // The roll-up output structure can vary depending on preserveModules settings, so
     // we prepare a small helper that searches for the first plausible compiled entry.
@@ -1987,6 +1992,10 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
     let tracewright;
     try {
         if (!compiledPath) {
+            if (isCI) {
+                console.log('⏭️  CI environment detected - skipping tracewright build and using TypeScript fallback');
+                throw new Error('Skip build in CI');
+            }
             console.log('ℹ️  Compiled Tracewright not found. Building locally...');
             execSync('npm run build', {
                 cwd: path.join(__dirname, 'tracewrightt'),
@@ -2018,8 +2027,10 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // Run the TypeScript compiler directly to generate JavaScript files
             console.log('🔄 Transpiling TypeScript to JavaScript...');
             
-            // Use tsc directly to compile the TypeScript files
-            const tscPath = path.join(__dirname, 'tracewrightt', 'node_modules', '.bin', 'tsc');
+            // Use tsc directly to compile the TypeScript files (cross-platform)
+            const isWindowsHost = process.platform === 'win32';
+            const tscExecutableName = isWindowsHost ? 'tsc.cmd' : 'tsc';
+            let tscPath = path.join(__dirname, 'tracewrightt', 'node_modules', '.bin', tscExecutableName);
             
             // Create a temporary tsconfig for transpilation
             const tempTsConfigPath = path.join(__dirname, 'tracewrightt', 'tsconfig.temp.json');
@@ -2045,8 +2056,11 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             fs.writeFileSync(tempTsConfigPath, JSON.stringify(tsConfig, null, 2));
             console.log('✅ Created temporary tsconfig for transpilation');
             
-            // Execute tsc with the temporary config
-            const command = `"${tscPath}" --project ${tempTsConfigPath}`;
+            // Execute tsc with the temporary config. If local binary missing, fallback to npx.
+            const useNpxTsc = !(fs.existsSync(tscPath));
+            const command = useNpxTsc
+              ? `npx tsc --project "${tempTsConfigPath}"`
+              : `"${tscPath}" --project "${tempTsConfigPath}"`;
             console.log('🔄 Executing command:', command);
             
             const { stdout, stderr } = await execPromise(command);
@@ -2080,9 +2094,8 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         }
     }
     
-    const browser = await chromium.launch({
-        headless: false, // Changed to false for testing
-        channel: 'chrome',
+    const launchOptions = {
+        headless: isCI ? true : false,
         args: [
             "--disable-notifications",
             "--use-fake-ui-for-media-stream",
@@ -2094,7 +2107,13 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             "--remote-debugging-port=9222",
             "--window-size=1280,800"
         ]
-    });
+    };
+    if (!isCI) {
+        // Only use Chrome channel on local/dev; CI uses default Chromium
+        // @ts-ignore - channel is allowed in Playwright options
+        launchOptions.channel = 'chrome';
+    }
+    const browser = await chromium.launch(launchOptions);
     
     // Create browser context with better error handling
     const context = await browser.newContext({

@@ -31,11 +31,12 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
             stdio: ['pipe', 'pipe', 'pipe']
         });
         
-        // Add a timeout to prevent hanging
+        // Add a timeout to prevent hanging (configurable, default 120s)
+        const PY_TIMEOUT_MS = Number(process.env.PY_TIMEOUT_MS || 120000);
         const timeout = setTimeout(() => {
-            console.warn('⚠️  Python script timeout after 30 seconds, killing process...');
+            console.warn(`⚠️  Python script timeout after ${PY_TIMEOUT_MS} ms, killing process...`);
             pythonProcess.kill('SIGTERM');
-        }, 30000); // 30 second timeout
+        }, PY_TIMEOUT_MS);
         
         let output = '';
         let errorOutput = '';

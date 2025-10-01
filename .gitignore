@@ -88,3 +88,11 @@ AutoSnap/api_logs/
 AutoSnap/api_logs/**
 api_logs/*.json
 **/api_logs/*.json
+
+# Generated logs and run artifacts
+enhanced-flow-log.txt
+token_usage_summary.txt
+changed-files-*.txt
+AutoSnap/enhanced-flow-log.txt
+AutoSnap/token_usage_summary.txt
+AutoSnap/changed-files-*.txt

@@ -17,6 +17,8 @@ tags:
 
 O menu "Mais Opções" (menu de 3 pontos) na barra de ferramentas do Visualizador de Imagens OmegaAI oferece uma variedade de funcionalidades que aprimoram a interação do usuário com imagens médicas. Este menu fornece ferramentas para baixar estudos, gerenciar configurações de visualização, vincular séries e muito mais, tudo com o objetivo de otimizar a visualização e o manuseio de dados de imagens médicas.
 
+![mo1](./img_as/mo1_E.png)
+
 ## Funcionalidades do Menu da Barra de Ferramentas Mais Opções
 
 **Imprimir**
@@ -35,7 +37,11 @@ Permite gravar o estudo atual em um disco (inicia o download de um pequeno arqui
 
 Permite ativar/desativar aspectos específicos da imagem, incluindo os recursos abaixo:
 
+![mo2](./img_as/mo2_E.png)
+
 - **Sobreposição:** Permite sobrepor diferentes camadas de imagem.
+
+![image1](./img_as/mo3_E.png)
 
 - **Linhas Scout:** Habilita a visualização de linhas scout na imagem.
 
@@ -83,6 +89,8 @@ Aqui está um layout estruturado para a seção **Ferramenta de Calibração** n
 
 Este recurso vincula várias séries de imagens. Ele oferece duas opções:
 
+![mo4](./img_as/mo4_E.png)
+
 - **Desvincular**: Clique para desvincular as séries.
 
 - **Vinculação Manual:** Selecione manualmente as séries para vincular.
@@ -93,6 +101,8 @@ Este recurso vincula várias séries de imagens. Ele oferece duas opções:
 
 Este recurso permite baixar a imagem ou estudo atual. Ele oferece duas opções:
 
+![mo5](./img_as/mo5_E.png)
+
 - **Baixar Imagem**: Baixa a imagem atualmente visualizada.
 
 - **Baixar Estudo**: Baixa o estudo completo.
@@ -100,6 +110,8 @@ Este recurso permite baixar a imagem ou estudo atual. Ele oferece duas opções:
 **Configurações**
 
 Permite alterar as configurações do Visualizador de Imagens para várias categorias, bem como visualizar detalhes sobre o software do Visualizador de Imagens (conforme visto abaixo).
+
+![mo6-1](./img_as/mo6-1_E.png)
 
 ### 1. Protocolos de Suspensão
 
@@ -146,10 +158,16 @@ Permite alterar as configurações do Visualizador de Imagens para várias categ
 - **Finalidade:** Controla a visibilidade do menu do viewport.
 - **Funcionalidade:** Os usuários podem ativar ou desativar esta configuração para ocultar ou mostrar automaticamente o menu do viewport, proporcionando um espaço de trabalho mais limpo. Quando ativada, o menu permanece oculto até que o usuário interaja com ele.
 
+![More%20Settings.png](./img/More%20Settings.png)
+
 **Abrir em Janela Separada**
 
 Permite abrir a imagem atual em uma janela separada.
 
+![mo7](./img_as/mo7_E.png)
+
 **Modo Tela Cheia (Botão de Alternância)**
 
 Permite visualizar a imagem em modo tela cheia. Clicar novamente no botão irá sair do modo tela cheia.
+
+![mo8](./img_as/mo8_E.png)
