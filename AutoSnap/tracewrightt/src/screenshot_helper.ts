@@ -30,7 +30,9 @@ export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtil
       console.log(`🔍 Current MD path: ${currentMdPath}`);
       console.log(`🔍 Img_as path: ${imgAsPath}`);
       
-      if (currentMdPath && imgAsPath && pathMatch) {
+      // Respect DISABLE_IMG_AS flag
+      const disableImgAs = process.env.DISABLE_IMG_AS === 'true';
+      if (currentMdPath && imgAsPath && pathMatch && !disableImgAs) {
         const originalPath = pathMatch[1];
         
         // Only modify if the path is not already absolute

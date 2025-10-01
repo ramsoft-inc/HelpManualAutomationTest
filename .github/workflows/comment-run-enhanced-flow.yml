@@ -119,6 +119,7 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           LLM_PROVIDER: gemini
+          DISABLE_IMG_AS: "true"
         run: |
           args="${{ steps.parse.outputs.args }}"
           if [ -n "$args" ]; then
