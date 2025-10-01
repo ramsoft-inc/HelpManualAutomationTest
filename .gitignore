@@ -96,3 +96,20 @@ changed-files-*.txt
 AutoSnap/enhanced-flow-log.txt
 AutoSnap/token_usage_summary.txt
 AutoSnap/changed-files-*.txt
+
+# Additional run logs and backups (explicit files)
+ai_thinking_log.txt
+api_log_backup.json
+llm_prompt_log.txt
+api_logs/all_api_calls.json
+api_logs/gemini_calls.json
+api_logs/openai_calls.json
+AutoSnap/ai_thinking_log.txt
+AutoSnap/api_log_backup.json
+AutoSnap/generated_instructions.txt
+AutoSnap/llm_prompt_log.txt
+AutoSnap/api_logs/all_api_calls.json
+AutoSnap/api_logs/gemini_calls.json
+AutoSnap/api_logs/openai_calls.json
+generated_instructions.txt
+AutoSnap/ai_prompt_logs.txt
