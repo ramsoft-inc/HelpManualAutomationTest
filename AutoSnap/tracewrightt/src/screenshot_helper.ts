@@ -18,23 +18,23 @@ export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtil
   const pathMatch = cmd.match(/path:\s*['"]([^'"]+)['"]/);
   let screenshotPath = pathMatch ? pathMatch[1] : 'final_fallback.png';
   
-  // Modify the command to use absolute img_as path if aiUtils is available and has a current markdown file
+  // Modify the command to use absolute img path if aiUtils is available and has a current markdown file
   let modifiedCmd = cmd;
   if (aiUtils) {
     console.log(`🔍 aiUtils available, checking for current markdown path...`);
     console.log(`🔍 aiUtils.getCurrentMdFilePath exists: ${!!aiUtils.getCurrentMdFilePath}`);
-    console.log(`🔍 aiUtils.getImgAsPath exists: ${!!aiUtils.getImgAsPath}`);
+    console.log(`🔍 aiUtils.getImgPath exists: ${!!aiUtils.getImgPath}`);
     
     try {
       const currentMdPath = aiUtils.getCurrentMdFilePath ? aiUtils.getCurrentMdFilePath() : null;
-      const imgAsPath = aiUtils.getImgAsPath ? aiUtils.getImgAsPath() : null;
+      const imgPath = aiUtils.getImgPath ? aiUtils.getImgPath() : null;
       
       console.log(`🔍 Current MD path: ${currentMdPath}`);
-      console.log(`🔍 Img_as path: ${imgAsPath}`);
+      console.log(`🔍 Img path: ${imgPath}`);
       
-      // Respect DISABLE_IMG_AS flag
-      const disableImgAs = process.env.DISABLE_IMG_AS === 'true';
-      if (currentMdPath && imgAsPath && pathMatch && !disableImgAs) {
+      // Respect DISABLE_IMG flag
+      const disableImg = process.env.DISABLE_IMG === 'true';
+      if (currentMdPath && imgPath && pathMatch && !disableImg) {
         const originalPath = pathMatch[1];
         
         // Only modify if the path is not already absolute
@@ -42,21 +42,21 @@ export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtil
           // Extract just the filename from the path
           const filename = originalPath.split('/').pop()?.split('\\').pop() || originalPath;
           
-          // Create the absolute path to img_as folder
-          const absoluteImgAsPath = imgAsPath.replace(/\\/g, '/') + '/' + filename;
+          // Create the absolute path to img folder
+          const absoluteImgPath = imgPath.replace(/\\/g, '/') + '/' + filename;
           
           // Replace the path in the command
-          modifiedCmd = cmd.replace(pathMatch[0], `path: "${absoluteImgAsPath}"`);
-          screenshotPath = absoluteImgAsPath;
+          modifiedCmd = cmd.replace(pathMatch[0], `path: "${absoluteImgPath}"`);
+          screenshotPath = absoluteImgPath;
           
-          console.log(`📁 Modified screenshot path: ${originalPath} → ${absoluteImgAsPath}`);
+          console.log(`📁 Modified screenshot path: ${originalPath} → ${absoluteImgPath}`);
         } else {
           console.log(`🔍 Path not modified - already absolute or starts with /: ${originalPath}`);
         }
       } else {
         console.log(`⚠️ Cannot modify path - missing requirements:`);
         console.log(`   currentMdPath: ${!!currentMdPath}`);
-        console.log(`   imgAsPath: ${!!imgAsPath}`);
+        console.log(`   imgPath: ${!!imgPath}`);
         console.log(`   pathMatch: ${!!pathMatch}`);
       }
     } catch (error) {
