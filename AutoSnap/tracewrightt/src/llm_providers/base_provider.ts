@@ -1,5 +1,6 @@
 import { ClickableDomResult } from "../page_helpers.js";
 
+
 export const CODE_SYSTEM_INSTRUCTION =
   'You are a world-class Playwright code-generation expert, relentlessly focused on SPEED and ROBUSTNESS. Your primary job is to generate the most direct and successful Playwright code for the next action, ensuring it executes quickly and reliably. Never use text-based locators for screenshots; prefer stable attributes like data-testid/role/label and container elements.';
 
