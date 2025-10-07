@@ -2358,7 +2358,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             let AIUtilsEnhanced;
             try {
                 // First try the standard rollup output path
-                const aiUtilsModule = await import('./tracewrightt/dist/esm/tracewrightt/src/ai_utils_enhanced.js');
+                const aiUtilsModule = await import('./tracewrightt/dist/esm/src/ai_utils_enhanced.js');
                 AIUtilsEnhanced = aiUtilsModule.AIUtilsEnhanced;
             } catch (e) {
                 try {
