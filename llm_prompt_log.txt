@@ -7889,3 +7889,675 @@ Generate Automation Instructions for the target language website below:
 
 ================================================================================
 
+
+================================================================================
+TIMESTAMP: 2025-10-07T13:24:20.586144
+SCENARIO: default
+================================================================================
+
+The goal is to take screenshots of the target language version of the website to replace each and every image currently shown from the source language website in the documentation.
+You are going to write instructions that help navigate through the target language website to reach the exact position needed to take the screenshot.
+The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
+To understand what the image shows, you need to look at both the image filename and the text/content around it.
+Your job is to write all steps needed to reach the screen and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.
+
+This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
+If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
+Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
+
+These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+When describing the elements to interact with:
+Include the source language name of the element (it helps match HTML tags).
+Include the target language name of the element (it helps find the element in the target language website using the text locator function).
+Describe the appearance or position of the element if it helps identify it faster.
+
+Output Format (strict):
+1) THINKING
+A comprehensive planning block that:
+
+Screenshots Analysis: Lists every single screenshot found in the document with exact filenames (Show Image) and describes what each screenshot should show based on the surrounding context
+Navigation Planning: Plans the most efficient navigation route through the Spanish website to capture all screenshots in logical order
+UI State Requirements: Notes the expected UI state and configuration needed for each screenshot (expanded menus, selected tabs, active toggles, etc.)
+Target Language Element Mapping: Identifies key UI elements and their target language translations needed for navigation
+Sequence Optimization: Groups screenshots from the same screens together to minimize redundant navigation
+
+2) INSTRUCTIONS
+One numbered sequence starting at 1, covering every screenshot in the document. Each step is exactly one browser action.
+
+Instruction Format Guidelines
+Follow these strict formatting rules for each instruction:
+
+Use a number to define each step starts with 1.
+Every step must indicate a specific browser action.
+Each instruction must describe a single, actionable browser operation.
+Use imperative voice (e.g., "find", "click", "enter").
+CRITICAL: For every element you interact with, you MUST include BOTH the source language name AND the target language name of the element in the instruction.
+Be explicit about:
+
+Element identity (e.g., placeholder text, labels, role, alt text, icons)
+Visual characteristics (e.g., button color, icons, shapes)
+Placement (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
+
+
+
+Before capturing any screenshot:
+
+Navigate to the correct screen/state
+Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+Verify interactive elements are in the desired state (e.g., collapsed/expanded, inactive/active, unchecked/checked, menu-closed/menu-open) before proceeding to capture the screenshot.
+Verify all required elements are visible before taking the screenshot
+
+Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose]. Save as [exact filename]"
+
+If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
+Conserve the order of instruction to match the documentation.
+Everything you output should be just the THINKING and INSTRUCTIONS sections — no additional headings or summaries.
+The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
+For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
+You are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table. Do not include login steps.
+Always add this "Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+IF there is a command to popout window then ignore it do not add it to the instructions.
+Take screenshots if there are placeholders for it and name them accordingly.
+If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot.
+
+
+Critical Requirements:
+
+Include every single screenshot found in the document - do not miss any
+Organize navigation efficiently (group screenshots from same screens together)
+Ensure each screenshot instruction is extremely detailed and specific
+Every screenshot step must include "screenshot" as the action followed by comprehensive description and exact filename
+You start at homepage (Worklist) - no login steps needed
+If choosing among similar items, pick the 3rd in the list
+Ignore pop-out window commands
+
+
+Example Output Format
+THINKING
+Screenshots to capture:
+
+document_viewer.png: Shows the document viewer interface with document list and preview panel
+image_viewer.png: Shows the image viewer with DICOM images loaded and tools visible
+study_history.png: Shows patient study history timeline with previous examinations
+
+Navigation plan:
+
+Homepage (Worklist) → Select patient → Wheel interface → Document Viewer (capture document_viewer.png)
+From wheel → Image Viewer (capture image_viewer.png)
+From wheel → Study History (capture study_history.png)
+
+UI State Requirements:
+
+Document viewer: Ensure document list is expanded and preview panel shows document content
+Image viewer: Ensure DICOM images are loaded and toolbar is visible
+Study history: Ensure timeline view is expanded with study details visible
+
+Target Language Element Mapping:
+
+Document Viewer = "Visor de Documentos" (example target language)
+Image Viewer = "Visor de Imágenes" (example target language)
+Study History = "Historial de Estudios" (example target language)
+Worklist = "Lista de Trabajo" (example target language)
+mention these in the instructions so it helps in finding the elements in the target language website.
+
+INSTRUCTIONS
+
+locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records and find the third patient record row in the worklist table and click on the patient name link to open the wheel interface
+wait until the wheel interface loads completely with all available options visible around the circular menu
+locate the "Document Viewer" (target language equivalent) button on the wheel interface — it appears as a paper/document icon in the wheel menu — and click on it
+wait until the document viewer interface loads showing the document list panel on the left and document preview area on the right
+take a screenshot of the complete document viewer interface showing the left panel with document list and the right panel with document preview area, to document the document viewing functionality. Save as document_viewer.png
+navigate back to the wheel interface by clicking the back button or wheel icon in the top navigation
+locate the "Image Viewer" (target language equivalent) button on the wheel interface — it appears as an image/picture icon in the wheel menu — and click on it
+wait until the image viewer loads with DICOM images displayed and the toolbar visible at the top
+take a screenshot of the complete image viewer interface showing the main image display area with loaded DICOM images and the top toolbar with viewing tools, to document the medical image viewing capabilities. Save as image_viewer.png
+
+Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
+
+Document to Process
+Analyze and convert the following content into automation instructions:
+
+
+
+For reference of what these buttons are named in the target language, use this translated documentation:
+
+
+---
+---
+sidebar_position: 4
+title: Menu da Barra de Ferramentas Mais Opções no Visualizador de Imagens OmegaAI
+tags:
+  - Mais Opções
+  - Baixar Estudo
+  - Janela Pop-up
+  - Alternar Sobreposição
+  - Vincular Séries
+  - Configurações de Exibição
+  - Personalizar Roda
+  - Modo Tela Cheia
+---
+# Menu da Barra de Ferramentas Mais Opções no Visualizador de Imagens OmegaAI
+
+## Visão Geral
+
+O menu "Mais Opções" (menu de 3 pontos) na barra de ferramentas do Visualizador de Imagens OmegaAI oferece uma variedade de funcionalidades que aprimoram a interação do usuário com imagens médicas. Este menu fornece ferramentas para baixar estudos, gerenciar configurações de visualização, vincular séries e muito mais, tudo com o objetivo de otimizar a visualização e o manuseio de dados de imagens médicas.
+
+![mo1](./img_as/mo1_E.png)
+
+## Funcionalidades do Menu da Barra de Ferramentas Mais Opções
+
+**Imprimir**
+
+Permite imprimir a imagem atual que está sendo visualizada.
+
+**Copiar para a Área de Transferência**
+
+Permite copiar a respectiva imagem para a área de transferência para uso posterior.
+
+**Gravar Estudo**
+
+Permite gravar o estudo atual em um disco (inicia o download de um pequeno arquivo executável; este arquivo baixa as imagens para o sistema e facilita a gravação delas em um CD).
+
+**Alternâncias**
+
+Permite ativar/desativar aspectos específicos da imagem, incluindo os recursos abaixo:
+
+![mo2](./img_as/mo2_E.png)
+
+- **Sobreposição:** Permite sobrepor diferentes camadas de imagem.
+
+![image1](./img_as/mo3_E.png)
+
+- **Linhas Scout:** Habilita a visualização de linhas scout na imagem.
+
+- **Pilha Unificada:** Mescla várias séries em uma única pilha para facilitar a visualização e manipulação.
+
+- **Régua Calibrada:** Permite realizar medições precisas nas imagens.
+
+Aqui está um layout estruturado para a seção **Ferramenta de Calibração** no Manual de Ajuda:
+
+### Ferramenta de Calibração
+
+#### 1. Acessando a Ferramenta de Calibração
+
+- **a. Pela Barra de Ferramentas:**
+  1. Abra o Visualizador de Imagens OmegaAI.
+  2. Selecione o viewport desejado.
+  3. Clique no menu "Mais Opções" dentro da barra de ferramentas.
+  4. Escolha “Ferramenta de Calibração” no menu suspenso na seção "Configurações".
+
+- **b. Usando a Ferramenta de Calibração:**
+  1. Após selecionar a Ferramenta de Calibração, o cursor mudará para um ícone de "Linha", indicando que o modo de calibração está ativo.
+  2. Desenhe uma linha no viewport para definir a escala de medição da régua.
+  3. Uma caixa de diálogo aparecerá, solicitando que você:
+     - Insira o valor da medição para a linha desenhada.
+     - Selecione uma unidade entre as opções disponíveis: 'mm', 'cm' ou 'polegadas'.
+  4. Depois de definir, clique em “Salvar” para finalizar as configurações de calibração.
+     
+**2. Calibrando a Ferramenta**
+
+ **a. Faça uma Medição:**
+  - Use a Ferramenta de Calibração de Linha para desenhar uma linha na imagem onde você tem um comprimento de referência conhecido.
+ 
+ **b. Insira a Medida Conhecida:**
+  - Uma caixa de diálogo aparecerá solicitando que você insira o comprimento conhecido da linha que acabou de desenhar.
+  - Insira o valor da medição conhecida e confirme.
+   
+ **c. Confirmação da Calibração:**
+  - A ferramenta ajustará sua escala com base na medição inserida, garantindo medições precisas para a imagem atual.
+   
+ **d. Usando a Régua de Medição**
+  - Após a calibração, a Régua de Calibração exibirá as medições calibradas diretamente na imagem.
+  - Você pode usar esta ferramenta para medir outras áreas dentro da imagem com precisão.
+
+**Vincular Séries**
+
+Este recurso vincula várias séries de imagens. Ele oferece duas opções:
+
+![mo4](./img_as/mo4_E.png)
+
+- **Desvincular**: Clique para desvincular as séries.
+
+- **Vinculação Manual:** Selecione manualmente as séries para vincular.
+
+- **Vinculação por Plano:** Vincula automaticamente as séries com base no plano da imagem.
+
+**Download**
+
+Este recurso permite baixar a imagem ou estudo atual. Ele oferece duas opções:
+
+![mo5](./img_as/mo5_E.png)
+
+- **Baixar Imagem**: Baixa a imagem atualmente visualizada.
+
+- **Baixar Estudo**: Baixa o estudo completo.
+
+**Configurações**
+
+Permite alterar as configurações do Visualizador de Imagens para várias categorias, bem como visualizar detalhes sobre o software do Visualizador de Imagens (conforme visto abaixo).
+
+![mo6-1](./img_as/mo6-1_E.png)
+
+### 1. Protocolos de Suspensão
+
+- **Finalidade:** Permite aos usuários personalizar protocolos de suspensão existentes ou criar novos.
+- **Funcionalidade:** Os usuários podem ajustar o layout, sequência e preferências de exibição com base nos detalhes do estudo. Personalizar protocolos de suspensão possibilita processos de revisão mais eficientes adaptados a modalidades ou tipos de estudos específicos.
+
+### 2. Personalizando Sobreposição
+
+- **Finalidade:** Permite a personalização das informações de sobreposição nos viewports de imagem.
+- **Funcionalidade:** Os usuários podem escolher quais dados do paciente, informações do estudo e anotações aparecem diretamente nas imagens. Esta ferramenta permite selecionar campos de dados como nome do paciente, data do estudo e hora de aquisição, ajudando radiologistas a focar nos dados relevantes sem excesso de informações na tela.
+
+### 3. Personalizando a Barra de Ferramentas
+
+- **Finalidade:** Permite modificar o layout da barra de ferramentas.
+- **Funcionalidade:** Os usuários podem adicionar, remover ou reorganizar ferramentas para se adequar ao seu fluxo de trabalho, proporcionando uma experiência mais eficiente. Isso inclui mover ferramentas como zoom, medir, anotar e ajustar predefinições para as posições desejadas.
+
+### 4. Personalizando a Roda
+
+- **Finalidade:** Oferece opções para modificar a roda de ferramentas.
+- **Funcionalidade:** Os usuários podem organizar e atualizar as ferramentas dentro da roda para acesso mais rápido. Este recurso melhora a navegação ao colocar as ferramentas mais usadas em destaque.
+
+### 5. Tags de Cabeçalho DICOM
+
+- **Finalidade:** Exibe as informações do cabeçalho DICOM.
+- **Funcionalidade:** Esta seção fornece uma visão geral dos metadados do cabeçalho DICOM, essenciais para interpretação clínica e validação de imagens.
+
+### 6. Sobre o Visualizador de Imagens
+
+- **Finalidade:** Acessa informações gerais sobre o Visualizador de Imagens.
+- **Funcionalidade:** Abre a seção "Sobre", onde os usuários podem ver detalhes da versão do software, guias do usuário e outras informações relacionadas ao aplicativo.
+
+### 7. Alternar Abrir Automaticamente o Explorador de Estudos
+
+- **Finalidade:** Controla a abertura automática do Explorador de Estudos ao iniciar o Visualizador de Imagens.
+- **Funcionalidade:** Os usuários podem ativar ou desativar este recurso para visualizar automaticamente o Explorador de Estudos ou iniciar diretamente no visualizador principal. Isso pode melhorar o foco ao minimizar etapas de navegação.
+
+### 8. Alternar Redefinir Ferramentas de Marcação
+
+- **Finalidade:** Gerencia o comportamento de redefinição automática das ferramentas de marcação.
+- **Funcionalidade:** Quando ativada, esta configuração redefine as ferramentas de marcação para a ferramenta de ponteiro após cada uso, permitindo que os usuários retornem rapidamente para uma ferramenta neutra sem cliques adicionais.
+
+### 9. Alternar Ocultar Automaticamente o Menu do Viewport
+
+- **Finalidade:** Controla a visibilidade do menu do viewport.
+- **Funcionalidade:** Os usuários podem ativar ou desativar esta configuração para ocultar ou mostrar automaticamente o menu do viewport, proporcionando um espaço de trabalho mais limpo. Quando ativada, o menu permanece oculto até que o usuário interaja com ele.
+
+![More%20Settings.png](./img/More%20Settings.png)
+
+
+**Abrir em Janela Separada**
+
+Permite abrir a imagem atual em uma janela separada.
+
+![mo7](./img_as/mo7_E.png)
+
+**Modo Tela Cheia (Botão de Alternância)**
+
+Permite visualizar a imagem em modo tela cheia. Clicar novamente no botão irá sair do modo tela cheia.
+
+![mo8](./img_as/mo8_E.png)
+
+## Available Image Paths to Capture:
+1. ./img_as/mo1_E.png
+2. ./img_as/mo2_E.png
+3. ./img_as/mo3_E.png
+4. ./img_as/mo4_E.png
+5. ./img_as/mo5_E.png
+6. ./img_as/mo6-1_E.png
+7. ./img/More%20Settings.png
+8. ./img_as/mo7_E.png
+9. ./img_as/mo8_E.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+Also, you are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table.
+
+**IMPORTANT: Format your response as a valid JSON object with this structure:**
+{
+  "thinking": "your comprehensive planning and analysis where a numbered list of all the screenshots to capture",
+  "instructions": "your complete step-by-step instructions as one text string"
+}
+
+Generate Automation Instructions for the target language website below:
+
+================================================================================
+
+
+================================================================================
+TIMESTAMP: 2025-10-07T13:28:29.979173
+SCENARIO: default
+================================================================================
+
+The goal is to take screenshots of the target language version of the website to replace each and every image currently shown from the source language website in the documentation.
+You are going to write instructions that help navigate through the target language website to reach the exact position needed to take the screenshot.
+The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
+To understand what the image shows, you need to look at both the image filename and the text/content around it.
+Your job is to write all steps needed to reach the screen and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.
+
+This includes clicking toggles, expanding dropdowns, or enabling any features that must be turned on to match the reference image.
+If the reference image shows a dropdown, toggle, overlay, or expanded menu — include the step to interact with it before taking the screenshot.
+Always assume screenshots should show the fully visible UI state as in the image — not the default or collapsed state.
+
+These instructions will be used in the browser automation tool Tracewright, so they must be clear, actionable, and step-by-step.
+The only goal is to capture screenshots — so do not include any steps that aren't necessary for that.
+When describing the elements to interact with:
+Include the source language name of the element (it helps match HTML tags).
+Include the target language name of the element (it helps find the element in the target language website using the text locator function).
+Describe the appearance or position of the element if it helps identify it faster.
+
+Output Format (strict):
+1) THINKING
+A comprehensive planning block that:
+
+Screenshots Analysis: Lists every single screenshot found in the document with exact filenames (Show Image) and describes what each screenshot should show based on the surrounding context
+Navigation Planning: Plans the most efficient navigation route through the Spanish website to capture all screenshots in logical order
+UI State Requirements: Notes the expected UI state and configuration needed for each screenshot (expanded menus, selected tabs, active toggles, etc.)
+Target Language Element Mapping: Identifies key UI elements and their target language translations needed for navigation
+Sequence Optimization: Groups screenshots from the same screens together to minimize redundant navigation
+
+2) INSTRUCTIONS
+One numbered sequence starting at 1, covering every screenshot in the document. Each step is exactly one browser action.
+
+Instruction Format Guidelines
+Follow these strict formatting rules for each instruction:
+
+Use a number to define each step starts with 1.
+Every step must indicate a specific browser action.
+Each instruction must describe a single, actionable browser operation.
+Use imperative voice (e.g., "find", "click", "enter").
+CRITICAL: For every element you interact with, you MUST include BOTH the source language name AND the target language name of the element in the instruction.
+Be explicit about:
+
+Element identity (e.g., placeholder text, labels, role, alt text, icons)
+Visual characteristics (e.g., button color, icons, shapes)
+Placement (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
+
+
+
+Before capturing any screenshot:
+
+Navigate to the correct screen/state
+Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+Verify interactive elements are in the desired state (e.g., collapsed/expanded, inactive/active, unchecked/checked, menu-closed/menu-open) before proceeding to capture the screenshot.
+Verify all required elements are visible before taking the screenshot
+
+Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose]. Save as [exact filename]"
+
+If any step involves an image filename (e.g., images/screenshot1.png), include a screenshot instruction and save the image using the same filename.
+Conserve the order of instruction to match the documentation.
+Everything you output should be just the THINKING and INSTRUCTIONS sections — no additional headings or summaries.
+The goal is to take screenshots; if some action from the documentation is not required for these screenshots, then ignore it.
+If it's a choice, choose a button that is not too close to others — for example, when selecting a patient record, pick one from the middle of the table.
+For any screenshot, if the element or feature is only visible after clicking or toggling something, include those steps before the screenshot.
+You are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table. Do not include login steps.
+Always add this "Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot" at the end of the instructions.
+IF there is a command to popout window then ignore it do not add it to the instructions.
+Take screenshots if there are placeholders for it and name them accordingly.
+If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot.
+
+
+Critical Requirements:
+
+Include every single screenshot found in the document - do not miss any
+Organize navigation efficiently (group screenshots from same screens together)
+Ensure each screenshot instruction is extremely detailed and specific
+Every screenshot step must include "screenshot" as the action followed by comprehensive description and exact filename
+You start at homepage (Worklist) - no login steps needed
+If choosing among similar items, pick the 3rd in the list
+Ignore pop-out window commands
+
+
+Example Output Format
+THINKING
+Screenshots to capture:
+
+document_viewer.png: Shows the document viewer interface with document list and preview panel
+image_viewer.png: Shows the image viewer with DICOM images loaded and tools visible
+study_history.png: Shows patient study history timeline with previous examinations
+
+Navigation plan:
+
+Homepage (Worklist) → Select patient → Wheel interface → Document Viewer (capture document_viewer.png)
+From wheel → Image Viewer (capture image_viewer.png)
+From wheel → Study History (capture study_history.png)
+
+UI State Requirements:
+
+Document viewer: Ensure document list is expanded and preview panel shows document content
+Image viewer: Ensure DICOM images are loaded and toolbar is visible
+Study history: Ensure timeline view is expanded with study details visible
+
+Target Language Element Mapping:
+
+Document Viewer = "Visor de Documentos" (example target language)
+Image Viewer = "Visor de Imágenes" (example target language)
+Study History = "Historial de Estudios" (example target language)
+Worklist = "Lista de Trabajo" (example target language)
+mention these in the instructions so it helps in finding the elements in the target language website.
+
+INSTRUCTIONS
+
+locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records and find the third patient record row in the worklist table and click on the patient name link to open the wheel interface
+wait until the wheel interface loads completely with all available options visible around the circular menu
+locate the "Document Viewer" (target language equivalent) button on the wheel interface — it appears as a paper/document icon in the wheel menu — and click on it
+wait until the document viewer interface loads showing the document list panel on the left and document preview area on the right
+take a screenshot of the complete document viewer interface showing the left panel with document list and the right panel with document preview area, to document the document viewing functionality. Save as document_viewer.png
+navigate back to the wheel interface by clicking the back button or wheel icon in the top navigation
+locate the "Image Viewer" (target language equivalent) button on the wheel interface — it appears as an image/picture icon in the wheel menu — and click on it
+wait until the image viewer loads with DICOM images displayed and the toolbar visible at the top
+take a screenshot of the complete image viewer interface showing the main image display area with loaded DICOM images and the top toolbar with viewing tools, to document the medical image viewing capabilities. Save as image_viewer.png
+
+Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
+
+Document to Process
+Analyze and convert the following content into automation instructions:
+
+
+
+For reference of what these buttons are named in the target language, use this translated documentation:
+
+
+---
+---
+sidebar_position: 4
+title: Menu da Barra de Ferramentas Mais Opções no Visualizador de Imagens OmegaAI
+tags:
+  - Mais Opções
+  - Baixar Estudo
+  - Janela Pop-up
+  - Alternar Sobreposição
+  - Vincular Séries
+  - Configurações de Exibição
+  - Personalizar Roda
+  - Modo Tela Cheia
+---
+# Menu da Barra de Ferramentas Mais Opções no Visualizador de Imagens OmegaAI
+
+## Visão Geral
+
+O menu "Mais Opções" (menu de 3 pontos) na barra de ferramentas do Visualizador de Imagens OmegaAI oferece uma variedade de funcionalidades que aprimoram a interação do usuário com imagens médicas. Este menu fornece ferramentas para baixar estudos, gerenciar configurações de visualização, vincular séries e muito mais, tudo com o objetivo de otimizar a visualização e o manuseio de dados de imagens médicas.
+
+![mo1](./img_as/mo1_E.png)
+
+## Funcionalidades do Menu da Barra de Ferramentas Mais Opções
+
+**Imprimir**
+
+Permite imprimir a imagem atual que está sendo visualizada.
+
+**Copiar para a Área de Transferência**
+
+Permite copiar a respectiva imagem para a área de transferência para uso posterior.
+
+**Gravar Estudo**
+
+Permite gravar o estudo atual em um disco (inicia o download de um pequeno arquivo executável; este arquivo baixa as imagens para o sistema e facilita a gravação delas em um CD).
+
+**Alternâncias**
+
+Permite ativar/desativar aspectos específicos da imagem, incluindo os recursos abaixo:
+
+![mo2](./img_as/mo2_E.png)
+
+- **Sobreposição:** Permite sobrepor diferentes camadas de imagem.
+
+![image1](./img_as/mo3_E.png)
+
+- **Linhas Scout:** Habilita a visualização de linhas scout na imagem.
+
+- **Pilha Unificada:** Mescla várias séries em uma única pilha para facilitar a visualização e manipulação.
+
+- **Régua Calibrada:** Permite realizar medições precisas nas imagens.
+
+Aqui está um layout estruturado para a seção **Ferramenta de Calibração** no Manual de Ajuda:
+
+### Ferramenta de Calibração
+
+#### 1. Acessando a Ferramenta de Calibração
+
+- **a. Pela Barra de Ferramentas:**
+  1. Abra o Visualizador de Imagens OmegaAI.
+  2. Selecione o viewport desejado.
+  3. Clique no menu "Mais Opções" dentro da barra de ferramentas.
+  4. Escolha “Ferramenta de Calibração” no menu suspenso na seção "Configurações".
+
+- **b. Usando a Ferramenta de Calibração:**
+  1. Após selecionar a Ferramenta de Calibração, o cursor mudará para um ícone de "Linha", indicando que o modo de calibração está ativo.
+  2. Desenhe uma linha no viewport para definir a escala de medição da régua.
+  3. Uma caixa de diálogo aparecerá, solicitando que você:
+     - Insira o valor da medição para a linha desenhada.
+     - Selecione uma unidade entre as opções disponíveis: 'mm', 'cm' ou 'polegadas'.
+  4. Depois de definir, clique em “Salvar” para finalizar as configurações de calibração.
+     
+**2. Calibrando a Ferramenta**
+
+ **a. Faça uma Medição:**
+  - Use a Ferramenta de Calibração de Linha para desenhar uma linha na imagem onde você tem um comprimento de referência conhecido.
+ 
+ **b. Insira a Medida Conhecida:**
+  - Uma caixa de diálogo aparecerá solicitando que você insira o comprimento conhecido da linha que acabou de desenhar.
+  - Insira o valor da medição conhecida e confirme.
+   
+ **c. Confirmação da Calibração:**
+  - A ferramenta ajustará sua escala com base na medição inserida, garantindo medições precisas para a imagem atual.
+   
+ **d. Usando a Régua de Medição**
+  - Após a calibração, a Régua de Calibração exibirá as medições calibradas diretamente na imagem.
+  - Você pode usar esta ferramenta para medir outras áreas dentro da imagem com precisão.
+
+**Vincular Séries**
+
+Este recurso vincula várias séries de imagens. Ele oferece duas opções:
+
+![mo4](./img_as/mo4_E.png)
+
+- **Desvincular**: Clique para desvincular as séries.
+
+- **Vinculação Manual:** Selecione manualmente as séries para vincular.
+
+- **Vinculação por Plano:** Vincula automaticamente as séries com base no plano da imagem.
+
+**Download**
+
+Este recurso permite baixar a imagem ou estudo atual. Ele oferece duas opções:
+
+![mo5](./img_as/mo5_E.png)
+
+- **Baixar Imagem**: Baixa a imagem atualmente visualizada.
+
+- **Baixar Estudo**: Baixa o estudo completo.
+
+**Configurações**
+
+Permite alterar as configurações do Visualizador de Imagens para várias categorias, bem como visualizar detalhes sobre o software do Visualizador de Imagens (conforme visto abaixo).
+
+![mo6-1](./img_as/mo6-1_E.png)
+
+### 1. Protocolos de Suspensão
+
+- **Finalidade:** Permite aos usuários personalizar protocolos de suspensão existentes ou criar novos.
+- **Funcionalidade:** Os usuários podem ajustar o layout, sequência e preferências de exibição com base nos detalhes do estudo. Personalizar protocolos de suspensão possibilita processos de revisão mais eficientes adaptados a modalidades ou tipos de estudos específicos.
+
+### 2. Personalizando Sobreposição
+
+- **Finalidade:** Permite a personalização das informações de sobreposição nos viewports de imagem.
+- **Funcionalidade:** Os usuários podem escolher quais dados do paciente, informações do estudo e anotações aparecem diretamente nas imagens. Esta ferramenta permite selecionar campos de dados como nome do paciente, data do estudo e hora de aquisição, ajudando radiologistas a focar nos dados relevantes sem excesso de informações na tela.
+
+### 3. Personalizando a Barra de Ferramentas
+
+- **Finalidade:** Permite modificar o layout da barra de ferramentas.
+- **Funcionalidade:** Os usuários podem adicionar, remover ou reorganizar ferramentas para se adequar ao seu fluxo de trabalho, proporcionando uma experiência mais eficiente. Isso inclui mover ferramentas como zoom, medir, anotar e ajustar predefinições para as posições desejadas.
+
+### 4. Personalizando a Roda
+
+- **Finalidade:** Oferece opções para modificar a roda de ferramentas.
+- **Funcionalidade:** Os usuários podem organizar e atualizar as ferramentas dentro da roda para acesso mais rápido. Este recurso melhora a navegação ao colocar as ferramentas mais usadas em destaque.
+
+### 5. Tags de Cabeçalho DICOM
+
+- **Finalidade:** Exibe as informações do cabeçalho DICOM.
+- **Funcionalidade:** Esta seção fornece uma visão geral dos metadados do cabeçalho DICOM, essenciais para interpretação clínica e validação de imagens.
+
+### 6. Sobre o Visualizador de Imagens
+
+- **Finalidade:** Acessa informações gerais sobre o Visualizador de Imagens.
+- **Funcionalidade:** Abre a seção "Sobre", onde os usuários podem ver detalhes da versão do software, guias do usuário e outras informações relacionadas ao aplicativo.
+
+### 7. Alternar Abrir Automaticamente o Explorador de Estudos
+
+- **Finalidade:** Controla a abertura automática do Explorador de Estudos ao iniciar o Visualizador de Imagens.
+- **Funcionalidade:** Os usuários podem ativar ou desativar este recurso para visualizar automaticamente o Explorador de Estudos ou iniciar diretamente no visualizador principal. Isso pode melhorar o foco ao minimizar etapas de navegação.
+
+### 8. Alternar Redefinir Ferramentas de Marcação
+
+- **Finalidade:** Gerencia o comportamento de redefinição automática das ferramentas de marcação.
+- **Funcionalidade:** Quando ativada, esta configuração redefine as ferramentas de marcação para a ferramenta de ponteiro após cada uso, permitindo que os usuários retornem rapidamente para uma ferramenta neutra sem cliques adicionais.
+
+### 9. Alternar Ocultar Automaticamente o Menu do Viewport
+
+- **Finalidade:** Controla a visibilidade do menu do viewport.
+- **Funcionalidade:** Os usuários podem ativar ou desativar esta configuração para ocultar ou mostrar automaticamente o menu do viewport, proporcionando um espaço de trabalho mais limpo. Quando ativada, o menu permanece oculto até que o usuário interaja com ele.
+
+![More%20Settings.png](./img/More%20Settings.png)
+
+
+**Abrir em Janela Separada**
+
+Permite abrir a imagem atual em uma janela separada.
+
+![mo7](./img_as/mo7_E.png)
+
+**Modo Tela Cheia (Botão de Alternância)**
+
+Permite visualizar a imagem em modo tela cheia. Clicar novamente no botão irá sair do modo tela cheia.
+
+![mo8](./img_as/mo8_E.png)
+
+## Available Image Paths to Capture:
+1. ./img_as/mo1_E.png
+2. ./img_as/mo2_E.png
+3. ./img_as/mo3_E.png
+4. ./img_as/mo4_E.png
+5. ./img_as/mo5_E.png
+6. ./img_as/mo6-1_E.png
+7. ./img/More%20Settings.png
+8. ./img_as/mo7_E.png
+9. ./img_as/mo8_E.png
+
+IMPORTANT: Use these exact image paths when generating screenshot instructions. Do not invent new filenames.
+
+Also, you are already at the target language website homepage, logged in — continue from the homepage which shows the worklist table.
+
+**IMPORTANT: Format your response as a valid JSON object with this structure:**
+{
+  "thinking": "your comprehensive planning and analysis where a numbered list of all the screenshots to capture",
+  "instructions": "your complete step-by-step instructions as one text string"
+}
+
+Generate Automation Instructions for the target language website below:
+
+================================================================================
+
