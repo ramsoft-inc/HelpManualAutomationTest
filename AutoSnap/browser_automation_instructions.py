@@ -822,15 +822,10 @@ mention these in the instructions so it helps in finding the elements in the tar
 INSTRUCTIONS
 
 locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records and find the third patient record row in the worklist table and click on the patient name link to open the wheel interface
-wait until the wheel interface loads completely with all available options visible around the circular menu
 locate the "Document Viewer" (target language equivalent) button on the wheel interface — it appears as a paper/document icon in the wheel menu — and click on it
-wait until the document viewer interface loads showing the document list panel on the left and document preview area on the right
 take a screenshot of the complete document viewer interface showing the left panel with document list and the right panel with document preview area, to document the document viewing functionality. Save as document_viewer.png
-navigate back to the wheel interface by clicking the back button or wheel icon in the top navigation
-locate the "Image Viewer" (target language equivalent) button on the wheel interface — it appears as an image/picture icon in the wheel menu — and click on it
-wait until the image viewer loads with DICOM images displayed and the toolbar visible at the top
-take a screenshot of the complete image viewer interface showing the main image display area with loaded DICOM images and the top toolbar with viewing tools, to document the medical image viewing capabilities. Save as image_viewer.png
 
+just like this separate each playwright executable instruction into single steps.
 Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
 
 Document to Process

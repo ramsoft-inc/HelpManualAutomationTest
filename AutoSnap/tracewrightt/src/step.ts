@@ -8,8 +8,8 @@ import { GenerateCodeResponse, LLMRequestHandler } from "./llm_request.js";
 import { executeCode, getInteractiveHTML } from "./page_helpers.js";
 import { filterLongPaths } from "./html_path_filter.js";
 
-// Allow runtime switch: LLM_PROVIDER=openai, gemini, or claude (default: openai)
-const providerName = (process.env.LLM_PROVIDER || "openai").toLowerCase();
+// Allow runtime switch: LLM_PROVIDER=openai, gemini, or claude (default: gemini)
+const providerName = (process.env.LLM_PROVIDER || "gemini").toLowerCase();
 
 const provider = providerName === "openai"
   ? new OpenAIProvider()
@@ -17,7 +17,7 @@ const provider = providerName === "openai"
   ? new GeminiProvider()
   : providerName === "claude"
   ? new ClaudeProvider()
-  : new OpenAIProvider(); // fallback to OpenAI
+  : new GeminiProvider(); // fallback to Gemini
 
 const llmHandler = new LLMRequestHandler(provider);
 

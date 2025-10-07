@@ -327,10 +327,6 @@ async function selectLanguage(page, languageInput) {
 
     console.log(`✅ Successfully selected language: ${languageName} (${langCode})`);
 
-    // Navigate to Worklist/Home
-    await page.locator('div:has(svg[name="home"])').click({ timeout: 15000 });
-    console.log('✅ Clicked on the Worklist / Lista de trabajo navigation item.');
-
     // Wait for the language change to take effect with fallback strategy
     console.log('⏳ Waiting for language change to take effect...');
     try {
@@ -371,14 +367,43 @@ async function navigateToWorklist(page) {
     }
     await page.waitForTimeout(3000);
     
-    // Find and click the worklist/home button using the home icon SVG
-    console.log('🔍 Looking for worklist button (home icon)...');
-    const worklistButton = page.locator('svg[name="home"]');
-    
-    // Wait for the button to be visible and clickable
-    await worklistButton.waitFor({ state: 'visible', timeout: 15000 });
-    console.log('👆 Clicking worklist button...');
-    await worklistButton.click({ timeout: 15000 });
+    // Prefer robust, language-agnostic selectors over home icon SVG
+    console.log('🔍 Looking for worklist navigation control...');
+    let clicked = false;
+
+    // Try by ARIA role/name (common for navigation items)
+    try {
+      const navByRole = page.getByRole('link', { name: /worklist|lista de trabajo|home|inicio/i }).first();
+      await navByRole.waitFor({ state: 'visible', timeout: 6000 });
+      await navByRole.click({ timeout: 10000 });
+      clicked = true;
+    } catch {}
+
+    // Try by test id if available
+    if (!clicked) {
+      try {
+        const byTestId = page.locator('[data-testid="worklist"]');
+        await byTestId.waitFor({ state: 'visible', timeout: 6000 });
+        await byTestId.click({ timeout: 10000 });
+        clicked = true;
+      } catch {}
+    }
+
+    // Fallback: click a nav item containing a home-like icon but avoid direct SVG targeting
+    if (!clicked) {
+      try {
+        const navContainer = page.locator('nav, [role="navigation"]').first();
+        await navContainer.waitFor({ state: 'visible', timeout: 6000 });
+        const candidate = navContainer.locator('a, button').filter({ hasText: /worklist|lista de trabajo|home|inicio/i }).first();
+        await candidate.waitFor({ state: 'visible', timeout: 6000 });
+        await candidate.click({ timeout: 10000 });
+        clicked = true;
+      } catch {}
+    }
+
+    if (!clicked) {
+      console.warn('⚠️  Could not find a robust worklist control; skipping explicit navigation');
+    }
     
     console.log('✅ Successfully navigated to worklist');
     
@@ -452,9 +477,15 @@ async function executeTranslationMode(page, detectedLanguage) {
       await selectLanguage(page, detectedLanguage);
     }
     
-    // Step 2: Navigate to worklist AFTER language change
-    console.log('📋 Step 2: Navigating to worklist...');
-    await navigateToWorklist(page);
+    // Step 2: Navigate to worklist AFTER language change using explicit home nav snippet
+    console.log('📋 Step 2: Navigating to worklist (home nav snippet)...');
+    try {
+      await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
+      try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+      await page.waitForTimeout(3000);
+    } catch (navErr) {
+      console.warn('⚠️  Home nav click snippet failed after language change:', navErr?.message || navErr);
+    }
     
     console.log('✅ Translation mode workflow completed successfully');
     
@@ -2234,17 +2265,21 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // Check if detected language is English (case-insensitive)
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
-            if (isEnglish) {
-                console.log('ℹ️  Single file mode: English language detected - skipping language selection (already default)');
-            } else {
-                console.log(`🌐 Single file mode: using language ${detectedLanguage}, executing translation workflow...`);
+            // Force switch to English for non-translation modes
+            try {
+                console.log('🌐 Single file mode: forcing language to English...');
+                await selectLanguage(page, 'English');
+                // Navigate to worklist using the same home nav snippet after switching
                 try {
-                    await executeTranslationMode(page, detectedLanguage);
-                    console.log(`✅ Translation mode workflow completed for single file: ${detectedLanguage}`);
-                } catch (translationError) {
-                    console.error('❌ Error in single file translation workflow:', translationError.message);
-                    console.log('⚠️  Continuing with automation despite translation workflow error...');
+                  await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
+                  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+                  await page.waitForTimeout(3000);
+                } catch (navErr) {
+                  console.warn('⚠️  Home nav click snippet failed after forcing English (single file):', navErr?.message || navErr);
                 }
+                console.log('✅ Single file mode: language set to English');
+            } catch (e) {
+                console.warn('⚠️  Failed to switch to English in single file mode:', e?.message || e);
             }
         } else if (executionMode === 'list' && processedFileResults.length > 0) {
             // For list mode, use command-line language argument if provided, otherwise detect from first processed file
@@ -2261,20 +2296,39 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // Check if detected language is English (case-insensitive)
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
-            if (isEnglish) {
-                console.log('ℹ️  List mode: English language detected - skipping language selection (already default)');
-            } else {
-                console.log(`🌐 List mode: using language ${detectedLanguage}, executing translation workflow...`);
+            // Force switch to English for non-translation modes
+            try {
+                console.log('🌐 List mode: forcing language to English...');
+                await selectLanguage(page, 'English');
+                // Navigate to worklist using the same home nav snippet after switching
                 try {
-                    await executeTranslationMode(page, detectedLanguage);
-                    console.log(`✅ Translation mode workflow completed for list mode: ${detectedLanguage}`);
-                } catch (translationError) {
-                    console.error('❌ Error in list mode translation workflow:', translationError.message);
-                    console.log('⚠️  Continuing with automation despite translation workflow error...');
+                  await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
+                  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+                  await page.waitForTimeout(3000);
+                } catch (navErr) {
+                  console.warn('⚠️  Home nav click snippet failed after forcing English (list mode):', navErr?.message || navErr);
                 }
+                console.log('✅ List mode: language set to English');
+            } catch (e) {
+                console.warn('⚠️  Failed to switch to English in list mode:', e?.message || e);
             }
         } else {
-            console.log('ℹ️  Not in translation mode or no folder/files specified, skipping language selection');
+            // Default path: force switch to English from any current language
+            try {
+                console.log('🌐 Default mode: forcing language to English...');
+                await selectLanguage(page, 'English');
+                // Navigate to worklist using the same home nav snippet after switching
+                try {
+                  await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
+                  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+                  await page.waitForTimeout(3000);
+                } catch (navErr) {
+                  console.warn('⚠️  Home nav click snippet failed after forcing English (default mode):', navErr?.message || navErr);
+                }
+                console.log('✅ Default mode: language set to English');
+            } catch (e) {
+                console.warn('⚠️  Failed to switch to English in default mode:', e?.message || e);
+            }
         }
 
         // Step 4.6: Analyze page structure before running tracewright

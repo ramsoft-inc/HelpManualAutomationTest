@@ -140,20 +140,8 @@ Passe o mouse ou clique em qualquer seção para expandi-la.
 
    - Clique no ícone de upload para enviar qualquer documento do explorador de arquivos.
 
-   ![Upload Document](./img/uploaddocument.png)
-     
-<!--
-3. **Acessando Notas**
 
-   - Acesse as notas unificadas (ex.: notas do paciente, notas do estudo, comentários clínicos, histórico clínico).
 
-   - Capacidade de criar e atualizar as notas.
-  
-     ![Add Notes](./img/addnotes.png)
-
-     ![Edit Delete Notes](./img/editdeletenotes.png)
- 
--->
 
 ## Criando mais de um relatório 
 
