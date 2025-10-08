@@ -80,6 +80,7 @@ O Explorador de Documentos é um componente essencial do Visualizador de Documen
 
     - Para documentos da visita, selecione o documento apropriado sob o estudo e use as opções ao passar o mouse para gerenciar esses registros.
 
+
 5. **Enviar Relatórios:** 
 
    - Clique no ícone de upload para abrir o explorador de arquivos. 
