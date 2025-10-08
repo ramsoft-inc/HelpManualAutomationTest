@@ -504,54 +504,54 @@ export class AIUtilsEnhanced {
           // Extract just the filename from the path (last part after /)
           const foundImageName = path.basename(fullImagePath);
           
-          // Check if this is the base name match or exact match
-          // For enhanced images (ending with _E), find the corresponding base image (without _E)
+          // Get the base names without extensions for comparison
           const foundBaseName = path.basename(foundImageName, path.extname(foundImageName));
           const newBaseName = path.basename(imageName, path.extname(imageName));
           
-          // Check for enhanced/stock pairs and choose the higher resolution
-          let shouldUpdate = false;
-          let finalImageName = imageName;
-          
+          // Remove any _E or _S suffixes from the new image name to get the clean base name
+          let cleanNewBaseName = newBaseName;
           if (newBaseName.endsWith('_E') || newBaseName.endsWith('_S')) {
-            // Remove _E or _S to get the base name that should be in markdown
-            // Handle nested suffixes like _S_E or _S_S
-            let expectedBaseName = newBaseName;
-            // Remove final _E or _S suffix
-            expectedBaseName = expectedBaseName.replace(/[_][ES]$/, '');
+            cleanNewBaseName = newBaseName.replace(/[_][ES]$/, '');
             // If there's still an _S suffix (from stock version), remove that too  
-            expectedBaseName = expectedBaseName.replace(/[_]S$/, '');
-            
-            shouldUpdate = foundBaseName === expectedBaseName;
-            console.log(`🔍 Enhanced/Stock image detected: ${newBaseName} -> looking for base: ${expectedBaseName} -> found: ${foundBaseName} -> match: ${shouldUpdate}`);
-            
-            if (shouldUpdate) {
-              // Check if we have both Enhanced and Stock versions and choose the better one
-              finalImageName = this.chooseBestImageVersion(imageName);
-              console.log(`📊 Choosing best image version: ${imageName} -> ${finalImageName}`);
-            }
-          } else {
-            // For non-enhanced/stock images, look for exact matches
-            shouldUpdate = foundImageName === imageName || foundImageName.toLowerCase() === imageName.toLowerCase();
-            console.log(`🔍 Regular image: ${newBaseName} -> exact match check: ${shouldUpdate}`);
+            cleanNewBaseName = cleanNewBaseName.replace(/[_]S$/, '');
           }
           
+          // Check if this image should be updated - only if it's an exact match
+          const shouldUpdate = foundImageName === imageName || 
+                              foundImageName.toLowerCase() === imageName.toLowerCase() ||
+                              foundBaseName === cleanNewBaseName;
+          
+          console.log(`🔍 Image comparison: Found=${foundBaseName}, New=${cleanNewBaseName}, Match=${shouldUpdate}`);
+          
           if (shouldUpdate) {
-            
-            // Use the chosen best version filename
-            const newPath = `img/${finalImageName}`;
-            
-            // Check if the path is already pointing to img with the same filename
-            if (fullImagePath === newPath) {
-              console.log(`ℹ️  Image path already correct: ${fullImagePath}`);
-              return match; // No change needed
+            // Check if the image already exists at the target location
+            const imgDir = this.getImgPath();
+            if (!imgDir) {
+              console.log(`⚠️  No img directory available, skipping image path update`);
+              return match; // No change if no img directory
             }
+            const targetImagePath = path.join(imgDir, imageName);
             
-            // Replace the original path with the new img path using chosen best version
-            const updatedMatch = match.replace(fullImagePath, newPath);
-            console.log(`🔄 Updated single image path: ${fullImagePath} → ${newPath} (chosen best version: ${finalImageName})`);
-            updatesCount++;
-            return updatedMatch;
+            // Only update if the image exists at the same location or doesn't exist yet
+            if (fs.existsSync(targetImagePath) || !fs.existsSync(path.join(imgDir, foundImageName))) {
+              // Use the original image name without any _E or _S suffixes
+              const newPath = `img/${imageName}`;
+              
+              // Check if the path is already pointing to img with the same filename
+              if (fullImagePath === newPath) {
+                console.log(`ℹ️  Image path already correct: ${fullImagePath}`);
+                return match; // No change needed
+              }
+              
+              // Replace the original path with the new img path
+              const updatedMatch = match.replace(fullImagePath, newPath);
+              console.log(`🔄 Updated single image path: ${fullImagePath} → ${newPath}`);
+              updatesCount++;
+              return updatedMatch;
+            } else {
+              console.log(`ℹ️  Skipping update - image exists at target location and doesn't match: ${foundImageName}`);
+              return match; // No change if image exists but doesn't match
+            }
           }
           
           return match; // No change if not our target image
@@ -572,8 +572,8 @@ export class AIUtilsEnhanced {
   }
 
   /**
-   * Choose the best image version between Enhanced (_E) and Stock (_S) based on image resolution (pixels)
-   * Returns the filename of the higher resolution image
+   * Check if an image already exists and return the original image name
+   * No longer uses _E or _S versions as per requirements
    */
   private chooseBestImageVersion(currentImageName: string): string {
     try {
@@ -595,77 +595,34 @@ export class AIUtilsEnhanced {
       
       console.log(`🔍 Extracted base name: ${currentBaseName} → ${baseName}`);
       
-      // Now check what enhanced/stock versions might exist in img folder
-      // Could be: base_E, base_S, base_S_E, base_S_S, etc.
-      const possibleEnhancedNames = [
-        `${baseName}_E${extension}`,      // Simple enhanced: documentviewer_E.png
-        `${baseName}_S_E${extension}`    // Stock-based enhanced: documentviewer_S_E.png  
-      ];
+      // Check if the base image exists (without _E or _S suffixes)
+      const baseImageName = `${baseName}${extension}`;
+      const baseImagePath = path.join(imgDir, baseImageName);
       
-      const possibleStockNames = [
-        `${baseName}_S${extension}`,     // Simple stock: documentviewer_S.png
-        `${baseName}_S_S${extension}`   // Stock-based stock: documentviewer_S_S.png
-      ];
+      // Check if the current image (possibly with _E or _S) exists
+      const currentImagePath = path.join(imgDir, currentImageName);
       
-      console.log(`🔍 Looking for Enhanced versions: ${possibleEnhancedNames.join(', ')}`);
-      console.log(`🔍 Looking for Stock versions: ${possibleStockNames.join(', ')}`);
-      // Find which enhanced and stock versions actually exist
-      let foundEnhancedName = null;
-      let foundStockName = null;
+      console.log(`🔍 Checking for base image: ${baseImageName}`);
+      console.log(`🔍 Checking for current image: ${currentImageName}`);
       
-      for (const enhancedName of possibleEnhancedNames) {
-        const enhancedPath = path.join(imgDir, enhancedName);
-        if (fs.existsSync(enhancedPath)) {
-          foundEnhancedName = enhancedName;
-          console.log(`✅ Found Enhanced version: ${enhancedName}`);
-          break;
-        }
+      // If the base image exists, use it
+      if (fs.existsSync(baseImagePath)) {
+        console.log(`✅ Found base image: ${baseImageName} - using it`);
+        return baseImageName;
       }
       
-      for (const stockName of possibleStockNames) {
-        const stockPath = path.join(imgDir, stockName);
-        if (fs.existsSync(stockPath)) {
-          foundStockName = stockName;
-          console.log(`✅ Found Stock version: ${stockName}`);
-          break;
-        }
-      }
-      
-      console.log(`🔍 Comparing recently captured image versions for base: ${baseName}`);
-      console.log(`   Enhanced found: ${foundEnhancedName || 'none'}`);
-      console.log(`   Stock found: ${foundStockName || 'none'}`);
-      
-      if (foundEnhancedName && foundStockName) {
-        // Both exist, compare image dimensions (pixels) for higher resolution
-        const enhancedPath = path.join(imgDir, foundEnhancedName);
-        const stockPath = path.join(imgDir, foundStockName);
-        
-        const enhancedResolution = this.getImageResolution(enhancedPath);
-        const stockResolution = this.getImageResolution(stockPath);
-        
-        console.log(`   Enhanced resolution: ${enhancedResolution.width}x${enhancedResolution.height} (${enhancedResolution.pixels} pixels)`);
-        console.log(`   Stock resolution: ${stockResolution.width}x${stockResolution.height} (${stockResolution.pixels} pixels)`);
-        
-        if (enhancedResolution.pixels >= stockResolution.pixels) {
-          console.log(`📊 Choosing Enhanced version (higher/equal resolution): ${foundEnhancedName}`);
-          return foundEnhancedName;
-        } else {
-          console.log(`📊 Choosing Stock version (higher resolution): ${foundStockName}`);
-          return foundStockName;
-        }
-      } else if (foundEnhancedName) {
-        console.log(`📊 Only Enhanced version exists, choosing: ${foundEnhancedName}`);
-        return foundEnhancedName;
-      } else if (foundStockName) {
-        console.log(`📊 Only Stock version exists, choosing: ${foundStockName}`);
-        return foundStockName;
-      } else {
-        console.log(`⚠️  Neither Enhanced nor Stock version found in img, using current: ${currentImageName}`);
+      // If the current image exists, use it
+      if (fs.existsSync(currentImagePath)) {
+        console.log(`✅ Found current image: ${currentImageName} - using it`);
         return currentImageName;
       }
       
+      // If neither exists, use the base image name (without suffixes)
+      console.log(`⚠️  Neither base nor current image found in img, using base name: ${baseImageName}`);
+      return baseImageName;
+      
     } catch (error) {
-      console.warn(`⚠️  Error choosing best image version for ${currentImageName}:`, error);
+      console.warn(`⚠️  Error checking image version for ${currentImageName}:`, error);
       return currentImageName;
     }
   }
@@ -2517,7 +2474,7 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
       const filePath = origImgInfo.imgPath;
       const fileDir = origImgInfo.imgDir;
       
-      // Create versions with _S and _E suffixes for stock and enhanced
+      // Use the same filename for both stock and enhanced versions (no _S or _E suffixes)
       let stockCommand = originalScreenshotCommand;
       let enhancedCommand = aiGeneratedCommand;
       
@@ -2530,94 +2487,128 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
         if (lastDotIndex <= 0) {
           console.warn('⚠️ No valid extension found in filename. Using default extension.');
           // Add default extension if none exists
-          const stockFileName = `${fileName}_S.png`;
-          const enhancedFileName = `${fileName}_E.png`;
+          const baseFileName = `${fileName}.png`;
           
           // More robust replacement for stock command
           const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const fileNameRegex = new RegExp(`(['\"])([^'\"]*?)${escapedFileName}(['\"])`, 'i');
           stockCommand = originalScreenshotCommand.replace(fileNameRegex, (match, p1, p2, p3) => {
-            return `${p1}${p2}${stockFileName}${p3}`;
+            return `${p1}${p2}${baseFileName}${p3}`;
           });
-          console.log(`📄 Modified stock filename from '${fileName}' to '${stockFileName}'`);
+          console.log(`📄 Modified stock filename from '${fileName}' to '${baseFileName}'`);
           
           // More robust replacement for enhanced command
           const enhancedFileNameToReplace = enhancedImgInfo.imgFileName || fileName;
           const escapedEnhancedFileName = enhancedFileNameToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const enhancedRegex = new RegExp(`(['\"])([^'\"]*?)${escapedEnhancedFileName}(['\"])`, 'i');
           enhancedCommand = aiGeneratedCommand.replace(enhancedRegex, (match, p1, p2, p3) => {
-            return `${p1}${p2}${enhancedFileName}${p3}`;
+            return `${p1}${p2}${baseFileName}${p3}`;
           });
-          console.log(`📄 Modified enhanced filename from '${enhancedFileNameToReplace}' to '${enhancedFileName}'`);
+          console.log(`📄 Modified enhanced filename from '${enhancedFileNameToReplace}' to '${baseFileName}'`);
         } else {
-          // Generate the new filenames with suffixes
-          const fileNameWithoutExt = fileName.substring(0, lastDotIndex);
-          const extension = fileName.substring(lastDotIndex);
-          const stockFileName = `${fileNameWithoutExt}_S${extension}`;
-          const enhancedFileName = `${fileNameWithoutExt}_E${extension}`;
+          // Use the original filename without adding suffixes
+          const baseFileName = fileName;
           
           // Replace the path in the original command in a more robust way
           if (filePath && fileDir) {
             // Use appropriate save directory based on mode
             const saveDir = this.getScreenshotSavePath() || fileDir;
-            const stockPath = path.join(saveDir, stockFileName);
+            const basePath = path.join(saveDir, baseFileName);
             
-            // More robust path replacement using regex with word boundaries
-            const escapedFilePath = filePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const pathRegex = new RegExp(`(path\\s*:\\s*['\"])${escapedFilePath}(['\"])`, 'i');
-            stockCommand = originalScreenshotCommand.replace(pathRegex, `$1${stockPath.replace(/\\/g, '/')}$2`);
-            
-            // If no replacement occurred (no path: syntax), try direct replacement
-            if (stockCommand === originalScreenshotCommand) {
-              const directRegex = new RegExp(`(['\"])${escapedFilePath}(['\"])`, 'i');
-              stockCommand = originalScreenshotCommand.replace(directRegex, `$1${stockPath.replace(/\\/g, '/')}$2`);
+            // Check if the file already exists at the target location
+            const imgDir = this.getImgPath();
+            if (!imgDir) {
+              console.log(`⚠️  No img directory available, skipping path update`);
+              stockCommand = originalScreenshotCommand; // Keep original command
+              console.log(`📄 Using original stock command: ${stockCommand}`);
+              return; // Skip if no img directory
             }
+            const targetImagePath = path.join(imgDir, baseFileName);
+            const shouldReplace = fs.existsSync(targetImagePath);
             
-            console.log(`📂 Modified stock path from '${filePath}' to '${stockPath}' (${this.currentMode} mode)`);
+            if (shouldReplace || !fs.existsSync(path.join(imgDir, baseFileName))) {
+              // More robust path replacement using regex with word boundaries
+              const escapedFilePath = filePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const pathRegex = new RegExp(`(path\\s*:\\s*['\"])${escapedFilePath}(['\"])`, 'i');
+              stockCommand = originalScreenshotCommand.replace(pathRegex, `$1${basePath.replace(/\\/g, '/')}$2`);
+              
+              // If no replacement occurred (no path: syntax), try direct replacement
+              if (stockCommand === originalScreenshotCommand) {
+                const directRegex = new RegExp(`(['\"])${escapedFilePath}(['\"])`, 'i');
+                stockCommand = originalScreenshotCommand.replace(directRegex, `$1${basePath.replace(/\\/g, '/')}$2`);
+              }
+              
+              console.log(`📂 Modified stock path from '${filePath}' to '${basePath}' (${this.currentMode} mode)`);
+            } else {
+              console.log(`ℹ️  Skipping stock path update - image exists at target location: ${targetImagePath}`);
+            }
           } else {
             // If we only have a filename, use a more precise replacement
             const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const fileNameRegex = new RegExp(`(['\"])([^'\"]*?)${escapedFileName}(['\"])`, 'i');
             stockCommand = originalScreenshotCommand.replace(fileNameRegex, (match, p1, p2, p3) => {
-              return `${p1}${p2}${stockFileName}${p3}`;
+              return `${p1}${p2}${baseFileName}${p3}`;
             });
-            console.log(`📄 Modified stock filename from '${fileName}' to '${stockFileName}'`);
+            console.log(`📄 Modified stock filename from '${fileName}' to '${baseFileName}'`);
           }
           
           // Replace the path in the enhanced command using the same robust approach
           if (enhancedImgInfo.imgPath && enhancedImgInfo.imgDir) {
             // Use appropriate save directory based on mode
             const saveDir = this.getScreenshotSavePath() || enhancedImgInfo.imgDir;
-            const enhancedPath = path.join(saveDir, enhancedFileName);
+            const basePath = path.join(saveDir, baseFileName);
             
-            // More robust path replacement
-            const escapedPath = enhancedImgInfo.imgPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const pathRegex = new RegExp(`(path\\s*:\\s*['\"])${escapedPath}(['\"])`, 'i');
-            enhancedCommand = aiGeneratedCommand.replace(pathRegex, `$1${enhancedPath.replace(/\\/g, '/')}$2`);
-            
-            // If no replacement occurred, try direct replacement
-            if (enhancedCommand === aiGeneratedCommand) {
-              const directRegex = new RegExp(`(['\"])${escapedPath}(['\"])`, 'i');
-              enhancedCommand = aiGeneratedCommand.replace(directRegex, `$1${enhancedPath.replace(/\\/g, '/')}$2`);
+            // Check if the file already exists at the target location
+            const imgDir = this.getImgPath();
+            if (!imgDir) {
+              console.log(`⚠️  No img directory available, skipping path update`);
+              stockCommand = originalScreenshotCommand; // Keep original command
+              console.log(`📄 Using original stock command: ${stockCommand}`);
+              return; // Skip if no img directory
             }
+            const targetImagePath = path.join(imgDir, baseFileName);
+            const shouldReplace = fs.existsSync(targetImagePath);
             
-            console.log(`📂 Modified enhanced path from '${enhancedImgInfo.imgPath}' to '${enhancedPath}' (${this.currentMode} mode)`);
+            if (shouldReplace || !fs.existsSync(path.join(imgDir, baseFileName))) {
+              // More robust path replacement
+              const escapedPath = enhancedImgInfo.imgPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const pathRegex = new RegExp(`(path\\s*:\\s*['\"])${escapedPath}(['\"])`, 'i');
+              enhancedCommand = aiGeneratedCommand.replace(pathRegex, `$1${basePath.replace(/\\/g, '/')}$2`);
+              
+              // If no replacement occurred, try direct replacement
+              if (enhancedCommand === aiGeneratedCommand) {
+                const directRegex = new RegExp(`(['\"])${escapedPath}(['\"])`, 'i');
+                enhancedCommand = aiGeneratedCommand.replace(directRegex, `$1${basePath.replace(/\\/g, '/')}$2`);
+              }
+              
+              console.log(`📂 Modified enhanced path from '${enhancedImgInfo.imgPath}' to '${basePath}' (${this.currentMode} mode)`);
+            } else {
+              console.log(`ℹ️  Skipping enhanced path update - image exists at target location: ${targetImagePath}`);
+            }
           } else {
             // If we only have a filename, use a more precise replacement
             const enhancedFileName = enhancedImgInfo.imgFileName || fileName;
             const escapedFileName = enhancedFileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const fileNameRegex = new RegExp(`(['\"])([^'\"]*?)${escapedFileName}(['\"])`, 'i');
             enhancedCommand = aiGeneratedCommand.replace(fileNameRegex, (match, p1, p2, p3) => {
-              return `${p1}${p2}${enhancedFileName}${p3}`;
+              return `${p1}${p2}${baseFileName}${p3}`;
             });
-            console.log(`📄 Modified enhanced filename from '${enhancedFileName}' to '${enhancedFileName}'`);
+            console.log(`📄 Modified enhanced filename from '${enhancedFileName}' to '${baseFileName}'`);
           }
         }
       }
       
-      console.log('📸 Will take both stock and enhanced screenshots:');
-      console.log('📸 Stock command:', stockCommand);
-      console.log('📸 Enhanced command:', enhancedCommand);
+      // Check if stock screenshots are disabled
+      const disableStockScreenshots = process.env.DISABLE_STOCK_SCREENSHOTS === 'true';
+      
+      if (disableStockScreenshots) {
+        console.log('📸 Stock screenshots disabled - will only take enhanced screenshot');
+        console.log('📸 Enhanced command:', enhancedCommand);
+      } else {
+        console.log('📸 Will take both stock and enhanced screenshots:');
+        console.log('📸 Stock command:', stockCommand);
+        console.log('📸 Enhanced command:', enhancedCommand);
+      }
       
       // Ensure target directories exist before taking screenshots
       let ensureDirCode = '';
@@ -3239,12 +3230,18 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       let stockCmd = '';
       let enhancedCmd = '';
       
-      // Find the stock command
-      for (const line of lines) {
-        if (line.includes('// Stock version') && lines.indexOf(line) + 1 < lines.length) {
-          stockCmd = lines[lines.indexOf(line) + 1].trim();
-          break;
+      // Find the stock command (if not disabled)
+      const disableStockScreenshots = process.env.DISABLE_STOCK_SCREENSHOTS === 'true';
+      
+      if (!disableStockScreenshots) {
+        for (const line of lines) {
+          if (line.includes('// Stock version') && lines.indexOf(line) + 1 < lines.length) {
+            stockCmd = lines[lines.indexOf(line) + 1].trim();
+            break;
+          }
         }
+      } else {
+        console.log('📸 Stock screenshots disabled - skipping stock version');
       }
       
       // Find the enhanced command
@@ -3256,7 +3253,7 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       }
       
       // Path modification to img is handled automatically in screenshot_helper.ts
-      if (stockCmd) {
+      if (stockCmd && !disableStockScreenshots) {
         console.log('🔍 Executing stock screenshot command with retries:', stockCmd);
         
         // Extract image filename for tracking (just the filename, not full path)
