@@ -5,6 +5,8 @@ config();
 // BYPASS: Disable Playwright's font loading check for screenshots
 process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = 'true';
 
+// Direct image replacement - no suffixes used
+
 // Get API key from environment variable
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -170,6 +172,38 @@ const LANGUAGES = {
 };
 
 /**
+ * Smart wait for page stability with reduced timeouts
+ * @param {Page} page - Playwright page object
+ * @param {Object} options - Options for the wait
+ * @param {number} options.timeout - Maximum time to wait in ms (default: 1000)
+ * @param {boolean} options.checkNetwork - Whether to check network idle (default: true)
+ * @param {number} options.minWait - Minimum wait time in ms (default: 500)
+ */
+async function smartWait(page, options = {}) {
+  const {
+    timeout = 1000,
+    checkNetwork = true,
+    minWait = 500
+  } = options;
+  
+  // Always do a minimum wait to let the UI settle
+  const startTime = Date.now();
+  
+  // Try network idle with a shorter timeout if requested
+  if (checkNetwork) {
+    try {
+      await page.waitForLoadState('networkidle', { timeout: Math.min(timeout, 3000) });
+    } catch {}
+  }
+  
+  // Ensure we've waited at least the minimum time
+  const elapsed = Date.now() - startTime;
+  if (elapsed < minWait) {
+    await page.waitForTimeout(minWait - elapsed);
+  }
+}
+
+/**
  * Select language in the application
  * @param {Page} page - Playwright page object
  * @param {string} languageInput - Language code (e.g., 'es') or language name (e.g., 'spanish')
@@ -226,43 +260,38 @@ async function selectLanguage(page, languageInput) {
   try {
     console.log(`🌐 Selecting language: ${languageName} (${langCode})`);
 
-    // Step 0: Wait for page to be completely stable before looking for language icon
-    console.log('⏳ Waiting for page to be completely stable before language selection...');
+    // Stabilize page first with smart wait
+    console.log('⏳ Stabilizing page before language selection...');
+    await smartWait(page, { timeout: 2000, minWait: 1000 });
+
+    // Open avatar/user menu - using the more efficient approach from verify-language-selection.js
+    console.log('🔍 Looking for user avatar...');
     try {
-      await page.waitForLoadState('networkidle', { timeout: 20000 });
-    } catch (networkIdleError) {
-      console.log('⚠️  NetworkIdle timeout, trying domcontentloaded...');
+      const profileLink = page.locator('[data-cy="sidebar-profile"]');
+      await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+      await profileLink.click({ force: true });
+      console.log('✅ Avatar clicked successfully using data-cy selector');
+    } catch (e) {
+      console.warn('⚠️ Could not click avatar via data-cy:', e?.message || e);
+      // Fall back to existing methods
       try {
-        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-      } catch (domError) {
-        console.log('⚠️  DOM load timeout, continuing with fixed wait...');
+        const avatarByTestId = page.locator('[data-testid^="Avatar "]').first();
+        await avatarByTestId.waitFor({ state: 'visible', timeout: 15000 });
+        await avatarByTestId.click({ force: true });
+      } catch {
+        console.log('⚠️  Fallback: avatar container with avatar inside (language-agnostic)');
+        const avatarContainer = page.locator('[aria-label]:has(.MuiAvatar-root)').first();
+        await avatarContainer.waitFor({ state: 'visible', timeout: 20000 });
+        await avatarContainer.click({ force: true });
       }
     }
 
-    // Additional stabilization wait
-    console.log('⏳ Additional stabilization wait for UI elements...');
-    await page.waitForTimeout(5000);
-
-    // Step 1: Click on the Avatar to open user menu
-    console.log('🔍 Looking for user avatar...');
-    try {
-      const avatarByTestId = page.locator('[data-testid^="Avatar "]').first();
-      await avatarByTestId.waitFor({ state: 'visible', timeout: 15000 });
-      await avatarByTestId.click({ force: true });
-    } catch {
-      console.log('⚠️  Fallback: avatar container with avatar inside (language-agnostic)');
-      const avatarContainer = page.locator('[aria-label]:has(.MuiAvatar-root)').first();
-      await avatarContainer.waitFor({ state: 'visible', timeout: 20000 });
-      await avatarContainer.click({ force: true });
-    }
-
-    // Wait for user menu to appear
+    // Wait for menu and open User Settings with smart wait
     console.log('⏳ Waiting for user menu to appear...');
-    await page.waitForTimeout(2000);
-
-    // Step 2: Click on USER SETTINGS button
+    await smartWait(page, { timeout: 1000, checkNetwork: false });
+    
+    // Click on USER SETTINGS button
     console.log('🔍 Looking for USER SETTINGS button...');
-    // After clicking avatar and opening the menu
     const userSettingsButton = page.locator('button.MuiButton-outlinedPrimary').nth(-2);
     await userSettingsButton.waitFor({ state: 'visible', timeout: 15000 });
     await userSettingsButton.click();
@@ -271,24 +300,11 @@ async function selectLanguage(page, languageInput) {
 
     
 
-    // Wait for settings to load
+    // Wait for settings to load with smart wait
     console.log('⏳ Waiting for settings to load...');
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 20000 });
-    } catch (networkIdleError) {
-      console.log('⚠️  NetworkIdle timeout, trying domcontentloaded...');
-      try {
-        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-      } catch (domError) {
-        console.log('⚠️  DOM load timeout, continuing with fixed wait...');
-      }
-    }
-    
-    // Additional stabilization wait
-    console.log('⏳ Additional stabilization wait for settings to fully load...');
-    await page.waitForTimeout(3000);
+    await smartWait(page, { timeout: 2000 });
 
-    // Step 3: Click on Language Icon
+    // Open language dropdown - using the same approach as verify-language-selection.js
     console.log('🔍 Looking for language icon...');
     await page.getByTestId('LanguageIcon').waitFor({ state: 'visible', timeout: 15000 });
     console.log('👆 Clicking language icon...');
@@ -327,14 +343,9 @@ async function selectLanguage(page, languageInput) {
 
     console.log(`✅ Successfully selected language: ${languageName} (${langCode})`);
 
-    // Wait for the language change to take effect with fallback strategy
+    // Allow UI to update with smart wait
     console.log('⏳ Waiting for language change to take effect...');
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 10000 });
-    } catch (networkIdleError) {
-      console.log('⚠️  Language change networkidle timeout, using fixed wait...');
-    }
-    await page.waitForTimeout(3000); // Give extra time for UI to update
+    await smartWait(page, { timeout: 2000 });
 
   } catch (error) {
     console.error(`❌ Error selecting language ${languageInput}:`, error.message);
@@ -353,29 +364,30 @@ async function navigateToWorklist(page) {
   try {
     console.log('🏠 Navigating to worklist...');
     
-    // Wait for page to be stable before proceeding with fallback strategy
-    console.log('⏳ Waiting for page to stabilize...');
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-    } catch (networkIdleError) {
-      console.log('⚠️  NetworkIdle timeout, trying domcontentloaded...');
-      try {
-        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-      } catch (domError) {
-        console.log('⚠️  DOM load timeout, continuing with fixed wait...');
-      }
-    }
-    await page.waitForTimeout(3000);
+    // Stabilize page first with smart wait
+    console.log('⏳ Stabilizing page...');
+    await smartWait(page, { timeout: 2000 });
     
-    // Prefer robust, language-agnostic selectors over home icon SVG
+    // Try data-cy selector first (from verify-language-selection.js)
     console.log('🔍 Looking for worklist navigation control...');
     let clicked = false;
-
-    // Try by ARIA role/name (common for navigation items)
+    
     try {
+      const profileLink = page.locator('[data-cy="sidebar-home"]');
+      await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+      await profileLink.click({ force: true });
+      await smartWait(page, { timeout: 2000 });
+      console.log('✅ Clicked home button using data-cy selector');
+      clicked = true;
+    } catch (e) {
+      console.warn('⚠️  Home nav click snippet failed:', e?.message || e);
+    }
+    
+    // Try by ARIA role/name (common for navigation items) if data-cy failed
+    if (!clicked) try {
       const navByRole = page.getByRole('link', { name: /worklist|lista de trabajo|home|inicio/i }).first();
       await navByRole.waitFor({ state: 'visible', timeout: 6000 });
-      await navByRole.click({ timeout: 10000 });
+      await navByRole.click({ timeout: 10000, force: true });
       clicked = true;
     } catch {}
 
@@ -419,7 +431,7 @@ async function navigateToWorklist(page) {
         console.log('⚠️  DOM load timeout, continuing with fixed wait...');
       }
     }
-    await page.waitForTimeout(3000);
+    await smartWait(page, { timeout: 1500 });
     
   } catch (error) {
     console.error('❌ Error navigating to worklist:', error.message);
@@ -481,8 +493,7 @@ async function executeTranslationMode(page, detectedLanguage) {
     console.log('📋 Step 2: Navigating to worklist (home nav snippet)...');
     try {
       await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-      try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-      await page.waitForTimeout(3000);
+      await smartWait(page, { timeout: 1500 });
     } catch (navErr) {
       console.warn('⚠️  Home nav click snippet failed after language change:', navErr?.message || navErr);
     }
@@ -496,7 +507,7 @@ async function executeTranslationMode(page, detectedLanguage) {
     } catch (networkIdleError) {
       console.log('⚠️  Final networkidle timeout, using fixed wait...');
     }
-    await page.waitForTimeout(2000);
+    await smartWait(page, { timeout: 1000 });
     
   } catch (error) {
     console.error('❌ Error in translation mode workflow:', error.message);
@@ -1225,6 +1236,10 @@ EXAMPLES:
   node test-enhanced-flow.js --list file-list.md       # Process files from list with auto-classification
   node test-enhanced-flow.js --list my-files.txt --mode ui_change  # Process list with forced mode
   node test-enhanced-flow.js --list my-files.txt --lang pt  # Process list with explicit Portuguese
+
+CONFIGURATION:
+  Image Naming: The script uses simple, descriptive names for generated images based on
+  nearby headings or emphasized text in the markdown content. No suffixes are added.
 
 MODE DETAILS:
   🔍 Git Diff Mode: 
@@ -2180,7 +2195,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         // await page.waitForLoadState('domcontentloaded', { timeout: 6000000 });
         
         // Additional wait to ensure all dynamic content is loaded
-        await page.waitForTimeout(2000);
+        await smartWait(page, { timeout: 1000 });
         
         console.log('✅ Page loaded and settled');
 
@@ -2202,7 +2217,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
         await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
         
         // Additional wait to ensure the main application UI is fully rendered
-        await page.waitForTimeout(3000);
+        await smartWait(page, { timeout: 1500 });
         
         console.log('✅ Login completed and application loaded');
 
@@ -2219,9 +2234,9 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             }
         }
         
-        // Extended wait to ensure all UI elements are fully loaded and interactive
-        console.log('⏳ Extended wait for UI elements to be ready...');
-        await page.waitForTimeout(8000);
+        // Smart wait to ensure all UI elements are fully loaded and interactive
+        console.log('⏳ Smart wait for UI elements to be ready...');
+        await smartWait(page, { timeout: 3000, minWait: 1500 });
         console.log('✅ Page should now be stable for UI interactions');
 
         // Step 4.6: Execute translation mode workflow if in translation mode
@@ -2272,8 +2287,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                 // Navigate to worklist using the same home nav snippet after switching
                 try {
                   await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-                  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-                  await page.waitForTimeout(3000);
+                  await smartWait(page, { timeout: 1500 });
                 } catch (navErr) {
                   console.warn('⚠️  Home nav click snippet failed after forcing English (single file):', navErr?.message || navErr);
                 }
@@ -2303,8 +2317,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                 // Navigate to worklist using the same home nav snippet after switching
                 try {
                   await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-                  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-                  await page.waitForTimeout(3000);
+                  await smartWait(page, { timeout: 1500 });
                 } catch (navErr) {
                   console.warn('⚠️  Home nav click snippet failed after forcing English (list mode):', navErr?.message || navErr);
                 }
@@ -2320,8 +2333,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                 // Navigate to worklist using the same home nav snippet after switching
                 try {
                   await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-                  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-                  await page.waitForTimeout(3000);
+                  await smartWait(page, { timeout: 1500 });
                 } catch (navErr) {
                   console.warn('⚠️  Home nav click snippet failed after forcing English (default mode):', navErr?.message || navErr);
                 }
@@ -2439,7 +2451,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                         console.log('⚠️  Browser context closed, attempting to recover...');
                         // Wait a moment and try to check if page is still accessible
                         try {
-                            await page.waitForTimeout(2000);
+                            await smartWait(page, { timeout: 1000 });
                             const url = await page.url();
                             console.log(`✅ Page recovered, current URL: ${url}`);
                             return await originalEvaluate.call(page, fn, ...args);
@@ -2457,7 +2469,6 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.log(`🚀 About to call tracewright with:`);
             console.log(`🚀   currentFile: ${currentFilePath}`);
             console.log(`🚀   aiUtils currentMdPath: ${aiUtils.getCurrentMdFilePath ? aiUtils.getCurrentMdFilePath() : 'method not available'}`);
-            console.log(`🚀   aiUtils imgAsPath: ${aiUtils.getImgAsPath ? aiUtils.getImgAsPath() : 'method not available'}`);
             
             await tracewright(page, {
                 script: generatedInstructions,

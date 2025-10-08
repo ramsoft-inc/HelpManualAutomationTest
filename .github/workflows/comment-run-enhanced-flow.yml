@@ -167,7 +167,7 @@ jobs:
             const canPush = pr.data.head.repo.full_name === `${context.repo.owner}/${context.repo.repo}`;
             core.setOutput('can_push', canPush ? 'true' : 'false');
 
-      - name: Commit screenshots to PR branch
+      - name: Commit screenshots and markdown to PR branch
         if: ${{ steps.pr_info.outputs.can_push == 'true' }}
         shell: bash
         env:
@@ -178,36 +178,23 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Prefer explicit list if available
-          if [ -f changed-files-screenshots.txt ]; then
-            echo "Using changed-files-screenshots.txt for staging..."
-            sed -e 's/\r$//' changed-files-screenshots.txt | while IFS= read -r f; do
-              if [ -n "$f" ] && [ -f "$f" ]; then
-                git add -f -- "$f"
-              fi
-            done
-          fi
-          # Stage images from common output locations
-          if [ -d AutoSnap/screenshots ]; then
-            find AutoSnap/screenshots -type f \
-              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) -print0 \
-              | xargs -0 -r git add --
-          fi
-          if [ -d docs ]; then
-            find docs -type f \( -path '*/img_as/*' -o -path '*/img/*' \) \
-              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) -print0 \
-              | xargs -0 -r git add --
-          fi
-          if [ -d spanish ]; then
-            find spanish -type f \( -path '*/img_as/*' -o -path '*/img/*' \) \
-              \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.gif' \) -print0 \
-              | xargs -0 -r git add --
-          fi
+          
+          # Simple approach: add all changes including new and modified files
+          echo "Adding all changes..."
+          git add -A
+          
+          # Show what will be committed
+          echo "Files to be committed:"
+          git status --short
+          
+          # Check if there are changes to commit
           if git diff --staged --quiet; then
-            echo "No screenshots to commit."
+            echo "No changes to commit."
             exit 0
           fi
-          git commit -m "chore(ci): add screenshots from enhanced flow run [skip ci]"
+          
+          # Commit and push
+          git commit -m "chore(ci): add screenshots and update markdown from enhanced flow run [skip ci]"
           git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${HEAD_REPO}.git" HEAD:${HEAD_REF}
 
       - name: Reply on PR with run summary

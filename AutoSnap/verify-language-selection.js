@@ -38,23 +38,20 @@ async function selectLanguage(page, languageInput) {
 
   // Open avatar/user menu
   try {
-    const avatarByTestId = page.locator('[data-testid^="Avatar "]').first();
-    await avatarByTestId.waitFor({ state: 'visible', timeout: 15000 });
-    await avatarByTestId.click({ force: true });
-    console.log('✅ Avatar clicked successfully using Avatar');
-  } catch {
-    const avatarContainer = page.locator('[aria-label]:has(.MuiAvatar-root)').first();
-    await avatarContainer.waitFor({ state: 'visible', timeout: 20000 });
-    await avatarContainer.click({ force: true });
-    console.log('✅ Avatar clicked successfully using aria-label');
+    const profileLink = page.locator('[data-cy="sidebar-profile"]');
+    await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+    await profileLink.click({ force: true });
+    console.log('✅ Avatar clicked successfully using data-cy selector');
+  } catch (e) {
+    console.warn('⚠️ Could not click avatar via data-cy:', e?.message || e);
   }
 
   // Wait for menu and open User Settings
   await page.waitForTimeout(2000);
-  const userSettingsButton = page.locator('button.MuiButton-outlinedPrimary').nth(-2);
+  userSettingsButton = page.locator('[data-cy="user-settings-button"]');
+  // const userSettingsButton = page.locator('button.MuiButton-outlinedPrimary').nth(-2);
   await userSettingsButton.waitFor({ state: 'visible', timeout: 15000 });
   await userSettingsButton.click();
-
   // Wait for settings to load
   try {
     await page.waitForLoadState('networkidle', { timeout: 20000 });
@@ -84,7 +81,9 @@ async function selectLanguage(page, languageInput) {
 
   // Navigate to worklist using provided selector snippet (explicit request)
   try {
-    await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
+    const profileLink = page.locator('[data-cy="sidebar-home"]');
+    await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+    await profileLink.click({ force: true });
     await page.waitForLoadState('networkidle', { timeout: 10000 });
     await page.waitForTimeout(3000);
   } catch (e) {
