@@ -21,6 +21,8 @@ O menu "Mais Opções" (menu de 3 pontos) na barra de ferramentas do Visualizado
 
 ## Funcionalidades do Menu da Barra de Ferramentas Mais Opções
 
+
+
 **Imprimir**
 
 Permite imprimir a imagem atual que está sendo visualizada.
