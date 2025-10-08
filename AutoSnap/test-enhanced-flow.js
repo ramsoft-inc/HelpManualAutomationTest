@@ -5,9 +5,7 @@ config();
 // BYPASS: Disable Playwright's font loading check for screenshots
 process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = 'true';
 
-// Toggle for enhanced image naming (when true, adds _E suffix to image names)
-// Set to false for stock version (no suffix)
-const USE_ENHANCED_IMAGE_NAMING = false;
+// Direct image replacement - no suffixes used
 
 // Get API key from environment variable
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -590,12 +588,11 @@ const filterDocumentationFiles = (files) => {
         const isMarkdown = filePath.endsWith('.md') || filePath.endsWith('.mdx');
         // Check if file has docs in its path (anywhere in the path)
         const hasDocsInPath = filePath.includes('docs/') || filePath.includes('docs\\');
-        const hasSpanishInPath = filePath.includes('spanish/') || filePath.includes('spanish\\');
         
-        return isMarkdown && (hasDocsInPath || hasSpanishInPath);
+        return isMarkdown && hasDocsInPath;
     });
     
-    console.log(`📁 Filtered to ${filtered.length} documentation files with docs or spanish in path`);
+    console.log(`📁 Filtered to ${filtered.length} documentation files with docs in path`);
     filtered.forEach(file => console.log(`  - ${file}`));
     
     return filtered;
@@ -1018,8 +1015,7 @@ const generateContextualImageName = (content, placeholderIndex, fallbackNumber) 
             .substring(0, 30);
         
         if (heading) {
-            const baseName = `${heading}-screenshot`;
-            return USE_ENHANCED_IMAGE_NAMING ? `${baseName}_E` : baseName;
+            return `${heading}-screenshot`;
         }
     }
     
@@ -1033,14 +1029,12 @@ const generateContextualImageName = (content, placeholderIndex, fallbackNumber) 
             .substring(0, 20);
         
         if (emphasis) {
-            const baseName = `${emphasis}-view`;
-            return USE_ENHANCED_IMAGE_NAMING ? `${baseName}_E` : baseName;
+            return `${emphasis}-view`;
         }
     }
     
     // Fallback to numbered naming
-    const baseName = `feature-${fallbackNumber}`;
-    return USE_ENHANCED_IMAGE_NAMING ? `${baseName}_E` : baseName;
+    return `feature-${fallbackNumber}`;
 };
 
 /**
@@ -1214,7 +1208,7 @@ USAGE:
   node test-enhanced-flow.js [OPTIONS]
 
 MODES:
-  Git Diff Mode (Default):    Processes .md files from git diff that have docs or spanish in their path with classification
+  Git Diff Mode (Default):    Processes .md files from git diff that have docs in their path with classification
   Translation Mode:           Processes all .md/.mdx files in specified folder (default/translation)
   Single File Mode:           Processes a single specified .md/.mdx file with classification
   List Mode:                  Processes multiple files from a list file with auto-classification for each
@@ -1244,9 +1238,8 @@ EXAMPLES:
   node test-enhanced-flow.js --list my-files.txt --lang pt  # Process list with explicit Portuguese
 
 CONFIGURATION:
-  Enhanced Image Naming: To toggle between stock and enhanced image naming, edit the
-  USE_ENHANCED_IMAGE_NAMING constant at the top of the script (default: false).
-  When true, adds "_E" suffix to generated image names.
+  Image Naming: The script uses simple, descriptive names for generated images based on
+  nearby headings or emphasized text in the markdown content. No suffixes are added.
 
 MODE DETAILS:
   🔍 Git Diff Mode: 
@@ -1495,7 +1488,7 @@ if (singleFilePath) {
             const documentationFiles = filterDocumentationFiles(gitChangedFiles);
             
             if (documentationFiles.length === 0) {
-                console.log('⚠️  No documentation files with docs or spanish in path found in git diff, using fallback...');
+                console.log('⚠️  No documentation files with docs in path found in git diff, using fallback...');
                 
                 // Use fallback document
                 const fs = require('node:fs');
@@ -2476,7 +2469,6 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.log(`🚀 About to call tracewright with:`);
             console.log(`🚀   currentFile: ${currentFilePath}`);
             console.log(`🚀   aiUtils currentMdPath: ${aiUtils.getCurrentMdFilePath ? aiUtils.getCurrentMdFilePath() : 'method not available'}`);
-            console.log(`🚀   aiUtils imgAsPath: ${aiUtils.getImgAsPath ? aiUtils.getImgAsPath() : 'method not available'}`);
             
             await tracewright(page, {
                 script: generatedInstructions,
