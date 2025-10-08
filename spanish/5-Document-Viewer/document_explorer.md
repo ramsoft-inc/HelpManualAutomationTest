@@ -59,13 +59,9 @@ O Explorador de Documentos é um componente essencial do Visualizador de Documen
 
     - Abra o OmegaAI e navegue até o Visualizador de Documentos. O Explorador de Documentos está imediatamente acessível no painel esquerdo.
 
-
-
 2.  **Visualizando Detalhes do Paciente:**
 
     - Olhe para a seção superior do Explorador de Documentos para ver os detalhes do paciente cujos estudos você está examinando.
-
-
 
 
 3.  **Navegando entre Estudos:**

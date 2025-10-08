@@ -5,9 +5,6 @@ config();
 // BYPASS: Disable Playwright's font loading check for screenshots
 process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = 'true';
 
-// Disable stock version screenshots completely
-process.env.DISABLE_STOCK_SCREENSHOTS = 'true';
-
 // Direct image replacement - no suffixes used
 
 // Get API key from environment variable
@@ -1476,7 +1473,7 @@ if (singleFilePath) {
             
             // Fallback to specified document explorer file
             const fs = require('node:fs');
-    const testDocPath = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md';
+    const testDocPath = 'docs/1-Getting-Started/addorg.md';
     
     if (fs.existsSync(testDocPath)) {
                 console.log(`📄 Using fallback document explorer file: ${testDocPath}`);
@@ -1495,7 +1492,7 @@ if (singleFilePath) {
                 
                 // Use fallback document
                 const fs = require('node:fs');
-                const testDocPath = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md';
+                const testDocPath = 'docs/1-Getting-Started/addorg.md';
                 
                 if (fs.existsSync(testDocPath)) {
                     console.log(`📄 Using fallback document explorer file: ${testDocPath}`);
@@ -1537,7 +1534,7 @@ if (singleFilePath) {
         
         // Use fallback document
         const fs = require('node:fs');
-    const testDocPath = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md';
+    const testDocPath = 'docs/1-Getting-Started/addorg.md';
     
     if (fs.existsSync(testDocPath)) {
             console.log(`📄 Using fallback document explorer file: ${testDocPath}`);
@@ -2406,7 +2403,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             }
             
             if (!currentFilePath) {
-                const testDocPath = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md';
+                const testDocPath = 'docs/1-Getting-Started/addorg.md';
                 if (fs.existsSync(testDocPath)) {
                     currentFilePath = testDocPath;
                     console.log(`📄 Setting markdown path from test document: ${currentFilePath}`);
