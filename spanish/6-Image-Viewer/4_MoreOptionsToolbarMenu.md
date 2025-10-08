@@ -101,6 +101,7 @@ Este recurso vincula várias séries de imagens. Ele oferece duas opções:
 
 **Download**
 
+
 Este recurso permite baixar a imagem ou estudo atual. Ele oferece duas opções:
 
 ![mo5](img/mo5.png)
