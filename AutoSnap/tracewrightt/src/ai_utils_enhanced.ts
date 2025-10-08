@@ -2519,9 +2519,9 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
             const imgDir = this.getImgPath();
             if (!imgDir) {
               console.log(`⚠️  No img directory available, skipping path update`);
-              stockCommand = originalScreenshotCommand; // Keep original command
-              console.log(`📄 Using original stock command: ${stockCommand}`);
-              return; // Skip if no img directory
+              enhancedCommand = aiGeneratedCommand; // Keep original command
+              console.log(`📄 Using original enhanced command: ${enhancedCommand}`);
+              return enhancedCommand; // Return original command to fix TypeScript error
             }
             const targetImagePath = path.join(imgDir, baseFileName);
             const shouldReplace = fs.existsSync(targetImagePath);
@@ -2562,9 +2562,9 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
             const imgDir = this.getImgPath();
             if (!imgDir) {
               console.log(`⚠️  No img directory available, skipping path update`);
-              stockCommand = originalScreenshotCommand; // Keep original command
-              console.log(`📄 Using original stock command: ${stockCommand}`);
-              return; // Skip if no img directory
+              enhancedCommand = aiGeneratedCommand; // Keep original command
+              console.log(`📄 Using original enhanced command: ${enhancedCommand}`);
+              return enhancedCommand; // Return original command to fix TypeScript error
             }
             const targetImagePath = path.join(imgDir, baseFileName);
             const shouldReplace = fs.existsSync(targetImagePath);
