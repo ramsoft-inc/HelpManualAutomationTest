@@ -179,7 +179,6 @@ seen below).
 
 <!-- placeholder for screenshot -->
 
-
 **Popout in Window**
 
 Allows you to open the current image in a separate window.
