@@ -935,22 +935,25 @@ def main():
         # Set as environment variable for potential use in instruction generation
         os.environ['CURRENT_PROCESSING_FILE'] = args.current_file
         
-        # Write the current file path to multiple locations to ensure it's found
+        # Write the current file path and mode to multiple locations to ensure it's found
         try:
+            # Include the mode in the file content
+            file_content = f"{args.current_file}|{scenario_type}"
+            
             # Write to the project root
             root_path_file = 'current_md_path.txt'
-            print(f"Writing current file path to project root: {root_path_file}")
+            print(f"Writing current file path and mode to project root: {root_path_file}")
             with open(root_path_file, 'w', encoding='utf-8') as f:
-                f.write(args.current_file)
+                f.write(file_content)
             
             # Also write to the AutoSnap directory
             autosnap_path_file = os.path.join('AutoSnap', 'current_md_path.txt')
-            print(f"Writing current file path to AutoSnap dir: {autosnap_path_file}")
+            print(f"Writing current file path and mode to AutoSnap dir: {autosnap_path_file}")
             os.makedirs(os.path.dirname(autosnap_path_file), exist_ok=True)
             with open(autosnap_path_file, 'w', encoding='utf-8') as f:
-                f.write(args.current_file)
+                f.write(file_content)
                 
-            print(f"Successfully wrote current file path to text files")
+            print(f"Successfully wrote current file path and mode ({scenario_type}) to text files")
         except Exception as e:
             print(f"ERROR: Failed to write current file path to text file: {e}")
     

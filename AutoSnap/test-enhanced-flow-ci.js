@@ -446,6 +446,21 @@ async function navigateToWorklist(page) {
 }
 
 /**
+ * Check if a file path is in the docs folder
+ * @param {string} filePath - Path to check
+ * @returns {boolean} True if the file is in the docs folder
+ */
+function isInDocsFolder(filePath) {
+  if (!filePath) return false;
+  
+  const normalizedPath = filePath.toLowerCase();
+  return normalizedPath.startsWith('docs/') || 
+         normalizedPath.startsWith('docs\\') || 
+         normalizedPath.includes('/docs/') || 
+         normalizedPath.includes('\\docs\\');
+}
+
+/**
  * Detect language from folder path
  * @param {string} folderPath - Path to the documentation folder
  * @returns {string} Language name or 'English' as default
@@ -453,16 +468,14 @@ async function navigateToWorklist(page) {
 function detectLanguageFromFolder(folderPath) {
   if (!folderPath) return 'English';
   
-  const normalizedPath = folderPath.toLowerCase();
-  
-  // Check if path is in the main docs folder (English)
-  if (normalizedPath.startsWith('docs/') || 
-      normalizedPath.startsWith('docs\\') || 
-      normalizedPath.includes('/docs/') || 
-      normalizedPath.includes('\\docs\\')) {
-    console.log(`🔍 Detected English documentation from docs folder: ${folderPath}`);
+  // IMPORTANT: First check if path is in the main docs folder (English)
+  // This check must come before any other language pattern checks
+  if (isInDocsFolder(folderPath)) {
+    console.log(`✅ DOCS FOLDER DETECTED: ${folderPath} - Setting language to English`);
     return 'English';
   }
+  
+  const normalizedPath = folderPath.toLowerCase();
   
   // Common patterns for language folders
   const languagePatterns = {
@@ -2407,23 +2420,17 @@ if (hasNoDocumentContent) {
                 console.log(`🎯 Single file mode: Using specified language from command line: ${languageCodeArg}`);
                 detectedLanguage = languageCodeArg;
             } else {
-                // Simple check: if path contains 'docs/', it's English
-                const normalizedPath = singleFilePath.toLowerCase();
-                if (normalizedPath.includes('docs/') || normalizedPath.includes('docs\\')) {
-                    console.log(`🔍 File is in docs folder, setting language to English: ${singleFilePath}`);
-                    detectedLanguage = 'English';
-                } else {
-                    detectedLanguage = detectLanguageFromFolder(singleFilePath);
-                }
+                // We'll use the detectLanguageFromFolder function which now has proper docs folder detection
+                console.log(`🔍 Detecting language for file: ${singleFilePath}`);
+                detectedLanguage = detectLanguageFromFolder(singleFilePath);
             }
             
             // Check if detected language is English (case-insensitive)
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
             // Check if this is ui_change or new_feature mode and file is not from docs folder
-            const normalizedPath = singleFilePath.toLowerCase();
-            // Simple check: if path contains 'docs/', it's in the docs folder
-            const isDocsFolder = normalizedPath.includes('docs/') || normalizedPath.includes('docs\\');
+            // We'll use a function to check if the file is in the docs folder
+            const isDocsFolder = isInDocsFolder(singleFilePath);
             
             console.log(`🔍 Checking if file is from docs folder: ${singleFilePath} - isDocsFolder: ${isDocsFolder}`);
             
@@ -2498,9 +2505,8 @@ if (hasNoDocumentContent) {
                 const nonDocsFiles = processedFileResults.filter(result => {
                     if (!result.filePath) return false;
                     
-                    const normalizedPath = result.filePath.toLowerCase();
-                    // Simple check: if path contains 'docs/', it's in the docs folder
-                    const isDocsFolder = normalizedPath.includes('docs/') || normalizedPath.includes('docs\\');
+                    // Use our helper function to check if the file is in the docs folder
+                    const isDocsFolder = isInDocsFolder(result.filePath);
                     
                     console.log(`🔍 Checking if file is from docs folder: ${result.filePath} - isDocsFolder: ${isDocsFolder}`);
                     
@@ -2638,7 +2644,7 @@ if (hasNoDocumentContent) {
                     throw new Error('Could not import AIUtilsEnhanced from any location');
                 }
             }
-            const aiUtils = new AIUtilsEnhanced(page);
+            const aiUtils = new AIUtilsEnhanced(page, { mode });
             
             // Set the current markdown file path for image reference
             // Priority order: processedFileResults -> processedFiles -> testDocPath -> default
