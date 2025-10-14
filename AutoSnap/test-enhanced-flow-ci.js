@@ -2644,10 +2644,10 @@ if (hasNoDocumentContent) {
                     throw new Error('Could not import AIUtilsEnhanced from any location');
                 }
             }
-            const aiUtils = new AIUtilsEnhanced(page, { mode });
+            const aiUtils = new AIUtilsEnhanced(page);
             
             // Set the current markdown file path for image reference
-            // Priority order: processedFileResults -> processedFiles -> testDocPath -> default
+            // Priority order: processedFileResults -> processedFiles -> default
             let currentFilePath = null;
             
             if (processedFileResults.length > 0) {
@@ -2664,26 +2664,9 @@ if (hasNoDocumentContent) {
                 console.log(`📄 Setting markdown path from processed files: ${currentFilePath}`);
             }
             
-            if (!currentFilePath) {
-                const testDocPath = 'docs/1-Getting-Started/addorg.md';
-                if (fs.existsSync(testDocPath)) {
-                    currentFilePath = testDocPath;
-                    console.log(`📄 Setting markdown path from test document: ${currentFilePath}`);
-                }
-            }
+            // No fallback test document - we're in production
             
-            if (!currentFilePath) {
-                // Use a specific markdown file as fallback, not a directory
-                currentFilePath = path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'default.md');
-                console.log(`📄 Setting default markdown file path: ${currentFilePath}`);
-                
-                // Ensure the directory exists for this fallback file
-                const fallbackDir = path.dirname(currentFilePath);
-                if (!fs.existsSync(fallbackDir)) {
-                    fs.mkdirSync(fallbackDir, { recursive: true });
-                    console.log(`📁 Created fallback directory: ${fallbackDir}`);
-                }
-            }
+
             
             // Set the initial file path
             console.log(`🎯 About to set current file path: ${currentFilePath}`);

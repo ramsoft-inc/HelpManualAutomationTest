@@ -117,7 +117,7 @@ options:
 This feature allows you to download the current image or study. It
 offers two options:
 
-![mo5](img/mo5.png)
+![mo5](./img/mo5.png)
 
 - **Download Image**: Downloads the currently viewed image.
 
@@ -129,7 +129,7 @@ Allows you to change the settings of the Image Viewer for several
 categories as well as view the About Image Viewer software details (as
 seen below).
 
-![mo6-1](img/mo6-1.png)
+![mo6-1](./img/mo6-1.png)
 
 ### 1. Hanging Protocols
 
@@ -176,18 +176,17 @@ seen below).
 - **Purpose:** Controls the visibility of the viewport menu.
 - **Functionality:** Users can toggle this setting to automatically hide or show the viewport menu for a cleaner workspace. When enabled, the menu remains hidden until the user actively interacts with it.
 
-
 ![toggle-viewport-menu](img/toggle-viewport-menu.png)
 
 **Popout in Window**
 
 Allows you to open the current image in a separate window.
 
-![mo7](img/mo7.png)
+![mo7](./img/mo7.png)
 
 **Fullscreen Mode (Toggle Button)**
 
 Allows you to view the image in full screen mode. Clicking the button
 again will exit full screen mode.
 
-![mo8](img/mo8.png)
+![mo8](./img/mo8.png)
