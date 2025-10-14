@@ -76,11 +76,17 @@ export class AIUtilsEnhanced {
   private isGitHubActions: boolean = false; // Track if running in GitHub Actions
   private repositoryRoot: string; // Track repository root path
 
-  constructor(page: Page, referenceImagesDir: string = "./reference_images") {
+  constructor(page: Page, options: { referenceImagesDir?: string; mode?: string } = {}) {
     this.page = page;
-    this.referenceImagesDir = referenceImagesDir;
+    this.referenceImagesDir = options.referenceImagesDir || "./reference_images";
     this.thinkingHistory = [];
     this.generatedImages = [];
+    
+    // Set the mode if provided
+    if (options.mode) {
+      this.currentMode = options.mode;
+      console.log(`🔧 AIUtilsEnhanced: Setting mode to ${this.currentMode}`);
+    }
     
     // Detect GitHub Actions environment
     this.isGitHubActions = !!(process.env.GITHUB_ACTIONS || process.env.CI);
@@ -782,6 +788,12 @@ export class AIUtilsEnhanced {
   private replacePlaceholderWithImage(content: string, imageName: string): { updated: boolean; content: string; count: number } {
     let updatedContent = content;
     let replacementCount = 0;
+    
+    // Skip placeholder replacement for ui_change mode
+    if (this.currentMode === 'ui_change') {
+      console.log(`ℹ️ Skipping placeholder replacement in ui_change mode for image: ${imageName}`);
+      return { updated: false, content, count: 0 };
+    }
     
     try {
       // Get the base name without extension for comparison

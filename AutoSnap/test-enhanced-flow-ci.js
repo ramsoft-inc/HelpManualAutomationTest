@@ -2644,7 +2644,7 @@ if (hasNoDocumentContent) {
                     throw new Error('Could not import AIUtilsEnhanced from any location');
                 }
             }
-            const aiUtils = new AIUtilsEnhanced(page);
+            const aiUtils = new AIUtilsEnhanced(page, { mode });
             
             // Set the current markdown file path for image reference
             // Priority order: processedFileResults -> processedFiles -> testDocPath -> default
