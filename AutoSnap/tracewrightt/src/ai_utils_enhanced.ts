@@ -76,17 +76,11 @@ export class AIUtilsEnhanced {
   private isGitHubActions: boolean = false; // Track if running in GitHub Actions
   private repositoryRoot: string; // Track repository root path
 
-  constructor(page: Page, options: { referenceImagesDir?: string; mode?: string } = {}) {
+  constructor(page: Page, referenceImagesDir: string = "./reference_images") {
     this.page = page;
-    this.referenceImagesDir = options.referenceImagesDir || "./reference_images";
+    this.referenceImagesDir = referenceImagesDir;
     this.thinkingHistory = [];
     this.generatedImages = [];
-    
-    // Set the mode if provided
-    if (options.mode) {
-      this.currentMode = options.mode;
-      console.log(`🔧 AIUtilsEnhanced: Setting mode to ${this.currentMode}`);
-    }
     
     // Detect GitHub Actions environment
     this.isGitHubActions = !!(process.env.GITHUB_ACTIONS || process.env.CI);
@@ -134,8 +128,24 @@ export class AIUtilsEnhanced {
           if (fileContent && fileContent.length > 0) {
             console.log(`✅ Path file contains: ${fileContent}`);
             
-            // Use the path from the file as the source of truth
-            const pathFromFile = this.normalizePath(fileContent);
+            // Check if the file content contains mode information (path|mode format)
+            let pathFromFile: string;
+            let mode: string = 'default';
+            
+            if (fileContent.includes('|')) {
+              const [filePath, modeInfo] = fileContent.split('|');
+              pathFromFile = this.normalizePath(filePath);
+              mode = modeInfo.trim();
+              console.log(`📝 Detected mode information: ${mode}`);
+              // Store mode as an environment variable
+              process.env.CURRENT_MD_MODE = mode;
+              // Store mode as a class property for use in other methods
+              this.currentMode = mode;
+            } else {
+              // Legacy format - just the path
+              pathFromFile = this.normalizePath(fileContent);
+            }
+            
             this.currentMdPath = pathFromFile;
             
             console.log(`📝 Using path from file: ${this.currentMdPath}`);
@@ -678,15 +688,20 @@ export class AIUtilsEnhanced {
       let updatedContent = mdContent;
       let updatesCount = 0;
       
-      // First, check for placeholders and replace them if found
-      console.log(`🔄 Checking for placeholders to replace with image: ${imageName}`);
-      const placeholderUpdated = this.replacePlaceholderWithImage(updatedContent, imageName);
-      if (placeholderUpdated.updated) {
-        console.log(`✅ Successfully replaced ${placeholderUpdated.count} placeholder(s) with image reference`);
-        updatedContent = placeholderUpdated.content;
-        updatesCount += placeholderUpdated.count;
+      // First, check for placeholders and replace them if found - but only in new_feature mode
+      if (this.currentMode === 'new_feature') {
+        console.log(`🔍 Mode is new_feature - looking for placeholders to replace`);
+        console.log(`🔄 Checking for placeholders to replace with image: ${imageName}`);
+        const placeholderUpdated = this.replacePlaceholderWithImage(updatedContent, imageName);
+        if (placeholderUpdated.updated) {
+          console.log(`✅ Successfully replaced ${placeholderUpdated.count} placeholder(s) with image reference`);
+          updatedContent = placeholderUpdated.content;
+          updatesCount += placeholderUpdated.count;
+        } else {
+          console.log(`ℹ️ No placeholders were replaced for image: ${imageName}`);
+        }
       } else {
-        console.log(`ℹ️ No placeholders were replaced for image: ${imageName}`);
+        console.log(`🔍 Mode is ${this.currentMode || 'default'} - skipping placeholder replacement`);
       }
       
       // Then, update existing image paths in markdown content for this specific image
@@ -788,12 +803,6 @@ export class AIUtilsEnhanced {
   private replacePlaceholderWithImage(content: string, imageName: string): { updated: boolean; content: string; count: number } {
     let updatedContent = content;
     let replacementCount = 0;
-    
-    // Skip placeholder replacement for ui_change mode
-    if (this.currentMode === 'ui_change') {
-      console.log(`ℹ️ Skipping placeholder replacement in ui_change mode for image: ${imageName}`);
-      return { updated: false, content, count: 0 };
-    }
     
     try {
       // Get the base name without extension for comparison
