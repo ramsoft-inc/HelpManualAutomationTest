@@ -469,8 +469,7 @@ function detectLanguageFromFolder(folderPath) {
   const languagePatterns = {
     'Spanish': ['spanish', 'es', 'docs-es', 'docs-spanish', '/es/', '\\es\\'],
     'French': ['french', 'fr', 'docs-fr', 'docs-french', '/fr/', '\\fr\\'],
-    'Hindi': ['hindi', 'hi', 'docs-hi', 'docs-hindi', '/hi/', '\\hi\\'],
-    'Portuguese': ['portuguese', 'pt', 'pt-br', 'docs-pt', 'docs-portuguese', '/pt/', '\\pt\\', '/pt-br/', '\\pt-br\\']
+    'Hindi': ['hindi', 'hi', 'docs-hi', 'docs-hindi', '/hi/', '\\hi\\']
   };
   
   for (const [language, patterns] of Object.entries(languagePatterns)) {

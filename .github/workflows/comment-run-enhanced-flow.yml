@@ -247,9 +247,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Simple approach: add all changes including new and modified files
-          echo "Adding all changes..."
-          git add -A
+          # Only add PNG and MD files
+          echo "Adding only PNG and MD files..."
+          git add "**/*.png" "**/*.md" "**/*.mdx"
           
           # Show what will be committed
           echo "Files to be committed:"
