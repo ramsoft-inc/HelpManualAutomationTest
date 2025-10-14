@@ -1292,8 +1292,69 @@ async function promptForMissingInfo() {
             try {
                 const folderPrompt = await promptUser('Enter path to translation folder: ');
                 if (folderPrompt && folderPrompt.trim()) {
-                    folderPath = folderPrompt.trim();
-                    console.log(`✅ Using folder: ${folderPath}`);
+                    const dirPath = folderPrompt.trim();
+                    
+                    // Validate folder exists
+                    try {
+                        const fs = require('node:fs');
+                        const path = require('node:path');
+                        
+                        if (!fs.existsSync(dirPath)) {
+                            console.error(`❌ Folder does not exist: ${dirPath}`);
+                            process.exit(1);
+                        }
+                        
+                        // Check if it's a directory
+                        const stats = fs.statSync(dirPath);
+                        if (!stats.isDirectory()) {
+                            console.error(`❌ Path is not a directory: ${dirPath}`);
+                            process.exit(1);
+                        }
+                        
+                        // Check if the folder contains markdown files
+                        const findMarkdownFiles = (dir) => {
+                            const files = [];
+                            const items = fs.readdirSync(dir, { withFileTypes: true });
+                            
+                            for (const item of items) {
+                                const fullPath = path.join(dir, item.name);
+                                if (item.isDirectory()) {
+                                    files.push(...findMarkdownFiles(fullPath));
+                                } else if (item.isFile() && (item.name.endsWith('.md') || item.name.endsWith('.mdx'))) {
+                                    files.push(fullPath);
+                                }
+                            }
+                            return files;
+                        };
+                        
+                        const markdownFiles = findMarkdownFiles(dirPath);
+                        
+                        if (markdownFiles.length === 0) {
+                            console.warn(`⚠️ Warning: The folder ${dirPath} does not contain any markdown files.`);
+                            console.warn('Translation mode is intended for folders containing translated markdown files.');
+                            const continueAnyway = await promptUser('Continue anyway? (y/n): ');
+                            if (continueAnyway.toLowerCase() !== 'y') {
+                                console.log('❌ Operation cancelled by user.');
+                                process.exit(0);
+                            }
+                        } else {
+                            console.log(`✅ Found ${markdownFiles.length} markdown files in folder: ${dirPath}`);
+                            // Show first few files as examples
+                            const exampleCount = Math.min(3, markdownFiles.length);
+                            for (let i = 0; i < exampleCount; i++) {
+                                console.log(`   - ${path.relative(process.cwd(), markdownFiles[i])}`);
+                            }
+                            if (markdownFiles.length > exampleCount) {
+                                console.log(`   - ... and ${markdownFiles.length - exampleCount} more`);
+                            }
+                        }
+                        
+                        folderPath = dirPath;
+                        console.log(`✅ Using folder: ${folderPath}`);
+                    } catch (error) {
+                        console.error(`❌ Error validating folder: ${error.message}`);
+                        process.exit(1);
+                    }
                 } else {
                     console.error('❌ No folder path provided. Exiting.');
                     process.exit(1);
@@ -1312,8 +1373,47 @@ async function promptForMissingInfo() {
             try {
                 const filePrompt = await promptUser('Enter path to markdown file with existing images: ');
                 if (filePrompt && filePrompt.trim()) {
-                    singleFilePath = filePrompt.trim();
-                    console.log(`✅ Using file: ${singleFilePath}`);
+                    const filePath = filePrompt.trim();
+                    
+                    // Validate file exists
+                    try {
+                        const fs = require('node:fs');
+                        const path = require('node:path');
+                        
+                        if (!fs.existsSync(filePath)) {
+                            console.error(`❌ File does not exist: ${filePath}`);
+                            process.exit(1);
+                        }
+                        
+                        // Check if it's a markdown file
+                        if (!filePath.endsWith('.md') && !filePath.endsWith('.mdx')) {
+                            console.error(`❌ File must be a markdown file (.md or .mdx): ${filePath}`);
+                            process.exit(1);
+                        }
+                        
+                        // Check if the file contains image references
+                        const content = fs.readFileSync(filePath, 'utf8');
+                        const imagePattern = /!\[.*?\]\(.*?\.(png|jpg|jpeg|gif|svg|webp)\)/gi;
+                        const hasImages = imagePattern.test(content);
+                        
+                        if (!hasImages) {
+                            console.warn(`⚠️ Warning: The file ${filePath} does not appear to contain any image references.`);
+                            console.warn('UI change mode is intended for files with existing images that need to be updated.');
+                            const continueAnyway = await promptUser('Continue anyway? (y/n): ');
+                            if (continueAnyway.toLowerCase() !== 'y') {
+                                console.log('❌ Operation cancelled by user.');
+                                process.exit(0);
+                            }
+                        } else {
+                            console.log(`✅ Found image references in file: ${filePath}`);
+                        }
+                        
+                        singleFilePath = filePath;
+                        console.log(`✅ Using file: ${singleFilePath}`);
+                    } catch (error) {
+                        console.error(`❌ Error validating file: ${error.message}`);
+                        process.exit(1);
+                    }
                 } else {
                     console.error('❌ No file path provided. Exiting.');
                     process.exit(1);
@@ -1332,8 +1432,48 @@ async function promptForMissingInfo() {
             try {
                 const filePrompt = await promptUser('Enter path to markdown file with placeholders: ');
                 if (filePrompt && filePrompt.trim()) {
-                    singleFilePath = filePrompt.trim();
-                    console.log(`✅ Using file: ${singleFilePath}`);
+                    const filePath = filePrompt.trim();
+                    
+                    // Validate file exists
+                    try {
+                        const fs = require('node:fs');
+                        const path = require('node:path');
+                        
+                        if (!fs.existsSync(filePath)) {
+                            console.error(`❌ File does not exist: ${filePath}`);
+                            process.exit(1);
+                        }
+                        
+                        // Check if it's a markdown file
+                        if (!filePath.endsWith('.md') && !filePath.endsWith('.mdx')) {
+                            console.error(`❌ File must be a markdown file (.md or .mdx): ${filePath}`);
+                            process.exit(1);
+                        }
+                        
+                        // Check if the file contains placeholder comments
+                        const content = fs.readFileSync(filePath, 'utf8');
+                        const placeholderPattern = /<!--\s*placeholder\s+for\s+.*?-->/gi;
+                        const hasPlaceholders = placeholderPattern.test(content);
+                        
+                        if (!hasPlaceholders) {
+                            console.warn(`⚠️ Warning: The file ${filePath} does not appear to contain any placeholder comments.`);
+                            console.warn('New feature mode is intended for files with placeholder comments for screenshots.');
+                            console.warn('Example placeholder: <!-- placeholder for screenshot: image-name.png -->');
+                            const continueAnyway = await promptUser('Continue anyway? (y/n): ');
+                            if (continueAnyway.toLowerCase() !== 'y') {
+                                console.log('❌ Operation cancelled by user.');
+                                process.exit(0);
+                            }
+                        } else {
+                            console.log(`✅ Found placeholder comments in file: ${filePath}`);
+                        }
+                        
+                        singleFilePath = filePath;
+                        console.log(`✅ Using file: ${singleFilePath}`);
+                    } catch (error) {
+                        console.error(`❌ Error validating file: ${error.message}`);
+                        process.exit(1);
+                    }
                 } else {
                     console.error('❌ No file path provided. Exiting.');
                     process.exit(1);
