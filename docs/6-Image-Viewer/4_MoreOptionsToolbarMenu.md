@@ -177,7 +177,7 @@ seen below).
 - **Functionality:** Users can toggle this setting to automatically hide or show the viewport menu for a cleaner workspace. When enabled, the menu remains hidden until the user actively interacts with it.
 
 
-<!-- placeholder for screenshot: toggle-viewport-menu.png -->
+![toggle-viewport-menu](img/toggle-viewport-menu.png)
 
 **Popout in Window**
 
