@@ -1440,7 +1440,6 @@ async function executeWorkflow() {
         // Create a changed files list for the single file
         const fs = require('node:fs');
         const path = require('node:path');
-<<<<<<< HEAD
         
         // Validate file exists and is a markdown file
         if (!fs.existsSync(singleFilePath)) {
@@ -1472,8 +1471,6 @@ async function executeWorkflow() {
         console.log(`✅ Processed single file in ${mode.toUpperCase()} mode`);
         
         // Create a changed files list for the automation
-=======
->>>>>>> a0ccac7c51abece84dffd2f4de34030c225ee637
         const singleFileChangedList = path.join(process.cwd(), 'changed-files-single.txt');
         const normalizedPath = singleFilePath.replace(/\\/g, '/');
         fs.writeFileSync(singleFileChangedList, normalizedPath);
