@@ -22,7 +22,7 @@ downloading studies, managing view settings, linking series, and more,
 all aimed at optimizing the viewing and handling of medical imaging
 data.
 
-![mo1](./img/mo1.png)
+![mo1](img/mo1.png)
 
 
 ## Features of the More Options Toolbar Menu
@@ -48,7 +48,7 @@ If there are no documents or images in the study, the size will be shown as 0 MB
 Allows you to turn on/off specific aspects of the image including the
 below features:
 
-![mo2](./img/mo2.png)
+![mo2](img/mo2.png)
 
 - **Overlay:** Allows you to overlay different image layers.
 
@@ -176,7 +176,7 @@ seen below).
 - **Purpose:** Controls the visibility of the viewport menu.
 - **Functionality:** Users can toggle this setting to automatically hide or show the viewport menu for a cleaner workspace. When enabled, the menu remains hidden until the user actively interacts with it.
 
-![More%20Settings.png](./img/More%20Settings.png)
+![img-as-1](img/img-as-1.png)
 
 **Popout in Window**
 

@@ -8,12 +8,15 @@ load_dotenv()
 # Get API keys from environment variables
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+# Special API key for ReportSearch resource
+REPORTSEARCH_API_KEY = os.getenv("REPORTSEARCH_API_KEY")
 
 # Validate that required environment variables are set
 if not AZURE_OPENAI_API_KEY:
     raise ValueError("AZURE_OPENAI_API_KEY environment variable is not set. Please check your .env file.")
 if not AZURE_OPENAI_ENDPOINT:
     raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is not set. Please check your .env file.")
+# ReportSearch API key is optional - will be checked when used
 
 import logging
 from langchain_openai import AzureChatOpenAI
@@ -461,7 +464,7 @@ def get_prompt_for_new_feature(doc_content):
 Goal: Generate a single, comprehensive set of step-by-step browser actions to take screenshots ONLY for placeholder comments found in the document.
 
 Your ONLY trigger is the exact HTML comment:
-<!-- placeholder for a screenshot -->
+<!-- placeholder for a screenshot : image-name.png -->
 If no such placeholders exist in the provided content, generate nothing (NO INSTRUCTIONS ARE NEEDED).
 
 Analyze the entire document to identify ALL placeholder comments and create ONE sequential instruction set that captures every single screenshot placeholder in the most efficient navigation order.
@@ -469,7 +472,7 @@ Analyze the entire document to identify ALL placeholder comments and create ONE 
 Output format (strict):
 1) THINKING — A brief planning block that:
    - Lists every single placeholder comment found in the document with its context
-   - For each placeholder (and filename if provided), a brief description of the expected UI state and the key elements that must be visible to match the placeholder context
+   - For each placeholder (and filename), a brief description of the expected UI state and the key elements that must be visible to match the placeholder context
    - Plans the most efficient navigation route to capture all placeholder screenshots
    - Note the expected UI state and purpose for each screenshot based on surrounding documentation
 2) INSTRUCTIONS — One numbered sequence starting at 1, covering all placeholders in the document. Each step is exactly one browser action.
@@ -483,12 +486,11 @@ Rules for INSTRUCTIONS:
 - Use imperative voice for each step
 - Each step = exactly one action ("click", "type", "open", "hover", "wait until visible", "take a screenshot")
 - For every interacted element, include its English name plus brief visual/positional cues (color, icon, "top-right", etc.)
-- When capturing, if a filename/path is specified next to the placeholder, save using that exact name. Name the screenshot based on the context and purpose of the placeholder.
+- When capturing, filename/path is specified next to the placeholder, save using that exact name.
 - For screenshot steps, analyze the surrounding documentation context to determine:
   * WHAT specific UI elements should be visible
   * WHAT the screenshot should document (based on nearby text)
   * HOW the UI should be configured
-  * WHAT filename to use (derived from the context and purpose)
 - Preserve the order of placeholders in the document. Stop after the last placeholder.
 
 Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose based on context]. Save as [descriptive-filename.png]"
@@ -496,7 +498,7 @@ Screenshot step format: "take a screenshot of [specific UI area with detailed lo
 Example format:
 THINKING:
 Placeholder comments found:
-- <!-- placeholder for a screenshot --> after text about dashboard overview - needs main interface screenshot
+ <!-- placeholder for a screenshot : image-name.png --> after text about dashboard overview - needs main interface screenshot
 
 Navigation plan: Homepage → Dashboard (capture dashboard overview)
 
@@ -508,10 +510,10 @@ INSTRUCTIONS:
 
 Critical requirements:
 - Include every single placeholder comment found in the document - do not miss any
-- Ignore existing image paths (![name](./path/to/image)) - only focus on <!-- placeholder for a screenshot --> comments
+- Ignore existing image paths (![name](./path/to/image)) - only focus on <!-- placeholder for a screenshot : image-name.png --> comments
 - Ensure each screenshot instruction is extremely detailed and specific
 - Every screenshot step must include "screenshot" as the action followed by comprehensive description and descriptive filename
-- Generate appropriate filenames based on the context and purpose of each screenshot
+- name of the image is provided in the placeholder comment
 - You start at homepage (Worklist) - no login steps needed
 - Ignore pop-out window commands
 
@@ -610,8 +612,8 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     
     # Handle empty or None changed_files
     if not changed_files:
-        print("WARNING: No files provided, generating fallback instructions")
-        return get_fallback_instructions_for_scenario(scenario_type)
+        print("ERROR: No files provided. Cannot generate instructions.")
+        raise ValueError("No files provided for instruction generation")
     
     content = ""
     english_content = ""
@@ -667,7 +669,23 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
             print(f"    Could not read {file_path}: {e}")
 
     # Initialize LLM here as it's needed for document instruction generation
-    llm = AzureChatOpenAI(azure_deployment="gpt-4.1", openai_api_version="2024-02-15-preview")
+    # Check if ReportSearch API key is available
+    if REPORTSEARCH_API_KEY:
+        print("Using ReportSearch API endpoint for instruction generation")
+        # Use specific Azure OpenAI endpoint for ReportSearch resource with separate API key
+        llm = AzureChatOpenAI(
+            azure_deployment="gpt-4.1", 
+            openai_api_version="2025-01-01-preview",
+            azure_endpoint="https://reportsearch-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1/chat/completions?api-version=2025-01-01-preview",
+            api_key=REPORTSEARCH_API_KEY
+        )
+    else:
+        print("ReportSearch API key not found, using default Azure OpenAI endpoint")
+        # Fall back to default Azure OpenAI endpoint
+        llm = AzureChatOpenAI(
+            azure_deployment="gpt-4.1", 
+            openai_api_version="2024-02-15-preview"
+        )
 
     # Generate instructions from document content based on scenario
     document_instructions = f"Default: No document content was processed for scenario '{scenario_type}' or an error occurred during instruction generation."
@@ -930,17 +948,18 @@ def main():
         if args.changed_files:
             changed_files = process_changed_files_input(args.changed_files, scenario_type)
         else:
-            print("WARNING: No changed files provided. Will generate default instructions.")
+            print("ERROR: No changed files provided.")
+            raise ValueError("No changed files provided for instruction generation")
         
         # Validate files exist and are accessible
         validated_files = validate_files(changed_files)
         
         if not validated_files:
-            print("WARNING: No valid markdown files found to process!")
+            print("ERROR: No valid markdown files found to process!")
             print(f"   Provided: --changed-files={args.changed_files}")
             if args.changed_files and os.path.exists(args.changed_files):
                 print(f"   File exists but may contain no valid .md/.mdx files")
-            # Continue with empty file list - will generate fallback instructions
+            raise ValueError("No valid markdown files found for instruction generation")
         
         print(f"Generating browser instructions for scenario '{scenario_type}' with {len(validated_files)} files")
         instructions = generate_browser_instructions(scenario_type, validated_files)
@@ -954,14 +973,11 @@ def main():
         
     except Exception as e:
         import logging
+        import sys
         logging.error(f"Error in main execution: {e}")
-        print(f"Failed to generate instructions: {e}")
-        # Write fallback instructions to prevent JavaScript from failing
-        fallback_instructions = get_fallback_instructions_for_scenario(scenario_type)
-        output_file = "generated_instructions.txt"
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(fallback_instructions)
-        print(f"Fallback instructions written to {output_file}")
+        print(f"ERROR: Failed to generate instructions: {e}")
+        print("Exiting with error code 1")
+        sys.exit(1)
 
 
 def process_changed_files_input(changed_files_input, scenario_type):
@@ -1062,42 +1078,7 @@ def validate_files(file_list):
     return validated_files
 
 
-def get_fallback_instructions_for_scenario(scenario_type):
-    """Get fallback instructions based on scenario type."""
-    fallback_instructions = {
-        "ui_change": """# UI Change Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-- take screenshots of any visible UI elements that need updating
-- if you see dropdowns or menus, take screenshots without clicking them
-Done""",
-        
-        "new_feature": """# New Feature Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- navigate to the new feature area
-- take screenshots of the new feature elements
-- look for placeholder areas in the documentation and capture those screenshots
-Done""",
-        
-        "default": """# Default Translation Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-Done"""
-    }
-    
-    return fallback_instructions.get(scenario_type, fallback_instructions["default"])
+# Fallback instructions function removed
 
 if __name__ == "__main__":
     main() 

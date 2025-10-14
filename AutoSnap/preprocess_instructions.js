@@ -58,11 +58,10 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
                 console.error(`❌ Python script exited with code ${code}`);
                 console.error(`Error output: ${errorOutput}`);
                 
-                // If it was killed by timeout, use fallback
+                // If it was killed by timeout or failed, don't use fallback
                 if (code === null || code === 1) {
-                    console.warn('⚠️  Python script may have timed out, using fallback instructions');
-                    const fallbackInstructions = getFallbackInstructions(scenarioType);
-                    resolve(fallbackInstructions.trim());
+                    console.error('❌ Python script failed or timed out');
+                    reject(new Error(`Python script failed with code ${code}`));
                     return;
                 }
                 
@@ -78,59 +77,20 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
                 resolve(instructions.trim());
             } catch (readError) {
                 console.error('❌ Failed to read generated instructions:', readError);
-                // Mode-specific fallback instructions if file reading fails
-                const fallbackInstructions = getFallbackInstructions(scenarioType);
-                resolve(fallbackInstructions.trim());
+                reject(new Error('Failed to read generated instructions'));
             }
         });
         
         pythonProcess.on('error', (error) => {
             clearTimeout(timeout); // Clear the timeout on error
             console.error('❌ Failed to start Python process:', error);
-            // Mode-specific fallback instructions if Python fails to start
-            const fallbackInstructions = getFallbackInstructions(scenarioType);
-            resolve(fallbackInstructions.trim());
+            reject(new Error('Failed to start Python process'));
         });
     });
 }
 
-/**
- * Get mode-specific fallback instructions
- */
-function getFallbackInstructions(scenarioType) {
-    const fallbackInstructions = {
-        "ui_change": `
-            - find the Pin place holder and enter the pin 145948
-            - find the continue button and click on it
-            - find any record in the worklist with a patient name and click on it
-            - wait for any loading overlays or spinners to disappear completely
-            - find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-            - take screenshots of any visible UI elements that need updating
-            - if you see dropdowns or menus, take screenshots without clicking them
-            Done
-        `,
-        "new_feature": `
-            - find the Pin place holder and enter the pin 145948
-            - find the continue button and click on it
-            - find any record in the worklist with a patient name and click on it
-            - wait for any loading overlays or spinners to disappear completely
-            - navigate to the new feature area
-            - take screenshots of the new feature elements
-            - look for placeholder areas in the documentation and capture those screenshots
-            Done
-        `,
-        "default": `
-            - find the Pin place holder and enter the pin 145948
-            - find the continue button and click on it
-            - find any record in the worklist with a patient name and click on it
-            - wait for any loading overlays or spinners to disappear completely
-            - find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-            Done
-        `
-    };
-    
-    return fallbackInstructions[scenarioType] || fallbackInstructions["default"];
-}
+// Fallback instructions function removed
+
 
 /**
  * Check if Python dependencies are installed

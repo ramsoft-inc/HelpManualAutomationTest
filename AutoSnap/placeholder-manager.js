@@ -63,62 +63,107 @@ async function getExistingImages(imgDir) {
 }
 
 /**
- * Assign sequential names to placeholders
+ * Assign structured names to placeholders
  * @param {string} content - MD file content
  * @param {Array<string>} existingImages - List of existing image files
  * @returns {Object} - Updated content and placeholder count
  */
 async function assignPlaceholderNames(content, existingImages) {
-    // Find all placeholder patterns
-    const placeholderRegex = /<!--\s*placeholder\s+for\s+a\s+screenshot\s*-->/gi;
-    const placeholders = [...content.matchAll(placeholderRegex)];
+    // Find all placeholder patterns - both unnamed and named
+    const unnamedPlaceholderRegex = /<!--\s*placeholder\s+for\s+(?:a\s+)?screenshot\s*-->/gi;
+    const namedPlaceholderRegex = /<!--\s*placeholder\s+for\s+screenshot:\s*([^-\s]+)\s*-->/gi;
     
-    if (placeholders.length === 0) {
-        return { updatedContent: content, placeholderCount: 0 };
+    // Check for already named placeholders
+    const namedPlaceholders = [...content.matchAll(namedPlaceholderRegex)];
+    
+    // Find unnamed placeholders
+    const unnamedPlaceholders = [...content.matchAll(unnamedPlaceholderRegex)];
+    
+    if (unnamedPlaceholders.length === 0) {
+        // If no unnamed placeholders, just count the named ones
+        return { 
+            updatedContent: content, 
+            placeholderCount: namedPlaceholders.length 
+        };
     }
     
-    console.log(`🔍 Found ${placeholders.length} placeholders`);
+    console.log(`🔍 Found ${unnamedPlaceholders.length} unnamed placeholders and ${namedPlaceholders.length} named placeholders`);
     
+    // Get context from the surrounding content to generate meaningful names
     let updatedContent = content;
-    let imageCounter = 1;
     
     // Process each placeholder
-    for (let i = 0; i < placeholders.length; i++) {
-        const placeholder = placeholders[i];
+    for (let i = 0; i < unnamedPlaceholders.length; i++) {
+        const placeholder = unnamedPlaceholders[i];
         const originalText = placeholder[0];
         
-        // Find next available image number
-        while (existingImages.includes(`image${imageCounter}.png`) || 
-               content.includes(`image${imageCounter}.png`)) {
-            imageCounter++;
+        // Get context from surrounding content (100 chars before)
+        const contextStart = Math.max(0, placeholder.index - 100);
+        const context = content.substring(contextStart, placeholder.index);
+        
+        // Extract heading or section name for naming
+        let imageName = '';
+        
+        // Try to find the nearest heading
+        const headingMatch = context.match(/###\s+([^#\n]+)$/);
+        if (headingMatch) {
+            // Convert heading to kebab case
+            imageName = headingMatch[1].trim()
+                .toLowerCase()
+                .replace(/[^\w\s-]/g, '')
+                .replace(/\s+/g, '-');
         }
         
-        const imageName = `image${imageCounter}.png`;
+        // If no heading found, use a structured name with counter (img-as-#)
+        if (!imageName) {
+            // Find a unique name with counter
+            let counter = 1;
+            while (existingImages?.includes(`img-as-${counter}.png`) || 
+                  content.includes(`img-as-${counter}.png`)) {
+                counter++;
+            }
+            imageName = `img-as-${counter}`;
+        }
+        
+        // Add .png extension if not present
+        if (!imageName.endsWith('.png')) {
+            imageName = `${imageName}.png`;
+        }
+        
         const newPlaceholder = `<!-- placeholder for screenshot: ${imageName} -->`;
         
-        console.log(`📝 Placeholder ${i + 1}: ${imageName}`);
+        console.log(`📝 Placeholder ${i + 1}: ${originalText} → ${newPlaceholder}`);
         
         // Replace only the first occurrence to maintain order
         updatedContent = updatedContent.replace(originalText, newPlaceholder);
-        imageCounter++;
     }
     
-    return { updatedContent, placeholderCount: placeholders.length };
+    return { 
+        updatedContent, 
+        placeholderCount: unnamedPlaceholders.length + namedPlaceholders.length 
+    };
 }
 
 /**
  * Replace placeholder with actual image reference
  * @param {string} mdFilePath - Path to the MD file
  * @param {string} imageName - Name of the generated image
+ * @param {string} [altText] - Optional alt text for the image
  */
-async function replacePlaceholderWithImage(mdFilePath, imageName) {
+async function replacePlaceholderWithImage(mdFilePath, imageName, altText) {
     try {
         console.log(`🔄 Replacing placeholder with image: ${imageName}`);
         
         const content = await fs.readFile(mdFilePath, 'utf8');
-        const placeholderPattern = new RegExp(`<!--\\s*placeholder\\s+for\\s+screenshot:\\s*${imageName.replace('.', '\\.')}\\s*-->`, 'gi');
         
-        const imageReference = `![${imageName.replace('.png', '')}](./img/${imageName})`;
+        // Escape special characters in the image name for regex
+        const escapedImageName = imageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const placeholderPattern = new RegExp(`<!--\\s*placeholder\\s+for\\s+screenshot:\\s*${escapedImageName}\\s*-->`, 'gi');
+        
+        // Use the image name without extension as alt text, or use provided alt text
+        const imageAltText = altText || imageName.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+        const imageReference = `![${imageAltText}](./img/${imageName})`;
+        
         const updatedContent = content.replace(placeholderPattern, imageReference);
         
         if (updatedContent !== content) {
@@ -126,8 +171,30 @@ async function replacePlaceholderWithImage(mdFilePath, imageName) {
             console.log(`✅ Replaced placeholder with image reference: ${imageName}`);
             return true;
         } else {
-            console.warn(`⚠️  Placeholder not found for image: ${imageName}`);
-            return false;
+            // Try a more relaxed pattern if exact match fails
+            console.log(`⚠️  Exact placeholder not found, trying relaxed pattern...`);
+            
+            // Get all placeholders
+            const placeholders = extractImageNamesFromPlaceholders(content);
+            
+            // Find a placeholder with similar name (ignoring extension)
+            const baseImageName = imageName.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+            const similarPlaceholder = placeholders.find(p => 
+                p.imageName.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '') === baseImageName
+            );
+            
+            if (similarPlaceholder) {
+                // Replace this specific placeholder
+                const exactPattern = new RegExp(similarPlaceholder.fullMatch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                const newContent = content.replace(exactPattern, imageReference);
+                
+                await fs.writeFile(mdFilePath, newContent, 'utf8');
+                console.log(`✅ Replaced similar placeholder with image reference: ${imageName}`);
+                return true;
+            } else {
+                console.warn(`⚠️  No matching placeholder found for image: ${imageName}`);
+                return false;
+            }
         }
         
     } catch (error) {
@@ -164,12 +231,20 @@ async function processDirectory(dirPath) {
 /**
  * Extract image names from placeholders in content
  * @param {string} content - MD file content
- * @returns {Array<string>} - List of image names from placeholders
+ * @returns {Array<Object>} - List of objects with imageName and position
  */
 function extractImageNamesFromPlaceholders(content) {
-    const placeholderRegex = /<!--\s*placeholder\s+for\s+screenshot:\s*([^-\s]+)\s*-->/gi;
+    // Updated regex to capture image names that may contain hyphens
+    const placeholderRegex = /<!--\s*placeholder\s+for\s+screenshot:\s*([^>]+?)\s*-->/gi;
     const matches = [...content.matchAll(placeholderRegex)];
-    return matches.map(match => match[1].trim());
+    
+    return matches.map(match => {
+        return {
+            imageName: match[1].trim(),
+            position: match.index,
+            fullMatch: match[0]
+        };
+    });
 }
 
 /**

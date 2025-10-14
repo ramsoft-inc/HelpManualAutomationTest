@@ -113,11 +113,13 @@ jobs:
             core.setOutput('args', args);
 
       - name: Run enhanced flow
+        id: run_flow
         shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          REPORTSEARCH_API_KEY: ${{ secrets.REPORTSEARCH_API_KEY }}
           LLM_PROVIDER: gemini
           DISABLE_IMG_AS: "true"
         run: |
@@ -128,6 +130,39 @@ jobs:
           else
             echo "No args provided in comment. Running default: node AutoSnap/test-enhanced-flow-ci.js"
             node AutoSnap/test-enhanced-flow-ci.js 2>&1 | tee enhanced-flow-ci-run.log
+          fi
+          
+          # Check for special comment markers in the log (language validation failure or API overload)
+          if grep -q "--- GITHUB_COMMENT_START ---" enhanced-flow-ci-run.log; then
+            echo "Found special comment markers"
+            # Extract the comment between the markers
+            SPECIAL_COMMENT=$(awk '/--- GITHUB_COMMENT_START ---/{flag=1;next}/--- GITHUB_COMMENT_END ---/{flag=0}flag' enhanced-flow-ci-run.log)
+            
+            # Check if it's a language validation error, translation mode error, or API overload
+            if echo "$SPECIAL_COMMENT" | grep -q "LANGUAGE SELECTION FAILED"; then
+              echo "Found language validation failure comment"
+              ERROR_TYPE="language_validation"
+            elif echo "$SPECIAL_COMMENT" | grep -q "TRANSLATION MODE ERROR"; then
+              echo "Found translation mode error comment"
+              ERROR_TYPE="translation_mode_error"
+            elif echo "$SPECIAL_COMMENT" | grep -q "API OVERLOAD"; then
+              echo "Found API overload comment"
+              ERROR_TYPE="api_overload"
+            else
+              echo "Found generic error comment"
+              ERROR_TYPE="generic_error"
+            fi
+            
+            # Set output variables with the extracted comment
+            echo "has_special_comment=true" >> $GITHUB_OUTPUT
+            echo "error_type=$ERROR_TYPE" >> $GITHUB_OUTPUT
+            echo "special_comment<<EOF" >> $GITHUB_OUTPUT
+            echo "$SPECIAL_COMMENT" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "No special comments detected"
+            echo "has_special_comment=false" >> $GITHUB_OUTPUT
+            echo "error_type=none" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload logs and outputs
@@ -151,6 +186,19 @@ jobs:
             docs/**/img/**
             spanish/**/img/**
           if-no-files-found: ignore
+          
+      - name: Fail workflow if critical error occurred
+        if: steps.run_flow.outputs.has_special_comment == 'true' && (steps.run_flow.outputs.error_type == 'language_validation' || steps.run_flow.outputs.error_type == 'translation_mode_error' || steps.run_flow.outputs.error_type == 'generic_error')
+        shell: bash
+        run: |
+          if [[ "${{ steps.run_flow.outputs.error_type }}" == "language_validation" ]]; then
+            echo "::error::Language validation failed. The language code does not match any available option in the website."
+          elif [[ "${{ steps.run_flow.outputs.error_type }}" == "translation_mode_error" ]]; then
+            echo "::error::Translation mode error. English was specified as the target language in translation mode."
+          elif [[ "${{ steps.run_flow.outputs.error_type }}" == "generic_error" ]]; then
+            echo "::error::A critical error occurred during execution."
+          fi
+          exit 1
 
       - name: Get PR head info
         id: pr_info
@@ -204,17 +252,39 @@ jobs:
           script: |
             const args = `${{ steps.parse.outputs.args }}` || '(none)';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = [
+            
+            // Check if there's a special comment to include
+            const hasSpecialComment = '${{ steps.run_flow.outputs.has_special_comment }}' === 'true';
+            const errorType = '${{ steps.run_flow.outputs.error_type }}';
+            
+            let bodyContent = [
               `▶️ Ran: node test-enhanced-flow.js ${args}`.trim(),
               `• Status: ${process.env.STATE || 'completed (see job result above)'}`,
               `• Logs & outputs uploaded as artifact: enhanced-flow-artifacts`,
               `• Workflow run: ${runUrl}`
-            ].join('\n');
+            ];
+            
+            // Add special comment if present
+            if (hasSpecialComment) {
+              const specialComment = `${{ steps.run_flow.outputs.special_comment }}`;
+              bodyContent.push('\n---\n');
+              bodyContent.push(specialComment);
+              
+              // Add specific advice based on error type
+              if (errorType === 'language_validation') {
+                bodyContent.push('\nPlease check the language code and try again with a supported language.');
+              } else if (errorType === 'translation_mode_error') {
+                bodyContent.push('\nPlease use a non-English target language with translation mode (e.g., --lang es for Spanish).');
+              } else if (errorType === 'api_overload') {
+                bodyContent.push('\nThis is a temporary issue with the API service. Please try again in a few minutes.');
+              }
+            }
+            
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body
+              body: bodyContent.join('\n')
             });
 
 

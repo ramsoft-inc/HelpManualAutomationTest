@@ -2402,27 +2402,6 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                 console.log(`📄 Setting markdown path from processed files: ${currentFilePath}`);
             }
             
-            if (!currentFilePath) {
-                const testDocPath = 'docs/1-Getting-Started/addorg.md';
-                if (fs.existsSync(testDocPath)) {
-                    currentFilePath = testDocPath;
-                    console.log(`📄 Setting markdown path from test document: ${currentFilePath}`);
-                }
-            }
-            
-            if (!currentFilePath) {
-                // Use a specific markdown file as fallback, not a directory
-                currentFilePath = path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'default.md');
-                console.log(`📄 Setting default markdown file path: ${currentFilePath}`);
-                
-                // Ensure the directory exists for this fallback file
-                const fallbackDir = path.dirname(currentFilePath);
-                if (!fs.existsSync(fallbackDir)) {
-                    fs.mkdirSync(fallbackDir, { recursive: true });
-                    console.log(`📁 Created fallback directory: ${fallbackDir}`);
-                }
-            }
-            
             // Set the initial file path
             console.log(`🎯 About to set current file path: ${currentFilePath}`);
             console.log(`🎯 aiUtils object exists: ${!!aiUtils}`);
@@ -2552,18 +2531,10 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.error('⚠️ Could not generate token usage statistics:', tokenError.message);
         }
         
-        // Step 6: Post-process placeholders - Replace with actual image references
-        if (processedFiles.length > 0) {
-            console.log('\n' + '='.repeat(80));
-            console.log('🎯 Post-processing: Replacing placeholders with generated images...');
-            try {
-                await postprocessPlaceholders(processedFiles);
-                console.log('✅ All placeholders have been processed!');
-            } catch (error) {
-                console.error('❌ Error during placeholder post-processing:', error.message);
-            }
-            console.log('='.repeat(80) + '\n');
-        }
+        // Step 6: No post-processing needed - placeholders are replaced immediately when screenshots are taken
+        console.log('\n' + '='.repeat(80));
+        console.log('✅ Placeholders are processed immediately when screenshots are taken - no additional post-processing needed');
+        console.log('='.repeat(80) + '\n');
         
         // Close browser automatically when job is done
         console.log('✅ Job completed successfully, closing browser...');
