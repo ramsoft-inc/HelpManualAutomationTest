@@ -2407,7 +2407,11 @@ if (hasNoDocumentContent) {
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
             // Check if this is ui_change or new_feature mode and file is not from docs folder
-            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && !singleFilePath.includes('/docs/') && !singleFilePath.includes('\\docs\\')) {
+            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && 
+                !singleFilePath.includes('/docs/') && 
+                !singleFilePath.includes('\\docs\\') && 
+                !singleFilePath.startsWith('docs/') && 
+                !singleFilePath.startsWith('docs\\')) {
                 console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
                 console.log('🛑 Exiting process with error code 1.');
                 
@@ -2476,7 +2480,11 @@ if (hasNoDocumentContent) {
             // Check if this is ui_change or new_feature mode and files are not from docs folder
             if (modeArg === 'ui_change' || modeArg === 'new_feature') {
                 const nonDocsFiles = processedFileResults.filter(
-                    result => result.filePath && !result.filePath.includes('/docs/') && !result.filePath.includes('\\docs\\')
+                    result => result.filePath && 
+                    !result.filePath.includes('/docs/') && 
+                    !result.filePath.includes('\\docs\\') && 
+                    !result.filePath.startsWith('docs/') && 
+                    !result.filePath.startsWith('docs\\')
                 );
                 
                 if (nonDocsFiles.length > 0) {
