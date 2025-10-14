@@ -313,11 +313,11 @@ async function selectLanguage(page, languageInput) {
     console.log('⏳ Waiting for user menu to appear...');
     await smartWait(page, { timeout: 1000, checkNetwork: false });
     
-      // Click on USER SETTINGS button
-      console.log('🔍 Looking for USER SETTINGS button...');
+    // Click on USER SETTINGS button
+    console.log('🔍 Looking for USER SETTINGS button...');
       const userSettingsButton = page.locator('[data-cy="user-settings-button"]');
-      await userSettingsButton.waitFor({ state: 'visible', timeout: 15000 });
-      await userSettingsButton.click();
+    await userSettingsButton.waitFor({ state: 'visible', timeout: 15000 });
+    await userSettingsButton.click();
     
     
 
@@ -363,7 +363,7 @@ async function selectLanguage(page, languageInput) {
         const text = await option.textContent();
         availableLanguages.push(`${text?.trim()} (${dataValue})`);
       }
-      
+
       // Close the dropdown before throwing an error
       await page.keyboard.press('Escape');
 
@@ -412,24 +412,24 @@ async function navigateToWorklist(page) {
     await smartWait(page, { timeout: 2000 });
     
       // Use the exact approach from verify-language-selection.js
-      console.log('🔍 Looking for worklist navigation control...');
-      
-      try {
-        const profileLink = page.locator('[data-cy="sidebar-home"]');
-        await profileLink.waitFor({ state: 'visible', timeout: 15000 });
-        await profileLink.click({ force: true });
+    console.log('🔍 Looking for worklist navigation control...');
+    
+    try {
+      const profileLink = page.locator('[data-cy="sidebar-home"]');
+      await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+      await profileLink.click({ force: true });
         await page.waitForLoadState('networkidle', { timeout: 10000 });
         await page.waitForTimeout(3000);
         console.log('✅ Successfully navigated to worklist');
-      } catch (e) {
-        console.warn('⚠️  Home nav click snippet failed:', e?.message || e);
-        
+    } catch (e) {
+      console.warn('⚠️  Home nav click snippet failed:', e?.message || e);
+    
         // Try fallback navigation if the primary method fails
         try {
           console.log('🔍 Trying fallback navigation method...');
-          const navByRole = page.getByRole('link', { name: /worklist|lista de trabajo|home|inicio/i }).first();
-          await navByRole.waitFor({ state: 'visible', timeout: 6000 });
-          await navByRole.click({ timeout: 10000, force: true });
+      const navByRole = page.getByRole('link', { name: /worklist|lista de trabajo|home|inicio/i }).first();
+      await navByRole.waitFor({ state: 'visible', timeout: 6000 });
+      await navByRole.click({ timeout: 10000, force: true });
           await page.waitForLoadState('networkidle', { timeout: 10000 });
           await page.waitForTimeout(2000);
           console.log('✅ Successfully navigated to worklist using fallback method');
@@ -454,7 +454,15 @@ async function navigateToWorklist(page) {
 function detectLanguageFromFolder(folderPath) {
   if (!folderPath) return 'English';
   
+  console.log(`🔍 DEBUG: Checking language for path: ${folderPath}`);
   const normalizedPath = folderPath.toLowerCase();
+  console.log(`🔍 DEBUG: Normalized path: ${normalizedPath}`);
+  
+  // FORCE English for docs folder paths - no exceptions
+  if (normalizedPath.includes('docs')) {
+    console.log(`🔍 DEBUG: Force detected as English (contains 'docs'): ${folderPath}`);
+    return 'English';
+  }
   
   // Check if path is in the main docs folder (English)
   if (normalizedPath.startsWith('docs/') || 
@@ -503,17 +511,17 @@ async function executeTranslationMode(page, detectedLanguage) {
       await selectLanguage(page, detectedLanguage);
     }
     
-     // Step 2: Navigate to worklist AFTER language change using explicit home nav snippet
-     console.log('📋 Step 2: Navigating to worklist (home nav snippet)...');
-     try {
+    // Step 2: Navigate to worklist AFTER language change using explicit home nav snippet
+    console.log('📋 Step 2: Navigating to worklist (home nav snippet)...');
+    try {
        const profileLink = page.locator('[data-cy="sidebar-home"]');
        await profileLink.waitFor({ state: 'visible', timeout: 15000 });
        await profileLink.click({ force: true });
        await page.waitForLoadState('networkidle', { timeout: 10000 });
        await page.waitForTimeout(3000);
-     } catch (navErr) {
-       console.warn('⚠️  Home nav click snippet failed after language change:', navErr?.message || navErr);
-     }
+    } catch (navErr) {
+      console.warn('⚠️  Home nav click snippet failed after language change:', navErr?.message || navErr);
+    }
     
     console.log('✅ Translation mode workflow completed successfully');
     
@@ -919,7 +927,7 @@ const replacePlaceholdersWithImagePaths = async (content, mdDir) => {
         // NEVER replace the placeholder with image reference before the screenshot is taken
         // Just keep track of the placeholder and its intended image name
         console.log(`ℹ️ Preserving placeholder for later processing: ${fullMatch} → ${imageName}`);
-        
+            
         // DO NOT modify the content - keep the placeholder intact
         
         // Track the placeholder and image name for processing
@@ -1157,15 +1165,15 @@ CONFIGURATION:
 
 MODE DETAILS:
   🌐 Default/Translation Mode:
-     - Processes .md/.mdx files that contain actual images in specified folder  
+     - Processes .md/.mdx files that contain actual images in specified folder
      - Skips files without any images (no screenshots needed)
      - No classification - treats all files the same way
      - Default and translation modes are identical (both use the same processing)
-     - Works with ANY language folder that mirrors docs/ structure (e.g., docs-es, docs-fr, docs-de, i18n/pt-BR, etc.)                                          
-     - Automatically detects language from folder path and sets UI language accordingly                                                                         
-     - Navigates to worklist and selects appropriate language before processing 
+     - Works with ANY language folder that mirrors docs/ structure (e.g., docs-es, docs-fr, docs-de, i18n/pt-BR, etc.)
+     - Automatically detects language from folder path and sets UI language accordingly
+     - Navigates to worklist and selects appropriate language before processing
      - Supported languages: English, Spanish, French, Hindi, Portuguese
-     - Language codes: en (English), es (Spanish), fr (French), hi (Hindi), pt (Portuguese)                                                                     
+     - Language codes: en (English), es (Spanish), fr (French), hi (Hindi), pt (Portuguese)
      - --lang option accepts both language names and codes (e.g., --lang Spanish or --lang es)
   
   📄 Single File Mode:
@@ -1488,7 +1496,7 @@ async function executeWorkflow() {
     } else if (folderPath) {
         executionMode = 'translation';
         // Note: The folder processing will be handled by the main code
-    } else if (listFilePath) {
+} else if (listFilePath) {
         executionMode = 'list';
         // Note: The list processing will be handled by the main code
     }
@@ -2798,8 +2806,8 @@ if (hasNoDocumentContent) {
                 }
             } else {
                 // Handle other tracewright errors
-                console.log('⚠️  Tracewright with enhanced AI utils failed');
-                console.error('Tracewright error details:', tracewrightError);
+            console.log('⚠️  Tracewright with enhanced AI utils failed');
+            console.error('Tracewright error details:', tracewrightError);
             }
             
             // Check if browser is still accessible
@@ -2900,7 +2908,7 @@ if (hasNoDocumentContent) {
             console.error('❌ Error closing browser:', closeError.message);
         }
     }
-})();
+})(); 
 
 // Execute the workflow based on command line or interactive input
 // This is now handled at the beginning of the main async function
