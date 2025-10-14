@@ -2414,11 +2414,15 @@ if (hasNoDocumentContent) {
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
             // Check if this is ui_change or new_feature mode and file is not from docs folder
-            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && 
-                !singleFilePath.includes('/docs/') && 
-                !singleFilePath.includes('\\docs\\') && 
-                !singleFilePath.startsWith('docs/') && 
-                !singleFilePath.startsWith('docs\\')) {
+            const normalizedPath = singleFilePath.toLowerCase();
+            const isDocsFolder = normalizedPath.startsWith('docs/') || 
+                                normalizedPath.startsWith('docs\\') || 
+                                normalizedPath.includes('/docs/') || 
+                                normalizedPath.includes('\\docs\\');
+            
+            console.log(`🔍 Checking if file is from docs folder: ${singleFilePath} - isDocsFolder: ${isDocsFolder}`);
+            
+            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && !isDocsFolder) {
                 console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
                 console.log('🛑 Exiting process with error code 1.');
                 
@@ -2486,13 +2490,19 @@ if (hasNoDocumentContent) {
             
             // Check if this is ui_change or new_feature mode and files are not from docs folder
             if (modeArg === 'ui_change' || modeArg === 'new_feature') {
-                const nonDocsFiles = processedFileResults.filter(
-                    result => result.filePath && 
-                    !result.filePath.includes('/docs/') && 
-                    !result.filePath.includes('\\docs\\') && 
-                    !result.filePath.startsWith('docs/') && 
-                    !result.filePath.startsWith('docs\\')
-                );
+                const nonDocsFiles = processedFileResults.filter(result => {
+                    if (!result.filePath) return false;
+                    
+                    const normalizedPath = result.filePath.toLowerCase();
+                    const isDocsFolder = normalizedPath.startsWith('docs/') || 
+                                        normalizedPath.startsWith('docs\\') || 
+                                        normalizedPath.includes('/docs/') || 
+                                        normalizedPath.includes('\\docs\\');
+                    
+                    console.log(`🔍 Checking if file is from docs folder: ${result.filePath} - isDocsFolder: ${isDocsFolder}`);
+                    
+                    return !isDocsFolder;
+                });
                 
                 if (nonDocsFiles.length > 0) {
                     console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
