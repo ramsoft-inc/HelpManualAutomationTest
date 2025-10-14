@@ -1821,9 +1821,12 @@ if (listFilePath) {
             }
         }
         
-        // Exit after processing translation mode
-        console.log('✅ Translation mode processing completed');
-        process.exit(0);
+        // Continue to Tracewright execution - don't exit early
+        console.log('✅ Translation mode processing completed, continuing to Tracewright execution...');
+        // Set up parameters for Tracewright execution
+        singleFilePath = null; // Clear singleFilePath to avoid conflict
+        folderPath = null; // Clear folderPath to avoid conflict
+        // changedFiles is already set to the translation changed files list
     } catch (error) {
         console.error(`❌ Error in default/translation mode: ${error.message}`);
         process.exit(1);
@@ -2270,10 +2273,10 @@ const findSimilarImage = (expectedName, generatedImages) => {
     // First, execute the workflow to process command line arguments and interactive prompts
     await executeWorkflow();
     
-    // Skip the rest of the workflow for translation mode with folder
-    // Translation mode is handled directly in the main code
-    if (executionMode === 'translation') {
-        console.log('✅ Translation mode processing completed');
+    // Don't skip translation mode anymore - we want to run Tracewright for it
+    // Just check if we've already processed files in another mode
+    if (processedFileResults.length > 0 && executionMode !== 'translation') {
+        console.log('✅ File processing already completed, exiting');
         process.exit(0);
     }
     
