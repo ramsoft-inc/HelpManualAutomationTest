@@ -8,6 +8,9 @@ process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = 'true';
 // Disable stock version screenshots completely
 process.env.DISABLE_STOCK_SCREENSHOTS = 'true';
 
+// Disable adding _E or _S suffixes to image filenames
+process.env.DISABLE_IMAGE_SUFFIXES = 'true';
+
 // Direct image replacement - no suffixes used
 
 // Get API key from environment variable
@@ -174,6 +177,9 @@ const LANGUAGES = {
   "English (Canada)": "en-CA"
 };
 
+// Flag to track if language validation has failed
+let languageValidationFailed = false;
+
 /**
  * Smart wait for page stability with reduced timeouts
  * @param {Page} page - Playwright page object
@@ -256,6 +262,19 @@ async function selectLanguage(page, languageInput) {
       // It's neither a valid language name nor a valid code
       const availableLanguages = Object.keys(LANGUAGES).map(name => name.toLowerCase()).join(', ');
       const availableCodes = Object.values(LANGUAGES).join(', ');
+      
+      // Set the flag to indicate language validation has failed
+      languageValidationFailed = true;
+      
+      // Create a descriptive error message for GitHub comment with our predefined languages
+      // Note: We'll update this with actual website languages when we open the dropdown
+      const errorComment = `## ❌ LANGUAGE SELECTION FAILED\n\nThe language code '${languageInput}' is not a valid language code or name.\n\n### Supported Language Codes:\n${Object.entries(LANGUAGES).map(([name, code]) => `- ${name} (${code})`).join('\n')}\n\nPlease use one of these supported language codes.`;
+      
+      // Log the GitHub comment format for CI integration
+      console.log('\n\n--- GITHUB_COMMENT_START ---');
+      console.log(errorComment);
+      console.log('--- GITHUB_COMMENT_END ---\n\n');
+      
       throw new Error(`Unknown language: "${languageInput}". Valid language names: ${availableLanguages}. Valid codes: ${availableCodes}`);
     }
   }
@@ -267,22 +286,23 @@ async function selectLanguage(page, languageInput) {
     console.log('⏳ Stabilizing page before language selection...');
     await smartWait(page, { timeout: 2000, minWait: 1000 });
 
-    // Open avatar/user menu - using the more efficient approach from verify-language-selection.js
-    console.log('🔍 Looking for user avatar...');
+    // Open profile menu - using the same approach as verify-language-selection.js
+    console.log('🔍 Looking for sidebar profile...');
     try {
       const profileLink = page.locator('[data-cy="sidebar-profile"]');
       await profileLink.waitFor({ state: 'visible', timeout: 15000 });
       await profileLink.click({ force: true });
-      console.log('✅ Avatar clicked successfully using data-cy selector');
+      console.log('✅ Profile clicked successfully using data-cy selector');
     } catch (e) {
-      console.warn('⚠️ Could not click avatar via data-cy:', e?.message || e);
-      // Fall back to existing methods
+      console.warn('⚠️ Could not click profile via data-cy:', e?.message || e);
+      // Try fallback methods
       try {
-        const avatarByTestId = page.locator('[data-testid^="Avatar "]').first();
-        await avatarByTestId.waitFor({ state: 'visible', timeout: 15000 });
-        await avatarByTestId.click({ force: true });
-      } catch {
-        console.log('⚠️  Fallback: avatar container with avatar inside (language-agnostic)');
+        console.log('⚠️  Fallback: trying to find profile by role');
+        const profileByRole = page.getByRole('button', { name: /profile|perfil/i }).first();
+        await profileByRole.waitFor({ state: 'visible', timeout: 15000 });
+        await profileByRole.click({ force: true });
+      } catch (fallbackErr) {
+        console.warn('⚠️  Profile role selector failed, trying legacy avatar selector');
         const avatarContainer = page.locator('[aria-label]:has(.MuiAvatar-root)').first();
         await avatarContainer.waitFor({ state: 'visible', timeout: 20000 });
         await avatarContainer.click({ force: true });
@@ -293,11 +313,11 @@ async function selectLanguage(page, languageInput) {
     console.log('⏳ Waiting for user menu to appear...');
     await smartWait(page, { timeout: 1000, checkNetwork: false });
     
-    // Click on USER SETTINGS button
-    console.log('🔍 Looking for USER SETTINGS button...');
-    const userSettingsButton = page.locator('button.MuiButton-outlinedPrimary').nth(-2);
-    await userSettingsButton.waitFor({ state: 'visible', timeout: 15000 });
-    await userSettingsButton.click();
+      // Click on USER SETTINGS button
+      console.log('🔍 Looking for USER SETTINGS button...');
+      const userSettingsButton = page.locator('[data-cy="user-settings-button"]');
+      await userSettingsButton.waitFor({ state: 'visible', timeout: 15000 });
+      await userSettingsButton.click();
     
     
 
@@ -322,6 +342,15 @@ async function selectLanguage(page, languageInput) {
 
     // Check if the option exists before clicking
     const optionCount = await languageOption.count();
+    
+    // Extract the actual supported languages from the website's HTML - do this regardless of whether the option exists
+    const websiteLanguages = await page.locator('li[role="option"][data-value]').evaluateAll(
+      elements => elements.map(el => {
+        const dataValue = el.getAttribute('data-value');
+        const text = el.textContent?.trim() || '';
+        return `${text} (${dataValue})`;
+      })
+    );
 
     if (optionCount === 0) {
       // Get available options for error message
@@ -334,11 +363,13 @@ async function selectLanguage(page, languageInput) {
         const text = await option.textContent();
         availableLanguages.push(`${text?.trim()} (${dataValue})`);
       }
-
+      
       // Close the dropdown before throwing an error
       await page.keyboard.press('Escape');
 
-      throw new Error(`Language code "${langCode}" not found in UI. Available options: ${availableLanguages.join(', ')}`);
+      // Create a more detailed error message with website's supported languages
+      const errorMessage = `Language code "${langCode}" not found in UI. The provided language code does not match any available option in the website language list. Website supported languages: ${websiteLanguages.join(', ')}`;
+      throw new Error(errorMessage);
     }
 
     console.log(`👆 Clicking language option: ${langCode}...`);
@@ -352,11 +383,20 @@ async function selectLanguage(page, languageInput) {
 
   } catch (error) {
     console.error(`❌ Error selecting language ${languageInput}:`, error.message);
-    console.log('⚠️  Continuing despite language selection error...');
-    // Don't re-throw error as per original requirement to continue process.
-    // However, if the page context or browser is closed (as seen in later logs),
-    // this 'continue' might still lead to cascading failures if the page is unusable.
-    // Consider adding `await page.screenshot({ path: 'error_language_selection.png' });` here for debugging.
+    
+    // Set the flag to indicate language validation has failed
+    languageValidationFailed = true;
+    
+      // Create a descriptive error message for GitHub comment with website's supported languages
+      const errorComment = `## ❌ LANGUAGE SELECTION FAILED\n\nThe language code '${langCode}' does not match any available language option in the website.\n\n### Website Supported Languages:\n${websiteLanguages.map(lang => `- ${lang}`).join('\n')}\n\nPlease use one of these supported language codes.`;
+    
+    // Log the GitHub comment format for CI integration
+    console.log('\n\n--- GITHUB_COMMENT_START ---');
+    console.log(errorComment);
+    console.log('--- GITHUB_COMMENT_END ---\n\n');
+    
+    // Return without exiting - we'll skip tracewright later
+    return;
   }
 }
 /**
@@ -371,70 +411,33 @@ async function navigateToWorklist(page) {
     console.log('⏳ Stabilizing page...');
     await smartWait(page, { timeout: 2000 });
     
-    // Try data-cy selector first (from verify-language-selection.js)
-    console.log('🔍 Looking for worklist navigation control...');
-    let clicked = false;
-    
-    try {
-      const profileLink = page.locator('[data-cy="sidebar-home"]');
-      await profileLink.waitFor({ state: 'visible', timeout: 15000 });
-      await profileLink.click({ force: true });
-      await smartWait(page, { timeout: 2000 });
-      console.log('✅ Clicked home button using data-cy selector');
-      clicked = true;
-    } catch (e) {
-      console.warn('⚠️  Home nav click snippet failed:', e?.message || e);
-    }
-    
-    // Try by ARIA role/name (common for navigation items) if data-cy failed
-    if (!clicked) try {
-      const navByRole = page.getByRole('link', { name: /worklist|lista de trabajo|home|inicio/i }).first();
-      await navByRole.waitFor({ state: 'visible', timeout: 6000 });
-      await navByRole.click({ timeout: 10000, force: true });
-      clicked = true;
-    } catch {}
-
-    // Try by test id if available
-    if (!clicked) {
+      // Use the exact approach from verify-language-selection.js
+      console.log('🔍 Looking for worklist navigation control...');
+      
       try {
-        const byTestId = page.locator('[data-testid="worklist"]');
-        await byTestId.waitFor({ state: 'visible', timeout: 6000 });
-        await byTestId.click({ timeout: 10000 });
-        clicked = true;
-      } catch {}
-    }
-
-    // Fallback: click a nav item containing a home-like icon but avoid direct SVG targeting
-    if (!clicked) {
-      try {
-        const navContainer = page.locator('nav, [role="navigation"]').first();
-        await navContainer.waitFor({ state: 'visible', timeout: 6000 });
-        const candidate = navContainer.locator('a, button').filter({ hasText: /worklist|lista de trabajo|home|inicio/i }).first();
-        await candidate.waitFor({ state: 'visible', timeout: 6000 });
-        await candidate.click({ timeout: 10000 });
-        clicked = true;
-      } catch {}
-    }
-
-    if (!clicked) {
-      console.warn('⚠️  Could not find a robust worklist control; skipping explicit navigation');
-    }
-    
-    console.log('✅ Successfully navigated to worklist');
-    
-    // Wait for the worklist page to load completely with fallback strategy
-    console.log('⏳ Waiting for worklist page to load...');
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-    } catch (networkIdleError) {
-      console.log('⚠️  NetworkIdle timeout, trying domcontentloaded...');
-      try {
-        await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-      } catch (domError) {
-        console.log('⚠️  DOM load timeout, continuing with fixed wait...');
+        const profileLink = page.locator('[data-cy="sidebar-home"]');
+        await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+        await profileLink.click({ force: true });
+        await page.waitForLoadState('networkidle', { timeout: 10000 });
+        await page.waitForTimeout(3000);
+        console.log('✅ Successfully navigated to worklist');
+      } catch (e) {
+        console.warn('⚠️  Home nav click snippet failed:', e?.message || e);
+        
+        // Try fallback navigation if the primary method fails
+        try {
+          console.log('🔍 Trying fallback navigation method...');
+          const navByRole = page.getByRole('link', { name: /worklist|lista de trabajo|home|inicio/i }).first();
+          await navByRole.waitFor({ state: 'visible', timeout: 6000 });
+          await navByRole.click({ timeout: 10000, force: true });
+          await page.waitForLoadState('networkidle', { timeout: 10000 });
+          await page.waitForTimeout(2000);
+          console.log('✅ Successfully navigated to worklist using fallback method');
+        } catch (fallbackErr) {
+          console.warn('⚠️  Fallback navigation also failed:', fallbackErr?.message || fallbackErr);
+          console.warn('⚠️  Continuing despite navigation issues');
+        }
       }
-    }
-    await smartWait(page, { timeout: 1500 });
     
   } catch (error) {
     console.error('❌ Error navigating to worklist:', error.message);
@@ -492,14 +495,17 @@ async function executeTranslationMode(page, detectedLanguage) {
       await selectLanguage(page, detectedLanguage);
     }
     
-    // Step 2: Navigate to worklist AFTER language change using explicit home nav snippet
-    console.log('📋 Step 2: Navigating to worklist (home nav snippet)...');
-    try {
-      await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-      await smartWait(page, { timeout: 1500 });
-    } catch (navErr) {
-      console.warn('⚠️  Home nav click snippet failed after language change:', navErr?.message || navErr);
-    }
+     // Step 2: Navigate to worklist AFTER language change using explicit home nav snippet
+     console.log('📋 Step 2: Navigating to worklist (home nav snippet)...');
+     try {
+       const profileLink = page.locator('[data-cy="sidebar-home"]');
+       await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+       await profileLink.click({ force: true });
+       await page.waitForLoadState('networkidle', { timeout: 10000 });
+       await page.waitForTimeout(3000);
+     } catch (navErr) {
+       console.warn('⚠️  Home nav click snippet failed after language change:', navErr?.message || navErr);
+     }
     
     console.log('✅ Translation mode workflow completed successfully');
     
@@ -520,86 +526,13 @@ async function executeTranslationMode(page, detectedLanguage) {
 }
 
 // Create a default test document for testing
-const createDefaultTestDocument = () => {
-    const fs = require('node:fs');
-    const path = require('node:path');
-    
-    // Create docs directory if it doesn't exist
-    const docsDir = path.join(process.cwd(), 'docs');
-    if (!fs.existsSync(docsDir)) {
-        fs.mkdirSync(docsDir, { recursive: true });
-        console.log(`📁 Created docs directory: ${docsDir}`);
-    }
-    
-
-    const testDocPath = path.join(docsDir, 'test-document.md');
-    fs.writeFileSync(testDocPath, testDocContent);
-    console.log(`📝 Created test document: ${testDocPath}`);
-    return testDocPath;
-};
-
-// Create a temporary changed files list
-const createChangedFilesList = (testDocPath) => {
-    const fs = require('node:fs');
-    const path = require('node:path');
-    
-    // Convert Windows path to use forward slashes for Python script compatibility
-    const normalizedPath = testDocPath.replace(/\\/g, '/');
-    
-    const changedFilesPath = path.join(process.cwd(), 'changed-files-test.txt');
-    fs.writeFileSync(changedFilesPath, normalizedPath);
-    console.log(`📋 Created changed files list: ${changedFilesPath}`);
-    return changedFilesPath;
-};
+// Default document creation functions removed
 
 /**
  * Fetch changed files using git diff
  * @returns {Array<string>} Array of changed file paths
  */
-const fetchGitDiff = async () => {
-    try {
-        const { execSync } = await import('node:child_process');
-        console.log('🔍 Fetching git diff for changed files...');
-        
-        // Get list of changed files from git diff
-        const gitOutput = execSync('git diff --name-only HEAD~1', { 
-            encoding: 'utf8',
-            cwd: process.cwd()
-        });
-        
-        const changedFiles = gitOutput
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-            
-        console.log(`📄 Found ${changedFiles.length} changed files from git diff`);
-        return changedFiles;
-    } catch (error) {
-        console.warn(`⚠️  Git diff failed: ${error.message}`);
-        return [];
-    }
-};
-
-/**
- * Filter files to only include .md/.mdx files that have docs in their path
- * @param {Array<string>} files - Array of file paths
- * @returns {Array<string>} Filtered array of documentation files
- */
-const filterDocumentationFiles = (files) => {
-    const filtered = files.filter(filePath => {
-        // Check if file is .md or .mdx
-        const isMarkdown = filePath.endsWith('.md') || filePath.endsWith('.mdx');
-        // Check if file has docs in its path (anywhere in the path)
-        const hasDocsInPath = filePath.includes('docs/') || filePath.includes('docs\\');
-        
-        return isMarkdown && hasDocsInPath;
-    });
-    
-    console.log(`📁 Filtered to ${filtered.length} documentation files with docs in path`);
-    filtered.forEach(file => console.log(`  - ${file}`));
-    
-    return filtered;
-};
+// Git diff functions removed
 
 /**
  * Classify file mode based on content analysis
@@ -936,9 +869,9 @@ const replacePlaceholdersWithImagePaths = async (content, mdDir) => {
     
     // Find all placeholder patterns
     const placeholderPatterns = [
-        /<!--\s*placeholder\s+for\s+a\s+screenshot\s*-->/gi,
-        /<!--\s*placeholder\s+for\s+screenshot:\s*([^-\s]+)\s*-->/gi,
-        /<!--\s*placeholder\s+for\s+.*?-->/gi
+        /<!--\s*placeholder\s+for\s+screenshot:\s*([^>]+?)\s*-->/gi,  // Named placeholders (priority)
+        /<!--\s*placeholder\s+for\s+a\s+screenshot\s*-->/gi,          // Generic placeholders
+        /<!--\s*placeholder\s+for\s+.*?-->/gi                         // Other placeholders
     ];
     
     let updatedContent = content;
@@ -954,12 +887,14 @@ const replacePlaceholdersWithImagePaths = async (content, mdDir) => {
             const fullMatch = match[0];
             let imageName;
             
-            if (patternIndex === 1 && match[1]) {
-                // Named placeholder - use existing name
+            if (patternIndex === 0 && match[1]) {
+                // Named placeholder - use existing name and DO NOT CHANGE IT
                 imageName = match[1].trim();
+                console.log(`🔍 Using existing placeholder name: ${imageName}`);
             } else {
-                // Generate contextual name based on surrounding content
-                imageName = generateContextualImageName(content, match.index, placeholderCount + 1);
+                // Use a simple structured name with a counter - NO CONTEXTUAL NAMING
+                imageName = `img-as-${placeholderCount + 1}`;
+                console.log(`🔍 Using simple structured name: ${imageName}`);
             }
             
             // Ensure .png extension
@@ -973,9 +908,13 @@ const replacePlaceholdersWithImagePaths = async (content, mdDir) => {
             
             console.log(`🖼️  Placeholder ${placeholderCount + 1}: ${fullMatch} → ${imagePath}`);
             
-            // Replace the placeholder with image reference
-            updatedContent = updatedContent.replace(fullMatch, imageReference);
-            
+        // NEVER replace the placeholder with image reference before the screenshot is taken
+        // Just keep track of the placeholder and its intended image name
+        console.log(`ℹ️ Preserving placeholder for later processing: ${fullMatch} → ${imageName}`);
+        
+        // DO NOT modify the content - keep the placeholder intact
+        
+        // Track the placeholder and image name for processing
             processedPlaceholders.push({
                 originalPlaceholder: fullMatch,
                 imageName,
@@ -989,55 +928,20 @@ const replacePlaceholdersWithImagePaths = async (content, mdDir) => {
     }
     
     return {
-        updatedContent,
+        // Return the updated content with placeholders replaced (if in new_feature mode)
+        updatedContent,  // Use the updated content which may have placeholders replaced
         placeholderCount,
         processedPlaceholders
     };
 };
 
 /**
- * Generate a contextual image name based on surrounding content
- * @param {string} content - Full markdown content
- * @param {number} placeholderIndex - Index of placeholder in content
- * @param {number} fallbackNumber - Fallback number if no context found
+ * Simple function to generate a structured image name with a counter
+ * @param {number} counter - Counter for the image name
  * @returns {string} Generated image name
  */
-const generateContextualImageName = (content, placeholderIndex, fallbackNumber) => {
-    // Get text around the placeholder for context
-    const contextStart = Math.max(0, placeholderIndex - 200);
-    const contextEnd = Math.min(content.length, placeholderIndex + 200);
-    const context = content.substring(contextStart, contextEnd);
-    
-    // Look for nearby headings
-    const headingMatch = context.match(/#+\s*([^#\n]+)/);
-    if (headingMatch) {
-        const heading = headingMatch[1].trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, '')
-            .replace(/\s+/g, '-')
-            .substring(0, 30);
-        
-        if (heading) {
-            return `${heading}-screenshot`;
-        }
-    }
-    
-    // Look for nearby bold text or emphasized content
-    const emphasisMatch = context.match(/\*\*([^*]+)\*\*|\*([^*]+)\*/);
-    if (emphasisMatch) {
-        const emphasis = (emphasisMatch[1] || emphasisMatch[2]).trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, '')
-            .replace(/\s+/g, '-')
-            .substring(0, 20);
-        
-        if (emphasis) {
-            return `${emphasis}-view`;
-        }
-    }
-    
-    // Fallback to numbered naming
-    return `feature-${fallbackNumber}`;
+const generateStructuredImageName = (counter) => {
+    return `img-as-${counter}`;
 };
 
 /**
@@ -1060,9 +964,10 @@ const processNewFeature = async (filePath) => {
         const result = await replacePlaceholdersWithImagePaths(content, mdDir);
         
         if (result.placeholderCount > 0) {
-            // Write the updated content back to the file
-            fs.writeFileSync(filePath, result.updatedContent, 'utf8');
-            console.log(`✅ Updated ${result.placeholderCount} placeholders with image paths in ${filePath}`);
+            // DO NOT write any changes to the file before screenshots are taken
+            // Just log that we found placeholders to process
+            console.log(`✅ Found ${result.placeholderCount} placeholders to process in ${filePath}`);
+            
             
             // Store detailed information about processed placeholders
             const imageNames = result.processedPlaceholders.map(p => p.imageName);
@@ -1211,27 +1116,25 @@ USAGE:
   node test-enhanced-flow.js [OPTIONS]
 
 MODES:
-  Git Diff Mode (Default):    Processes .md files from git diff that have docs in their path with classification
-  Translation Mode:           Processes all .md/.mdx files in specified folder (default/translation)
+  Default/Translation Mode:   Processes all .md/.mdx files in specified folder (default and translation are the same)
   Single File Mode:           Processes a single specified .md/.mdx file with classification
   List Mode:                  Processes multiple files from a list file with auto-classification for each
 
 OPTIONS:
-  --folder <path>            Translation mode: Process folder that mirrors docs structure (NOT docs itself)
+  --folder <path>            Default/Translation mode: Process folder that mirrors docs structure (NOT docs itself)
   --file <path>              Single file mode: Process one specific .md/.mdx file
   --changed-files <file>     Use specific changed files list (overrides git diff)
   --list <file>              List mode: Process multiple files from a list file (one path per line)
-  --mode, -m <mode>          Scenario type: ui_change, new_feature, default
+  --mode, -m <mode>          Scenario type: ui_change, new_feature, default/translation
   --lang, -l <code>          Language code or name to select in UI (overrides auto-detection)
   --help, -h                 Show this help message
 
 EXAMPLES:
-  node test-enhanced-flow.js                           # Git diff mode on docs/ folder
-  node test-enhanced-flow.js --folder ./docs-es        # Translation mode on Spanish docs (auto-detect Spanish)
-  node test-enhanced-flow.js --folder ./i18n/pt-BR     # Translation mode on Portuguese docs (auto-detect Portuguese)  
-  node test-enhanced-flow.js --folder ./docs-fr        # Translation mode on French docs (auto-detect French)
-  node test-enhanced-flow.js --folder ./custom --lang es  # Translation mode with explicit Spanish language code
-  node test-enhanced-flow.js --folder ./docs-es --lang Spanish  # Translation mode with explicit Spanish language name
+  node test-enhanced-flow.js --folder ./docs-es        # Default/Translation mode on Spanish docs (auto-detect Spanish)
+  node test-enhanced-flow.js --folder ./i18n/pt-BR     # Default/Translation mode on Portuguese docs (auto-detect Portuguese)  
+  node test-enhanced-flow.js --folder ./docs-fr        # Default/Translation mode on French docs (auto-detect French)
+  node test-enhanced-flow.js --folder ./custom --lang es  # Default/Translation mode with explicit Spanish language code
+  node test-enhanced-flow.js --folder ./docs-es --lang Spanish  # Default/Translation mode with explicit Spanish language name
   node test-enhanced-flow.js --file ./docs/guide.md    # Single file mode
   node test-enhanced-flow.js --file ./docs/api.md --mode new_feature  # Single file with specific mode
   node test-enhanced-flow.js --file ./spanish/guide.md --lang es  # Single file with explicit language
@@ -1245,23 +1148,16 @@ CONFIGURATION:
   nearby headings or emphasized text in the markdown content. No suffixes are added.
 
 MODE DETAILS:
-  🔍 Git Diff Mode: 
-     - Fetches changed files from git diff
-     - Filters to .md files that have docs anywhere in their path
-     - Classifies each file and processes sequentially:
-       • new_feature:  Files with placeholders (<!-- placeholder for ... -->)
-       • ui_change:    Files with images but no placeholders  
-       • none:         Files with neither (skipped)
-  
-  🌐 Translation Mode:
-     - Processes .md/.mdx files that contain actual images in specified folder
+  🌐 Default/Translation Mode:
+     - Processes .md/.mdx files that contain actual images in specified folder  
      - Skips files without any images (no screenshots needed)
-     - No classification - treats all as default/translation scenario
-     - Works with ANY language folder that mirrors docs/ structure (e.g., docs-es, docs-fr, docs-de, i18n/pt-BR, etc.)
-     - Automatically detects language from folder path and sets UI language accordingly
-     - Navigates to worklist and selects appropriate language before processing
+     - No classification - treats all files the same way
+     - Default and translation modes are identical (both use the same processing)
+     - Works with ANY language folder that mirrors docs/ structure (e.g., docs-es, docs-fr, docs-de, i18n/pt-BR, etc.)                                          
+     - Automatically detects language from folder path and sets UI language accordingly                                                                         
+     - Navigates to worklist and selects appropriate language before processing 
      - Supported languages: English, Spanish, French, Hindi, Portuguese
-     - Language codes: en (English), es (Spanish), fr (French), hi (Hindi), pt (Portuguese)
+     - Language codes: en (English), es (Spanish), fr (French), hi (Hindi), pt (Portuguese)                                                                     
      - --lang option accepts both language names and codes (e.g., --lang Spanish or --lang es)
   
   📄 Single File Mode:
@@ -1282,6 +1178,23 @@ MODE DETAILS:
      - Can be combined with --mode to force same processing type for all files
 `);
 };
+
+// Function to get user input from terminal
+async function promptUser(question) {
+    const readline = require('node:readline');
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+        rl.question(question, (answer) => {
+            rl.close();
+            resolve(answer);
+        });
+    });
+}
+
 
 // Accept command-line arguments
 const args = process.argv.slice(2);
@@ -1325,6 +1238,7 @@ for (let i = 0; i < args.length; i++) {
     }
 }
 
+<<<<<<< HEAD
 // If scenario is specified but mode is not, use scenario as mode
 if (scenarioArg && !modeArg) {
     console.log(`🔄 Using scenario '${scenarioArg}' as mode`);
@@ -1342,19 +1256,194 @@ if (exclusiveOptions.length > 1) {
 // Detect if running in GitHub Actions or CI environment
 const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || true; // Force CI mode to avoid interactive prompts
 
+=======
+>>>>>>> a0ccac7c51abece84dffd2f4de34030c225ee637
 // Determine execution mode and process files accordingly
 let executionMode = 'default';
 let filesToProcess = [];
 let processedFileResults = [];
 
-if (singleFilePath) {
-    // SINGLE FILE MODE - Process one specific file
-    executionMode = 'single_file';
-    console.log(`📄 SINGLE FILE MODE: Processing file: ${singleFilePath}`);
+// Function to prompt for missing required information
+async function promptForMissingInfo() {
+    // Validate exclusive options first
+    const exclusiveOptions = [folderPath, singleFilePath, changedFiles, listFilePath].filter(Boolean);
+    if (exclusiveOptions.length > 1) {
+        console.error('❌ Error: Only one of --folder, --file, --changed-files, or --list can be specified at a time.');
+        showUsage();
+        process.exit(1);
+    }
     
-    try {
+    // If no input source is specified, prompt for one
+    if (!folderPath && !singleFilePath && !changedFiles && !listFilePath) {
+        console.log('🖥️  Please select an input source:');
+        console.log('1. Single file (for UI changes or new features)');
+        console.log('2. Translation folder (for processing language translations)');
+        
+        let inputTypeChoice;
+        let isValidChoice = false;
+        
+        while (!isValidChoice) {
+            inputTypeChoice = await promptUser('Enter your choice (1-2) [2]: ');
+            
+            // Default to option 2 if empty
+            if (!inputTypeChoice) {
+                inputTypeChoice = '2';
+                isValidChoice = true;
+            } 
+            // Validate input is either 1 or 2
+            else if (inputTypeChoice === '1' || inputTypeChoice === '2') {
+                isValidChoice = true;
+            } else {
+                console.log(`❌ Error: Invalid input "${inputTypeChoice}". Please enter either 1 or 2.`);
+            }
+        }
+        
+        switch (inputTypeChoice) {
+            case '1':
+                let validFile = false;
+                while (!validFile) {
+                    singleFilePath = await promptUser('Enter path to the file (must be .md or .mdx): ');
+                    
+                    // Check if input is empty
+                    if (!singleFilePath || singleFilePath.trim() === '') {
+                        console.log(`❌ Error: File path cannot be empty. Please enter a valid path.`);
+                        continue;
+                    }
+                    
+                    // Check if file exists
+                    const fs = require('node:fs');
+                    if (!fs.existsSync(singleFilePath)) {
+                        console.log(`❌ Error: File does not exist: ${singleFilePath}`);
+                        continue;
+                    }
+                    
+                    // Check if it's a markdown file
+                    const isMarkdown = singleFilePath.endsWith('.md') || singleFilePath.endsWith('.mdx');
+                    if (!isMarkdown) {
+                        console.log(`❌ Error: File must be a .md or .mdx file: ${singleFilePath}`);
+                        continue;
+                    }
+                    
+                    validFile = true;
+                }
+                break;
+            case '2':
+                let validFolder = false;
+                while (!validFolder) {
+                    folderPath = await promptUser('Enter path to the translation folder: ');
+                    
+                    // Check if input is empty
+                    if (!folderPath || folderPath.trim() === '') {
+                        console.log(`❌ Error: Folder path cannot be empty. Please enter a valid path.`);
+                        continue;
+                    }
+                    
+                    // Check if folder exists
+                    const fs = require('node:fs');
+                    if (!fs.existsSync(folderPath)) {
+                        console.log(`❌ Error: Folder does not exist: ${folderPath}`);
+                        continue;
+                    }
+                    
+                    // Check if it's a directory
+                    const stats = fs.statSync(folderPath);
+                    if (!stats.isDirectory()) {
+                        console.log(`❌ Error: Path is not a directory: ${folderPath}`);
+                        continue;
+                    }
+                    
+                    validFolder = true;
+                }
+                // For folders, automatically set mode to translation
+                modeArg = 'translation';
+                break;
+        }
+    }
+    
+    // If mode is not specified and we're in single file mode, prompt for it
+    // For folders, we've already set the mode to translation above
+    if (!modeArg && singleFilePath) {
+        const modeOptions = ['new_feature', 'ui_change'];
+        console.log('\nAvailable modes for single file:');
+        modeOptions.forEach((mode, index) => {
+            console.log(`${index + 1}. ${mode}`);
+        });
+        
+        let validMode = false;
+        while (!validMode) {
+            const modeInput = await promptUser('Select mode (enter number or name) [ui_change]: ');
+            
+            // Default to ui_change if empty
+            if (!modeInput || modeInput.trim() === '') {
+                modeArg = 'ui_change';
+                validMode = true;
+                continue;
+            }
+            
+            // Check if input is a valid number
+            if (!isNaN(modeInput) && parseInt(modeInput) >= 1 && parseInt(modeInput) <= modeOptions.length) {
+                modeArg = modeOptions[parseInt(modeInput) - 1];
+                validMode = true;
+                continue;
+            }
+            
+            // Check if input is a valid mode name
+            const normalizedInput = modeInput.toLowerCase();
+            if (normalizedInput === 'new_feature' || normalizedInput === 'ui_change') {
+                modeArg = normalizedInput;
+                validMode = true;
+                continue;
+            }
+            
+            // If we get here, the input was invalid
+            console.log(`❌ Error: Invalid mode "${modeInput}". Please enter a number (1-${modeOptions.length}) or one of: ${modeOptions.join(', ')}`);
+        }
+    }
+    
+    // If default or translation mode is selected but no language is specified, prompt for it
+    if ((modeArg === 'translation' || modeArg === 'default' || !modeArg) && !languageCodeArg) {
+        let validLanguage = false;
+        while (!validLanguage) {
+            languageCodeArg = await promptUser('Enter language code (e.g., es for Spanish): ');
+            
+            // Check if input is empty
+            if (!languageCodeArg || languageCodeArg.trim() === '') {
+                console.log('❌ Error: Language code cannot be empty. Please enter a valid language code.');
+                continue;
+            }
+            
+            // Check if language code is valid (2-3 characters, alphabetic)
+            const langCodeRegex = /^[a-zA-Z]{2,3}(-[a-zA-Z]{2,3})?$/;
+            if (!langCodeRegex.test(languageCodeArg)) {
+                console.log('❌ Error: Invalid language code format. Please enter a valid ISO language code (e.g., es, en, pt-BR).');
+                continue;
+            }
+            
+            validLanguage = true;
+        }
+    }
+    
+    // Log the parameters we're using
+    console.log('\n🚀 Starting execution with the following parameters:');
+    console.log(`Mode: ${modeArg || 'default'}`);
+    if (singleFilePath) console.log(`File: ${singleFilePath}`);
+    if (folderPath) console.log(`Folder: ${folderPath}`);
+    if (listFilePath) console.log(`List file: ${listFilePath}`);
+    if (languageCodeArg) console.log(`Language: ${languageCodeArg}`);
+    console.log('----------------------------\n');
+}
+
+// Main execution function
+async function executeWorkflow() {
+    // Prompt for any missing required information
+    await promptForMissingInfo();
+    
+    // Process the input sources to set up changedFiles
+    if (singleFilePath) {
+        // Create a changed files list for the single file
         const fs = require('node:fs');
         const path = require('node:path');
+<<<<<<< HEAD
         
         // Validate file exists and is a markdown file
         if (!fs.existsSync(singleFilePath)) {
@@ -1386,18 +1475,26 @@ if (singleFilePath) {
         console.log(`✅ Processed single file in ${mode.toUpperCase()} mode`);
         
         // Create a changed files list for the automation
+=======
+>>>>>>> a0ccac7c51abece84dffd2f4de34030c225ee637
         const singleFileChangedList = path.join(process.cwd(), 'changed-files-single.txt');
         const normalizedPath = singleFilePath.replace(/\\/g, '/');
         fs.writeFileSync(singleFileChangedList, normalizedPath);
-        
         console.log(`📋 Created single file changed files list: ${singleFileChangedList}`);
         changedFiles = singleFileChangedList;
-        
-    } catch (error) {
-        console.error(`❌ Error in single file mode: ${error.message}`);
-        process.exit(1);
+        executionMode = 'single_file';
+    } else if (folderPath) {
+        executionMode = 'translation';
+        // Note: The folder processing will be handled by the main code
+    } else if (listFilePath) {
+        executionMode = 'list';
+        // Note: The list processing will be handled by the main code
     }
-} else if (listFilePath) {
+}
+
+// Single file mode is now handled in the executeWorkflow function
+
+if (listFilePath) {
     // LIST MODE - Process multiple files from a list file
     executionMode = 'list';
     console.log(`📋 LIST MODE: Processing files from list: ${listFilePath}`);
@@ -1435,9 +1532,9 @@ if (singleFilePath) {
         process.exit(1);
     }
 } else if (folderPath) {
-    // DEFAULT MODE (TRANSLATION) - Process any language folder with same structure as docs
+    // DEFAULT/TRANSLATION MODE - Process any language folder with same structure as docs
     executionMode = 'translation';
-    console.log(`📁 TRANSLATION MODE: Processing all .md/.mdx files in: ${folderPath}`);
+    console.log(`📁 DEFAULT/TRANSLATION MODE: Processing all .md/.mdx files in: ${folderPath}`);
     console.log(`ℹ️  This is default/translation mode - processing any language folder that mirrors docs structure`);
     
     try {
@@ -1457,110 +1554,29 @@ if (singleFilePath) {
         }
         
         processedFileResults = await processFolderInDefaultMode(folderPath);
-        console.log(`✅ Processed ${processedFileResults.length} files in translation mode`);
+        console.log(`✅ Processed ${processedFileResults.length} files in default/translation mode`);
         
         // For translation mode, create a changed files list for the automation
         if (processedFileResults.length > 0) {
-            // Create a comprehensive changed files list for translation mode
+            // Create a comprehensive changed files list for default/translation mode
             const translationChangedFilesPath = path.join(process.cwd(), 'changed-files-translation.txt');
             const allProcessedFiles = processedFileResults.map(result => result.filePath.replace(/\\/g, '/'));
             fs.writeFileSync(translationChangedFilesPath, allProcessedFiles.join('\n'));
             
-            console.log(`📋 Created translation changed files list: ${translationChangedFilesPath}`);
-            console.log(`📄 Files in translation list: ${allProcessedFiles.length}`);
+            console.log(`📋 Created default/translation changed files list: ${translationChangedFilesPath}`);
+            console.log(`📄 Files in default/translation list: ${allProcessedFiles.length}`);
             
             changedFiles = translationChangedFilesPath;
         }
     } catch (error) {
-        console.error(`❌ Error in translation mode: ${error.message}`);
+        console.error(`❌ Error in default/translation mode: ${error.message}`);
         process.exit(1);
     }
-} else if (!changedFiles) {
-    // GIT DIFF MODE (Default when no folder specified)
-    executionMode = 'git_diff';
-    console.log('🔍 GIT DIFF MODE: Processing files from git diff...');
-    
-    try {
-        // Fetch changed files from git
-        const gitChangedFiles = await fetchGitDiff();
-        
-        if (gitChangedFiles.length === 0) {
-            console.log('⚠️  No changed files found in git diff, falling back to specified document...');
-            
-            // Fallback to specified document explorer file
-            const fs = require('node:fs');
-    const testDocPath = 'docs/1-Getting-Started/addorg.md';
-    
-    if (fs.existsSync(testDocPath)) {
-                console.log(`📄 Using fallback document explorer file: ${testDocPath}`);
-        changedFiles = createChangedFilesList(testDocPath);
-    } else {
-                console.log('⚠️  Fallback document not found, creating default...');
-        const defaultDocPath = createDefaultTestDocument();
-        changedFiles = createChangedFilesList(defaultDocPath);
-    }
-        } else {
-            // Filter to documentation files in docs/ folder
-            const documentationFiles = filterDocumentationFiles(gitChangedFiles);
-            
-            if (documentationFiles.length === 0) {
-                console.log('⚠️  No documentation files with docs in path found in git diff, using fallback...');
-                
-                // Use fallback document
-                const fs = require('node:fs');
-                const testDocPath = 'docs/1-Getting-Started/addorg.md';
-                
-                if (fs.existsSync(testDocPath)) {
-                    console.log(`📄 Using fallback document explorer file: ${testDocPath}`);
-                    changedFiles = createChangedFilesList(testDocPath);
-                } else {
-                    console.log('⚠️  Fallback document not found, creating default...');
-                    const defaultDocPath = createDefaultTestDocument();
-                    changedFiles = createChangedFilesList(defaultDocPath);
-                }
-            } else {
-                // Classify and process each documentation file
-                console.log(`📋 Classifying and processing ${documentationFiles.length} documentation files...`);
-                
-                for (const filePath of documentationFiles) {
-                    const mode = await classifyFileMode(filePath);
-                    const result = await processFileByMode(filePath, mode);
-                    processedFileResults.push(result);
-                }
-                
-                // Create changed files list with the processed documentation files
-    const fs = require('node:fs');
-    const path = require('node:path');
-                const changedFilesPath = path.join(process.cwd(), 'changed-files-git-diff.txt');
-                
-                // Convert Windows paths and write to file
-                const normalizedPaths = documentationFiles.map(p => p.replace(/\\/g, '/'));
-                fs.writeFileSync(changedFilesPath, normalizedPaths.join('\n'));
-                
-                console.log(`📋 Created git diff changed files list: ${changedFilesPath}`);
-                console.log(`📄 Files in list: ${normalizedPaths.length}`);
-                normalizedPaths.forEach(file => console.log(`  - ${file}`));
-                
-                changedFiles = changedFilesPath;
-            }
-        }
-    } catch (error) {
-        console.error(`❌ Error in git diff processing: ${error.message}`);
-        console.log('⚠️  Falling back to default document...');
-        
-        // Use fallback document
-        const fs = require('node:fs');
-    const testDocPath = 'docs/1-Getting-Started/addorg.md';
-    
-    if (fs.existsSync(testDocPath)) {
-            console.log(`📄 Using fallback document explorer file: ${testDocPath}`);
-        changedFiles = createChangedFilesList(testDocPath);
-    } else {
-            console.log('⚠️  Fallback document not found, creating default...');
-        const defaultDocPath = createDefaultTestDocument();
-        changedFiles = createChangedFilesList(defaultDocPath);
-        }
-    }
+} else if (!changedFiles && !folderPath && !singleFilePath && !listFilePath) {
+    // Default to folder mode if no input is specified
+    console.log('⚠️  No input source specified. Please provide a folder, file, or list file.');
+    console.log('🔄 Starting prompt for missing information...');
+    await promptForMissingInfo();
 }
 
 // Display execution summary
@@ -1568,10 +1584,8 @@ console.log('\n' + '='.repeat(80));
 console.log(`📊 EXECUTION MODE: ${executionMode.toUpperCase()}`);
 
 if (executionMode === 'translation') {
-    console.log(`🌐 Translation folder: ${folderPath}`);
-    console.log(`ℹ️  Processing files with actual images in translation/default mode`);
-} else if (executionMode === 'git_diff') {
-    console.log(`🔍 Git diff mode: Processing changes in files with docs in their path`);
+    console.log(`🌐 Default/Translation folder: ${folderPath}`);
+    console.log(`ℹ️  Processing files with actual images in default/translation mode`);
 } else if (executionMode === 'single_file') {
     console.log(`📄 Single file: ${singleFilePath}`);
     console.log(`ℹ️  Processing one specific file with classification`);
@@ -1706,7 +1720,8 @@ const SCENARIO_TYPE = getScenarioType();
 const MODE_DESCRIPTIONS = {
     "ui_change": "UI Change Mode - Replace existing screenshots due to UI changes",
     "new_feature": "New Feature Mode - Take screenshots for new features/placeholders", 
-    "default": "Default Mode - Standard translation mode with both English and Spanish docs"
+    "default": "Default/Translation Mode - Standard mode for processing files with images",
+    "translation": "Default/Translation Mode - Standard mode for processing files with images"
 };
 
 /**
@@ -1844,7 +1859,7 @@ async function postprocessPlaceholders(processedFiles) {
             try {
                 await fs.promises.access(imagePath);
                 console.log(`✅ Found generated image: ${imageName}`);
-                await replacePlaceholderWithImage(fileInfo.filePath, imageName);
+                await replaceMatchingPlaceholder(fileInfo.filePath, imageName);
             } catch {
                 console.warn(`⚠️  Image not generated: ${imageName} (expected at: ${imagePath})`);
             }
@@ -1860,7 +1875,7 @@ async function postprocessPlaceholders(processedFiles) {
                         console.log(`✅ Processing generated image: ${imageName}`);
                         
                         // Try to replace any matching placeholder
-                        await replacePlaceholderWithImage(fileInfo.filePath, imageName);
+                        await replaceMatchingPlaceholder(fileInfo.filePath, imageName);
                     } catch (error) {
                         console.warn(`⚠️  Could not process image: ${imageName}`);
                     }
@@ -1874,6 +1889,69 @@ async function postprocessPlaceholders(processedFiles) {
     
     console.log('✅ Post-processing completed - all image references verified and updated');
 }
+
+/**
+ * Replace a specific placeholder with an image reference after screenshot is taken
+ * @param {string} mdFilePath - Path to the markdown file
+ * @param {string} imageName - The name of the image that was just taken
+ * @returns {boolean} True if replacement was successful
+ */
+const replaceMatchingPlaceholder = async (mdFilePath, imageName) => {
+    try {
+        const fs = await import('node:fs');
+        const path = await import('node:path');
+        
+        // Read the markdown file
+        const content = fs.readFileSync(mdFilePath, 'utf8');
+        
+        // Create the image reference
+        const relativePath = `./img/${imageName}`;
+        const imageReference = `![${imageName.replace('.png', '')}](${relativePath})`;
+        
+        // Look for a placeholder that mentions this specific image name
+        const placeholderPattern = new RegExp(`<!--\\s*placeholder\\s+for\\s+screenshot:\\s*${imageName.replace(/\./g, '\\.')}\\s*-->`, 'i');
+        const match = content.match(placeholderPattern);
+        
+        if (match) {
+            // Found a placeholder with this exact image name
+            const placeholderText = match[0];
+            
+            // Replace the placeholder with the image reference
+            const updatedContent = content.replace(placeholderText, imageReference);
+            
+            // Write the updated content back to the file
+            fs.writeFileSync(mdFilePath, updatedContent, 'utf8');
+            
+            console.log(`✅ Replaced placeholder with image reference after screenshot: ${placeholderText} → ${imageReference}`);
+            return true;
+        }
+        
+        // If we didn't find an exact match, look for any placeholder
+        // This is a fallback for unnamed placeholders
+        const genericPattern = /<!--\s*placeholder\s+for\s+screenshot\s*-->/i;
+        const genericMatch = content.match(genericPattern);
+        
+        if (genericMatch) {
+            // Found a generic placeholder
+            const placeholderText = genericMatch[0];
+            
+            // Replace the placeholder with the image reference
+            const updatedContent = content.replace(placeholderText, imageReference);
+            
+            // Write the updated content back to the file
+            fs.writeFileSync(mdFilePath, updatedContent, 'utf8');
+            
+            console.log(`✅ Replaced generic placeholder with image reference: ${placeholderText} → ${imageReference}`);
+            return true;
+        }
+        
+        console.warn(`⚠️ No matching placeholder found for image: ${imageName}`);
+        return false;
+    } catch (error) {
+        console.error(`❌ Error replacing placeholder: ${error.message}`);
+        return false;
+    }
+};
 
 /**
  * Find a similar image name from the generated images
@@ -1918,6 +1996,10 @@ const findSimilarImage = (expectedName, generatedImages) => {
 
 (async () => {
     console.log('🚀 Starting Enhanced Tracewright Test Flow...\n');
+    
+    // First, execute the workflow to process command line arguments and interactive prompts
+    await executeWorkflow();
+    
     console.log(`📋 Mode: ${SCENARIO_TYPE} - ${MODE_DESCRIPTIONS[SCENARIO_TYPE]}\n`);
     
     // Step 1: Check Python dependencies
@@ -1989,11 +2071,9 @@ const findSimilarImage = (expectedName, generatedImages) => {
         console.log(generatedInstructions);
         console.log('\n' + '='.repeat(80) + '\n');
     } catch (error) {
-        console.error('⚠️  Instruction generation failed, using fallback instructions:', error.message);
-        console.log('🔍 Browser will remain open for debugging. Close manually when done.');
-        
-        // Set fallback instructions if generation failed
-        generatedInstructions = "Default: No document content was processed or an error occurred during instruction generation.";
+        console.error('❌ Instruction generation failed:', error.message);
+        console.log('🛑 Exiting process due to instruction generation failure.');
+        process.exit(1);
     }
 
 // Note: Skip early exit for translation mode to allow language switching
@@ -2010,11 +2090,10 @@ const shouldProceedForLanguageSwitching = (
   (languageCodeArg && languageCodeArg.toLowerCase() !== 'english' && languageCodeArg.toLowerCase() !== 'en')
 );
 
-if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
-  console.log("❌ No document was processed. Skipping browser automation and post steps.");
-  process.exit(0);
-} else if (hasNoDocumentContent && shouldProceedForLanguageSwitching) {
-  console.log("⚠️  No document content was processed, but proceeding with browser automation for language switching...");
+if (hasNoDocumentContent) {
+  console.log("❌ No document was processed or instructions are empty.");
+  console.log("🛑 Exiting process due to missing instructions.");
+  process.exit(1);
 }
     // Step 3: Initialize browser and tracewright
     console.log('🌐 Launching browser...');
@@ -2273,15 +2352,52 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
             if (isEnglish) {
-                console.log('ℹ️  English language detected - skipping language selection (already default)');
+                console.log('❌ English language detected in default/translation mode');
+                
+                // Create a descriptive error message for GitHub comment
+                const errorComment = `## ❌ DEFAULT/TRANSLATION MODE ERROR\n\nYou specified English as the target language in default/translation mode.\n\nDefault/Translation mode is intended to translate content FROM English TO another language. Using English as the target language defeats the purpose of default/translation mode.\n\nPlease specify a non-English target language (e.g., --lang es for Spanish).`;
+                
+                // Log the GitHub comment format for CI integration
+                console.log('\n\n--- GITHUB_COMMENT_START ---');
+                console.log(errorComment);
+                console.log('--- GITHUB_COMMENT_END ---\n\n');
+                
+                // Exit with error code
+                console.log('🛑 Exiting process with error code 1.');
+                process.exit(1);
             } else {
-                // Execute translation mode workflow (navigate to worklist and select language)
+                // Execute default/translation mode workflow (navigate to worklist and select language)
                 try {
                     await executeTranslationMode(page, detectedLanguage);
-                    console.log(`✅ Translation mode workflow completed for language: ${detectedLanguage}`);
+                    
+                    // Check if language validation failed during executeTranslationMode
+                    if (languageValidationFailed) {
+                        console.log('⛔ Language validation failed. Stopping workflow.');
+                        console.log('🛑 Exiting process with error code 1.');
+                        process.exit(1);
+                    }
+                    
+                    console.log(`✅ Default/Translation mode workflow completed for language: ${detectedLanguage}`);
                 } catch (translationError) {
-                    console.error('❌ Error in translation mode workflow:', translationError.message);
-                    console.log('⚠️  Continuing with automation despite translation workflow error...');
+                    console.error('❌ Error in default/translation mode workflow:', translationError.message);
+                    
+                    // Check if this is an unknown language error
+                    if (translationError.message.includes('Unknown language:')) {
+                        // Language validation already failed and GitHub comment was already logged
+                        console.log('⛔ Invalid language specified. Stopping workflow.');
+                        console.log('🛑 Exiting process with error code 1.');
+                        process.exit(1);
+                    }
+                    
+                    // Check if language validation failed for other reasons
+                    if (languageValidationFailed) {
+                        console.log('⛔ Language validation failed. Stopping workflow.');
+                        console.log('🛑 Exiting process with error code 1.');
+                        process.exit(1);
+                    } else {
+                        // Only continue for non-language-related errors
+                        console.log('⚠️  Continuing with automation despite default/translation workflow error...');
+                    }
                 }
             }
         } else if (executionMode === 'single_file' && singleFilePath) {
@@ -2296,20 +2412,57 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // Check if detected language is English (case-insensitive)
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
+            // Check if this is ui_change or new_feature mode and file is not from docs folder
+            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && !singleFilePath.includes('/docs/') && !singleFilePath.includes('\\docs\\')) {
+                console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
+                console.log('🛑 Exiting process with error code 1.');
+                
+                // Generate GitHub comment for CI
+                if (isCI) {
+                    console.log('\n--- GITHUB_COMMENT_START ---');
+                    console.log(`### ❌ ${modeArg.toUpperCase()} mode error`);
+                    console.log('');
+                    console.log(`The file \`${singleFilePath}\` is not from the docs folder. UI change and new feature modes can only be used with English documentation files from the docs folder.`);
+                    console.log('');
+                        console.log('Please use a file from the docs folder or use default/translation mode for non-English files.');
+                    console.log('--- GITHUB_COMMENT_END ---\n');
+                }
+                
+                process.exit(1);
+            }
+            
             // Force switch to English for non-translation modes
             try {
                 console.log('🌐 Single file mode: forcing language to English...');
                 await selectLanguage(page, 'English');
+                
+                // Check if language validation failed
+                if (languageValidationFailed) {
+                    console.log('⛔ Language validation failed in single file mode. Stopping workflow.');
+                    console.log('🛑 Exiting process with error code 1.');
+                    process.exit(1);
+                }
+                
                 // Navigate to worklist using the same home nav snippet after switching
                 try {
-                  await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-                  await smartWait(page, { timeout: 1500 });
+                  const profileLink = page.locator('[data-cy="sidebar-home"]');
+                  await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+                  await profileLink.click({ force: true });
+                  await page.waitForLoadState('networkidle', { timeout: 10000 });
+                  await page.waitForTimeout(3000);
                 } catch (navErr) {
                   console.warn('⚠️  Home nav click snippet failed after forcing English (single file):', navErr?.message || navErr);
                 }
                 console.log('✅ Single file mode: language set to English');
             } catch (e) {
                 console.warn('⚠️  Failed to switch to English in single file mode:', e?.message || e);
+                
+                // Check if language validation failed
+                if (languageValidationFailed) {
+                    console.log('⛔ Language validation failed in single file mode. Stopping workflow.');
+                    console.log('🛑 Exiting process with error code 1.');
+                    process.exit(1);
+                }
             }
         } else if (executionMode === 'list' && processedFileResults.length > 0) {
             // For list mode, use command-line language argument if provided, otherwise detect from first processed file
@@ -2326,36 +2479,101 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // Check if detected language is English (case-insensitive)
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
+            // Check if this is ui_change or new_feature mode and files are not from docs folder
+            if (modeArg === 'ui_change' || modeArg === 'new_feature') {
+                const nonDocsFiles = processedFileResults.filter(
+                    result => result.filePath && !result.filePath.includes('/docs/') && !result.filePath.includes('\\docs\\')
+                );
+                
+                if (nonDocsFiles.length > 0) {
+                    console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
+                    console.log('🛑 The following files are not from the docs folder:');
+                    nonDocsFiles.forEach(file => console.log(`   - ${file.filePath}`));
+                    console.log('🛑 Exiting process with error code 1.');
+                    
+                    // Generate GitHub comment for CI
+                    if (isCI) {
+                        console.log('\n--- GITHUB_COMMENT_START ---');
+                        console.log(`### ❌ ${modeArg.toUpperCase()} mode error`);
+                        console.log('');
+                        console.log(`The following files are not from the docs folder. UI change and new feature modes can only be used with English documentation files from the docs folder:`);
+                        console.log('');
+                        nonDocsFiles.forEach(file => console.log(`- \`${file.filePath}\``));
+                        console.log('');
+                        console.log('Please use files from the docs folder or use default/translation mode for non-English files.');
+                        console.log('--- GITHUB_COMMENT_END ---\n');
+                    }
+                    
+                    process.exit(1);
+                }
+            }
+            
             // Force switch to English for non-translation modes
             try {
                 console.log('🌐 List mode: forcing language to English...');
                 await selectLanguage(page, 'English');
+                
+                // Check if language validation failed
+                if (languageValidationFailed) {
+                    console.log('⛔ Language validation failed in list mode. Stopping workflow.');
+                    console.log('🛑 Exiting process with error code 1.');
+                    process.exit(1);
+                }
+                
                 // Navigate to worklist using the same home nav snippet after switching
                 try {
-                  await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-                  await smartWait(page, { timeout: 1500 });
+                  const profileLink = page.locator('[data-cy="sidebar-home"]');
+                  await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+                  await profileLink.click({ force: true });
+                  await page.waitForLoadState('networkidle', { timeout: 10000 });
+                  await page.waitForTimeout(3000);
                 } catch (navErr) {
                   console.warn('⚠️  Home nav click snippet failed after forcing English (list mode):', navErr?.message || navErr);
                 }
                 console.log('✅ List mode: language set to English');
             } catch (e) {
                 console.warn('⚠️  Failed to switch to English in list mode:', e?.message || e);
+                
+                // Check if language validation failed
+                if (languageValidationFailed) {
+                    console.log('⛔ Language validation failed in list mode. Stopping workflow.');
+                    console.log('🛑 Exiting process with error code 1.');
+                    process.exit(1);
+                }
             }
         } else {
             // Default path: force switch to English from any current language
             try {
                 console.log('🌐 Default mode: forcing language to English...');
                 await selectLanguage(page, 'English');
+                
+                // Check if language validation failed
+                if (languageValidationFailed) {
+                    console.log('⛔ Language validation failed in default mode. Stopping workflow.');
+                    console.log('🛑 Exiting process with error code 1.');
+                    process.exit(1);
+                }
+                
                 // Navigate to worklist using the same home nav snippet after switching
                 try {
-                  await page.locator('.nav-section a:has(svg[name="home"])').first().click({ timeout: 15000 });
-                  await smartWait(page, { timeout: 1500 });
+                  const profileLink = page.locator('[data-cy="sidebar-home"]');
+                  await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+                  await profileLink.click({ force: true });
+                  await page.waitForLoadState('networkidle', { timeout: 10000 });
+                  await page.waitForTimeout(3000);
                 } catch (navErr) {
                   console.warn('⚠️  Home nav click snippet failed after forcing English (default mode):', navErr?.message || navErr);
                 }
                 console.log('✅ Default mode: language set to English');
             } catch (e) {
                 console.warn('⚠️  Failed to switch to English in default mode:', e?.message || e);
+                
+                // Check if language validation failed
+                if (languageValidationFailed) {
+                    console.log('⛔ Language validation failed in default mode. Stopping workflow.');
+                    console.log('🛑 Exiting process with error code 1.');
+                    process.exit(1);
+                }
             }
         }
 
@@ -2418,6 +2636,27 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                 console.log(`📄 Setting markdown path from processed files: ${currentFilePath}`);
             }
             
+            if (!currentFilePath) {
+                const testDocPath = 'docs/1-Getting-Started/addorg.md';
+                if (fs.existsSync(testDocPath)) {
+                    currentFilePath = testDocPath;
+                    console.log(`📄 Setting markdown path from test document: ${currentFilePath}`);
+                }
+            }
+            
+            if (!currentFilePath) {
+                // Use a specific markdown file as fallback, not a directory
+                currentFilePath = path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'default.md');
+                console.log(`📄 Setting default markdown file path: ${currentFilePath}`);
+                
+                // Ensure the directory exists for this fallback file
+                const fallbackDir = path.dirname(currentFilePath);
+                if (!fs.existsSync(fallbackDir)) {
+                    fs.mkdirSync(fallbackDir, { recursive: true });
+                    console.log(`📁 Created fallback directory: ${fallbackDir}`);
+                }
+            }
+            
             // Set the initial file path
             console.log(`🎯 About to set current file path: ${currentFilePath}`);
             console.log(`🎯 aiUtils object exists: ${!!aiUtils}`);
@@ -2459,6 +2698,13 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
                 }
             };
             
+            // Check if language validation failed
+            if (languageValidationFailed) {
+                console.log('⛔ Language validation failed. Skipping tracewright execution.');
+                console.log('🛑 Exiting process with error code 1.');
+                process.exit(1);
+            }
+            
             // Run tracewright with enhanced screenshot interception
             // Note: Instructions are already extracted by _extract_instructions_only in Python
             console.log(`🚀 About to call tracewright with:`);
@@ -2499,8 +2745,52 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             // This eliminates random updates and ensures updates only happen when screenshots are actually taken
             console.log('✅ Batch post-processing skipped - relying on immediate updates after successful screenshots');
         } catch (tracewrightError) {
-            console.log('⚠️  Tracewright with enhanced AI utils failed');
-            console.error('Tracewright error details:', tracewrightError);
+            // Check if this is a Gemini API overload error
+            const isGeminiOverloaded = 
+                tracewrightError.toString().includes("The model is overloaded") || 
+                tracewrightError.toString().includes("Service Unavailable") ||
+                (tracewrightError.cause && tracewrightError.cause.toString().includes("The model is overloaded"));
+            
+            if (isGeminiOverloaded) {
+                console.log('⚠️  Gemini API is overloaded. Waiting 5 seconds and retrying...');
+                
+                // Create a GitHub comment format for the API overload warning
+                const overloadWarning = `## ⚠️ API OVERLOAD WARNING\n\nThe Gemini API is currently overloaded. Attempting to retry after a short delay.\n\nIf this persists, consider trying again later or using a different API provider.`;
+                
+                // Log the GitHub comment format for CI integration
+                console.log('\n\n--- GITHUB_COMMENT_START ---');
+                console.log(overloadWarning);
+                console.log('--- GITHUB_COMMENT_END ---\n\n');
+                
+                // Wait for 5 seconds
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                try {
+                    console.log('🔄 Retrying tracewright execution...');
+                    await tracewright(page, {
+                        script: generatedInstructions,
+                        aiUtils: aiUtils,
+                        currentFile: currentFilePath,
+                        processedFiles: processedFileResults.length > 0 ? processedFileResults : processedFiles
+                    });
+                    console.log('✅ Retry successful!');
+                } catch (retryError) {
+                    console.log('❌ Retry also failed. Gemini API may be unavailable.');
+                    console.error('Retry error details:', retryError);
+                    
+                    // Create a GitHub comment format for the API overload failure
+                    const overloadFailure = `## ❌ API OVERLOAD ERROR\n\nThe Gemini API is currently overloaded and unavailable even after retry.\n\nPlease try again later or consider using a different API provider.`;
+                    
+                    // Log the GitHub comment format for CI integration
+                    console.log('\n\n--- GITHUB_COMMENT_START ---');
+                    console.log(overloadFailure);
+                    console.log('--- GITHUB_COMMENT_END ---\n\n');
+                }
+            } else {
+                // Handle other tracewright errors
+                console.log('⚠️  Tracewright with enhanced AI utils failed');
+                console.error('Tracewright error details:', tracewrightError);
+            }
             
             // Check if browser is still accessible
             try {
@@ -2600,4 +2890,7 @@ if (hasNoDocumentContent && !shouldProceedForLanguageSwitching) {
             console.error('❌ Error closing browser:', closeError.message);
         }
     }
-})(); 
+})();
+
+// Execute the workflow based on command line or interactive input
+// This is now handled at the beginning of the main async function
