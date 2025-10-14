@@ -5,6 +5,9 @@ config();
 // BYPASS: Disable Playwright's font loading check for screenshots
 process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = 'true';
 
+// Disable stock version screenshots completely
+process.env.DISABLE_STOCK_SCREENSHOTS = 'true';
+
 // Direct image replacement - no suffixes used
 
 // Get API key from environment variable
