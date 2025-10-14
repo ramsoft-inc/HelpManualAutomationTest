@@ -2407,7 +2407,14 @@ if (hasNoDocumentContent) {
                 console.log(`🎯 Single file mode: Using specified language from command line: ${languageCodeArg}`);
                 detectedLanguage = languageCodeArg;
             } else {
-                detectedLanguage = detectLanguageFromFolder(singleFilePath);
+                // Simple check: if path contains 'docs/', it's English
+                const normalizedPath = singleFilePath.toLowerCase();
+                if (normalizedPath.includes('docs/') || normalizedPath.includes('docs\\')) {
+                    console.log(`🔍 File is in docs folder, setting language to English: ${singleFilePath}`);
+                    detectedLanguage = 'English';
+                } else {
+                    detectedLanguage = detectLanguageFromFolder(singleFilePath);
+                }
             }
             
             // Check if detected language is English (case-insensitive)
@@ -2415,10 +2422,8 @@ if (hasNoDocumentContent) {
             
             // Check if this is ui_change or new_feature mode and file is not from docs folder
             const normalizedPath = singleFilePath.toLowerCase();
-            const isDocsFolder = normalizedPath.startsWith('docs/') || 
-                                normalizedPath.startsWith('docs\\') || 
-                                normalizedPath.includes('/docs/') || 
-                                normalizedPath.includes('\\docs\\');
+            // Simple check: if path contains 'docs/', it's in the docs folder
+            const isDocsFolder = normalizedPath.includes('docs/') || normalizedPath.includes('docs\\');
             
             console.log(`🔍 Checking if file is from docs folder: ${singleFilePath} - isDocsFolder: ${isDocsFolder}`);
             
@@ -2494,10 +2499,8 @@ if (hasNoDocumentContent) {
                     if (!result.filePath) return false;
                     
                     const normalizedPath = result.filePath.toLowerCase();
-                    const isDocsFolder = normalizedPath.startsWith('docs/') || 
-                                        normalizedPath.startsWith('docs\\') || 
-                                        normalizedPath.includes('/docs/') || 
-                                        normalizedPath.includes('\\docs\\');
+                    // Simple check: if path contains 'docs/', it's in the docs folder
+                    const isDocsFolder = normalizedPath.includes('docs/') || normalizedPath.includes('docs\\');
                     
                     console.log(`🔍 Checking if file is from docs folder: ${result.filePath} - isDocsFolder: ${isDocsFolder}`);
                     
