@@ -1238,7 +1238,6 @@ for (let i = 0; i < args.length; i++) {
     }
 }
 
-<<<<<<< HEAD
 // If scenario is specified but mode is not, use scenario as mode
 if (scenarioArg && !modeArg) {
     console.log(`🔄 Using scenario '${scenarioArg}' as mode`);
@@ -1256,8 +1255,6 @@ if (exclusiveOptions.length > 1) {
 // Detect if running in GitHub Actions or CI environment
 const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || true; // Force CI mode to avoid interactive prompts
 
-=======
->>>>>>> a0ccac7c51abece84dffd2f4de34030c225ee637
 // Determine execution mode and process files accordingly
 let executionMode = 'default';
 let filesToProcess = [];
