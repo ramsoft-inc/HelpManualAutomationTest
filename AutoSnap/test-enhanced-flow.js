@@ -1767,6 +1767,9 @@ if (listFilePath) {
             console.log(`📄 Files in default/translation list: ${allProcessedFiles.length}`);
             
             changedFiles = translationChangedFilesPath;
+            
+            // Clear folderPath to avoid conflict with changedFiles
+            folderPath = null;
         }
         
         // Display execution summary
@@ -1821,9 +1824,13 @@ if (listFilePath) {
             }
         }
         
-        // Continue to Tracewright execution - use existing changed files
-        console.log('✅ Translation mode processing completed, continuing to Tracewright execution...');
-        // No need to clear parameters - the main workflow will use changedFiles
+        // Don't exit - continue with Tracewright execution
+        console.log('✅ Translation mode processing completed, continuing to browser automation...');
+        
+        // Set up the environment for Tracewright
+        modeArg = 'translation'; // Keep mode as translation for browser automation
+        executionMode = 'translation'; // Keep track that we're in translation mode
+        // We'll continue to the main workflow now
     } catch (error) {
         console.error(`❌ Error in default/translation mode: ${error.message}`);
         process.exit(1);
@@ -2270,11 +2277,11 @@ const findSimilarImage = (expectedName, generatedImages) => {
     // First, execute the workflow to process command line arguments and interactive prompts
     await executeWorkflow();
     
-    // For translation mode, we've already processed the files but we need to continue to run Tracewright
-    // For other modes, if we've already processed files, we can exit
-    if (processedFileResults.length > 0 && executionMode !== 'translation') {
-        console.log('✅ File processing already completed, exiting');
-        process.exit(0);
+    // Don't skip the rest of the workflow for translation mode
+    // Just set a flag that we've already processed the folder
+    if (executionMode === 'translation') {
+        console.log('✅ Translation folder processing completed, continuing with browser automation...');
+        // Continue with the workflow - don't exit
     }
     
     console.log(`📋 Mode: ${SCENARIO_TYPE} - ${MODE_DESCRIPTIONS[SCENARIO_TYPE]}\n`);
@@ -2832,6 +2839,35 @@ if (hasNoDocumentContent) {
                     process.exit(1);
                 }
             }
+        } else if (executionMode === 'translation') {
+            // Translation mode: Use the language from the command line or detect from folder
+            try {
+                // Get language from command line or detect from folder
+                const targetLang = languageCodeArg || detectLanguageFromFolder(folderPath || '');
+                console.log(`🌐 Translation mode: setting language to ${targetLang}...`);
+                await selectLanguage(page, targetLang);
+                
+                // Check if language validation failed
+                if (languageValidationFailed) {
+                    console.log('⛔ Language validation failed in translation mode. Stopping workflow.');
+                    console.log('🛑 Exiting process with error code 1.');
+                    process.exit(1);
+                }
+                
+                // Navigate to worklist using the same home nav snippet after switching
+                try {
+                  const profileLink = page.locator('[data-cy="sidebar-home"]');
+                  await profileLink.waitFor({ state: 'visible', timeout: 15000 });
+                  await profileLink.click({ force: true });
+                  await page.waitForLoadState('networkidle', { timeout: 10000 });
+                  await page.waitForTimeout(3000);
+                } catch (navErr) {
+                  console.warn('⚠️  Home nav click snippet failed after setting language (translation mode):', navErr?.message || navErr);
+                }
+                console.log(`✅ Translation mode: language set to ${targetLang}`);
+            } catch (langError) {
+                console.error(`❌ Error selecting language in translation mode:`, langError.message);
+            }
         } else {
             // Default path: force switch to English from any current language
             try {
@@ -2910,7 +2946,7 @@ if (hasNoDocumentContent) {
             const aiUtils = new AIUtilsEnhanced(page);
             
             // Set the current markdown file path for image reference
-            // Priority order: processedFileResults -> processedFiles -> testDocPath -> default
+            // Priority order: processedFileResults -> processedFiles -> default
             let currentFilePath = null;
             
             if (processedFileResults.length > 0) {
@@ -2927,26 +2963,7 @@ if (hasNoDocumentContent) {
                 console.log(`📄 Setting markdown path from processed files: ${currentFilePath}`);
             }
             
-            if (!currentFilePath) {
-                const testDocPath = 'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg.md';
-                if (fs.existsSync(testDocPath)) {
-                    currentFilePath = testDocPath;
-                    console.log(`📄 Setting markdown path from test document: ${currentFilePath}`);
-                }
-            }
-            
-            if (!currentFilePath) {
-                // Use a specific markdown file as fallback, not a directory
-                currentFilePath = path.resolve(process.cwd(), 'docs', '6-Image-Viewer', 'default.md');
-                console.log(`📄 Setting default markdown file path: ${currentFilePath}`);
-                
-                // Ensure the directory exists for this fallback file
-                const fallbackDir = path.dirname(currentFilePath);
-                if (!fs.existsSync(fallbackDir)) {
-                    fs.mkdirSync(fallbackDir, { recursive: true });
-                    console.log(`📁 Created fallback directory: ${fallbackDir}`);
-                }
-            }
+
             
             // Set the initial file path
             console.log(`🎯 About to set current file path: ${currentFilePath}`);

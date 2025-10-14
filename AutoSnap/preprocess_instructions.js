@@ -11,12 +11,12 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
         console.log(`📄 Current file being processed: ${currentFile}`);
     }
     
-    // Map 'translation' mode to 'default' for Python script compatibility
-    let pythonScenarioType = scenarioType;
-    if (scenarioType === 'translation') {
-        console.log(`ℹ️ Mapping 'translation' mode to 'default' for Python script compatibility`);
-        pythonScenarioType = 'default';
-    }
+            // Map 'translation' mode to 'default' for Python script compatibility
+            let pythonScenarioType = scenarioType;
+            if (scenarioType === 'translation') {
+                console.log(`ℹ️ Mapping 'translation' mode to 'default' for Python script compatibility`);
+                pythonScenarioType = 'default';
+            }
     
     return new Promise((resolve, reject) => {
         // Build the argument list

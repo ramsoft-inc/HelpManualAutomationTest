@@ -552,8 +552,24 @@ export class AIUtilsEnhanced {
           if (fileContent && fileContent.length > 0) {
             console.log(`✅ Path file contains: ${fileContent}`);
             
-            // Use the path from the file as the source of truth
-            const pathFromFile = this.normalizePath(fileContent);
+            // Check if the file content contains mode information (path|mode format)
+            let pathFromFile: string;
+            let mode: string = 'default';
+            
+            if (fileContent.includes('|')) {
+              const [filePath, modeInfo] = fileContent.split('|');
+              pathFromFile = this.normalizePath(filePath);
+              mode = modeInfo.trim();
+              console.log(`📝 Detected mode information: ${mode}`);
+              // Store mode as an environment variable
+              process.env.CURRENT_MD_MODE = mode;
+              // Store mode as a class property for use in other methods
+              this.currentMode = mode;
+            } else {
+              // Legacy format - just the path
+              pathFromFile = this.normalizePath(fileContent);
+            }
+            
             this.currentMdPath = pathFromFile;
             
             console.log(`📝 Using path from file: ${this.currentMdPath}`);
