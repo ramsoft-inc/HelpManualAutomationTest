@@ -1768,6 +1768,62 @@ if (listFilePath) {
             
             changedFiles = translationChangedFilesPath;
         }
+        
+        // Display execution summary
+        console.log('\n' + '='.repeat(80));
+        console.log(`📊 EXECUTION MODE: ${executionMode.toUpperCase()}`);
+        console.log(`🌐 Translation folder: ${folderPath}`);
+        console.log(`ℹ️  Processing files with actual images in translation mode`);
+        console.log(`📄 Changed files reference: ${changedFiles || 'None'}`);
+        console.log(`🔄 Processed files: ${processedFileResults.length}`);
+        
+        if (processedFileResults.length > 0) {
+            console.log('\n📋 Processing Summary:');
+            
+            // Group by mode for better organization
+            console.log(`\n  🌐 TRANSLATION MODE (${processedFileResults.length} files):`);
+            processedFileResults.forEach((result, index) => {
+                console.log(`    ${index + 1}. ✅ ${result.filePath}`);
+                console.log(`       🌐 Translation mode processing`);
+            });
+        }
+        
+        console.log('=' + '='.repeat(80));
+        
+        // Log the changed files for debugging
+        if (changedFiles) {
+            console.log(`📁 Changed files file: ${changedFiles}`);
+            try {
+                const changedFilesContent = fs.readFileSync(changedFiles, 'utf8');
+                const fileList = changedFilesContent.split('\n').filter(line => line.trim());
+                
+                console.log('📄 Changed files content:');
+                console.log(changedFilesContent);
+                
+                console.log('\n=== File Analysis ===');
+                console.log(`Total files: ${fileList.length}`);
+                
+                // Categorize files
+                const docsMdFiles = fileList.filter(file => file.match(/^docs\/.*\.md$/));
+                const docsMdxFiles = fileList.filter(file => file.match(/^docs\/.*\.mdx$/));
+                const otherFiles = fileList.filter(file => !file.match(/^docs\/.*\.(md|mdx)$/));
+                
+                console.log(`Docs MD files: ${docsMdFiles.length}`);
+                docsMdFiles.forEach(file => console.log(`  - ${file}`));
+                
+                console.log(`Docs MDX files: ${docsMdxFiles.length}`);
+                docsMdxFiles.forEach(file => console.log(`  - ${file}`));
+                
+                console.log(`Other files: ${otherFiles.length}`);
+                otherFiles.forEach(file => console.log(`  - ${file}`));
+            } catch (error) {
+                console.log(`⚠️  Could not read changed files: ${error.message}`);
+            }
+        }
+        
+        // Exit after processing translation mode
+        console.log('✅ Translation mode processing completed');
+        process.exit(0);
     } catch (error) {
         console.error(`❌ Error in default/translation mode: ${error.message}`);
         process.exit(1);
