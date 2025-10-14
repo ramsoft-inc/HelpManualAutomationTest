@@ -1275,12 +1275,79 @@ async function promptForMissingInfo() {
         process.exit(1);
     }
     
-    // Check if mode was specified but no input source
+    // Check if mode was specified but no input source - provide scenario-specific guidance
     if (modeArg && !folderPath && !singleFilePath && !changedFiles && !listFilePath) {
-        console.warn(`⚠️ Mode '${modeArg}' was specified but no input source was provided.`);
-        console.warn('❌ Error: You must specify an input source (--file, --folder, --list, or --changed-files) when using --mode or --scenario.');
-        showUsage();
-        process.exit(1);
+        console.log(`⚠️ Mode '${modeArg}' was specified but no input source was provided.`);
+        
+        // Normalize mode for comparison
+        const normalizedMode = modeArg.toLowerCase();
+        
+        // Provide scenario-specific guidance based on the mode
+        if (normalizedMode === 'translation' || normalizedMode === 'default') {
+            console.log('📁 For translation/default mode, please specify a folder containing translated documentation:');
+            console.log('    node test-enhanced-flow.js --mode translation --folder <path_to_translated_docs>');
+            console.log('Example: node test-enhanced-flow.js --mode translation --folder ./spanish');
+            
+            // Prompt for folder path
+            try {
+                const folderPrompt = await promptUser('Enter path to translation folder: ');
+                if (folderPrompt && folderPrompt.trim()) {
+                    folderPath = folderPrompt.trim();
+                    console.log(`✅ Using folder: ${folderPath}`);
+                } else {
+                    console.error('❌ No folder path provided. Exiting.');
+                    process.exit(1);
+                }
+            } catch (e) {
+                console.error('❌ Error reading input. Exiting.');
+                process.exit(1);
+            }
+        } 
+        else if (normalizedMode === 'ui_change') {
+            console.log('📄 For UI change mode, please specify a markdown file that needs updated screenshots:');
+            console.log('    node test-enhanced-flow.js --mode ui_change --file <path_to_markdown_file>');
+            console.log('Example: node test-enhanced-flow.js --mode ui_change --file ./docs/6-Image-Viewer/viewer.md');
+            
+            // Prompt for file path
+            try {
+                const filePrompt = await promptUser('Enter path to markdown file with existing images: ');
+                if (filePrompt && filePrompt.trim()) {
+                    singleFilePath = filePrompt.trim();
+                    console.log(`✅ Using file: ${singleFilePath}`);
+                } else {
+                    console.error('❌ No file path provided. Exiting.');
+                    process.exit(1);
+                }
+            } catch (e) {
+                console.error('❌ Error reading input. Exiting.');
+                process.exit(1);
+            }
+        }
+        else if (normalizedMode === 'new_feature') {
+            console.log('📝 For new feature mode, please specify a markdown file with placeholder comments:');
+            console.log('    node test-enhanced-flow.js --mode new_feature --file <path_to_markdown_file>');
+            console.log('Example: node test-enhanced-flow.js --mode new_feature --file ./docs/6-Image-Viewer/new-feature.md');
+            
+            // Prompt for file path
+            try {
+                const filePrompt = await promptUser('Enter path to markdown file with placeholders: ');
+                if (filePrompt && filePrompt.trim()) {
+                    singleFilePath = filePrompt.trim();
+                    console.log(`✅ Using file: ${singleFilePath}`);
+                } else {
+                    console.error('❌ No file path provided. Exiting.');
+                    process.exit(1);
+                }
+            } catch (e) {
+                console.error('❌ Error reading input. Exiting.');
+                process.exit(1);
+            }
+        }
+        else {
+            console.warn(`❌ Unknown mode: '${modeArg}'. Valid modes are: translation, default, ui_change, new_feature`);
+            showUsage();
+            process.exit(1);
+        }
     }
     
     // If no input source is specified, prompt for one
