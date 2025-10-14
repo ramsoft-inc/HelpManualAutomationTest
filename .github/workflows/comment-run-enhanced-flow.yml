@@ -185,26 +185,14 @@ jobs:
             echo "error_type=none" >> $GITHUB_OUTPUT
           fi
 
-      - name: Upload logs and outputs
+      - name: Upload logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: enhanced-flow-artifacts
+          name: enhanced-flow-logs
           path: |
             enhanced-flow-ci-run.log
             enhanced-flow-log.txt
-            changed-files-*.txt
-            changed-files-screenshots.txt
-            token_usage_summary.txt
-            AutoSnap/enhanced-flow-log.txt
-            AutoSnap/token_usage_summary.txt
-            AutoSnap/changed-files-*.txt
-            AutoSnap/api_logs/
-            AutoSnap/screenshots/
-            docs/**/img_as/**
-            spanish/**/img_as/**
-            docs/**/img/**
-            spanish/**/img/**
           if-no-files-found: ignore
           
       - name: Fail workflow if critical error occurred
@@ -247,9 +235,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Only add PNG and MD files
-          echo "Adding only PNG and MD files..."
-          git add "**/*.png" "**/*.md" "**/*.mdx"
+          # Only add modified or new PNG and MD files
+          echo "Finding modified or new PNG and MD files..."
+          
+          # Find modified or new MD files
+          git diff --name-only --diff-filter=AMR | grep -E '\.md$|\.mdx$' | xargs -r git add
+          
+          # Find modified or new PNG files
+          git diff --name-only --diff-filter=AMR | grep -E '\.png$' | xargs -r git add
           
           # Show what will be committed
           echo "Files to be committed:"
