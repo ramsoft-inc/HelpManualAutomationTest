@@ -1238,7 +1238,12 @@ for (let i = 0; i < args.length; i++) {
         changedFiles = args[i + 1];
         i++;
     } else if ((args[i] === '--mode' || args[i] === '-m') && args[i + 1]) {
-        modeArg = args[i + 1];
+        modeArg = args[i + 1].toLowerCase(); // Normalize mode to lowercase
+        i++;
+    } else if (args[i] === '--scenario' && args[i + 1]) {
+        // Handle --scenario as an alias for --mode
+        modeArg = args[i + 1].toLowerCase(); // Normalize mode to lowercase
+        console.log(`✅ Using --scenario ${args[i + 1]} as mode: ${modeArg}`);
         i++;
     } else if (args[i] === '--folder' && args[i + 1]) {
         folderPath = args[i + 1];
@@ -1366,34 +1371,42 @@ async function promptForMissingInfo() {
             console.log(`${index + 1}. ${mode}`);
         });
         
-        let validMode = false;
-        while (!validMode) {
-            const modeInput = await promptUser('Select mode (enter number or name) [ui_change]: ');
-            
-            // Default to ui_change if empty
-            if (!modeInput || modeInput.trim() === '') {
-                modeArg = 'ui_change';
-                validMode = true;
-                continue;
+        // Default to ui_change without prompting if running in non-interactive mode
+        const isNonInteractive = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+        
+        if (isNonInteractive) {
+            console.log('🤖 Running in non-interactive mode, defaulting to ui_change');
+            modeArg = 'ui_change';
+        } else {
+            let validMode = false;
+            while (!validMode) {
+                const modeInput = await promptUser('Select mode (enter number or name) [ui_change]: ');
+                
+                // Default to ui_change if empty
+                if (!modeInput || modeInput.trim() === '') {
+                    modeArg = 'ui_change';
+                    validMode = true;
+                    continue;
+                }
+                
+                // Check if input is a valid number
+                if (!isNaN(modeInput) && parseInt(modeInput) >= 1 && parseInt(modeInput) <= modeOptions.length) {
+                    modeArg = modeOptions[parseInt(modeInput) - 1];
+                    validMode = true;
+                    continue;
+                }
+                
+                // Check if input is a valid mode name
+                const normalizedInput = modeInput.toLowerCase();
+                if (normalizedInput === 'new_feature' || normalizedInput === 'ui_change') {
+                    modeArg = normalizedInput;
+                    validMode = true;
+                    continue;
+                }
+                
+                // If we get here, the input was invalid
+                console.log(`❌ Error: Invalid mode "${modeInput}". Please enter a number (1-${modeOptions.length}) or one of: ${modeOptions.join(', ')}`);
             }
-            
-            // Check if input is a valid number
-            if (!isNaN(modeInput) && parseInt(modeInput) >= 1 && parseInt(modeInput) <= modeOptions.length) {
-                modeArg = modeOptions[parseInt(modeInput) - 1];
-                validMode = true;
-                continue;
-            }
-            
-            // Check if input is a valid mode name
-            const normalizedInput = modeInput.toLowerCase();
-            if (normalizedInput === 'new_feature' || normalizedInput === 'ui_change') {
-                modeArg = normalizedInput;
-                validMode = true;
-                continue;
-            }
-            
-            // If we get here, the input was invalid
-            console.log(`❌ Error: Invalid mode "${modeInput}". Please enter a number (1-${modeOptions.length}) or one of: ${modeOptions.join(', ')}`);
         }
     }
     
@@ -1670,16 +1683,30 @@ if (changedFiles) {
 }
 
 const getScenarioType = () => {
+    // First check for explicit mode argument
     if (modeArg) return modeArg;
+    
+    // Then check for scenario argument (alternative syntax)
+    const scenarioIndex = args.findIndex(arg => arg === '--scenario');
+    if (scenarioIndex !== -1 && args[scenarioIndex + 1]) {
+        const scenario = args[scenarioIndex + 1].toLowerCase();
+        if (["ui_change", "new_feature", "default"].includes(scenario)) {
+            console.log(`✅ Using scenario argument as mode: ${scenario}`);
+            return scenario;
+        }
+    }
+    
+    // Finally check for mode argument
     const modeIndex = args.findIndex(arg => arg === '--mode' || arg === '-m');
     if (modeIndex !== -1 && args[modeIndex + 1]) {
-        const mode = args[modeIndex + 1];
+        const mode = args[modeIndex + 1].toLowerCase();
         if (["ui_change", "new_feature", "default"].includes(mode)) {
             return mode;
         } else {
             console.warn(`⚠️  Invalid mode: ${mode}. Using default mode.`);
         }
     }
+    
     return "default";
 };
 
