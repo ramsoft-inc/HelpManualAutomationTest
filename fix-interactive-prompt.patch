@@ -1,0 +1,93 @@
+diff --git a/AutoSnap/test-enhanced-flow-ci.js b/AutoSnap/test-enhanced-flow-ci.js
+index 123456..789012 100644
+--- a/AutoSnap/test-enhanced-flow-ci.js
++++ b/AutoSnap/test-enhanced-flow-ci.js
+@@ -1290,6 +1290,7 @@ const args = process.argv.slice(2);
+ let changedFiles = null;
+ let modeArg = null;
+ let folderPath = null;
++let scenarioArg = null;
+ let singleFilePath = null;
+ let listFilePath = null;
+ let languageCodeArg = null;
+@@ -1306,6 +1307,9 @@ for (let i = 0; i < args.length; i++) {
+     } else if ((args[i] === '--mode' || args[i] === '-m') && args[i + 1]) {
+         modeArg = args[i + 1];
+         i++;
++    } else if (args[i] === '--scenario' && args[i + 1]) {
++        scenarioArg = args[i + 1];
++        i++;
+     } else if (args[i] === '--folder' && args[i + 1]) {
+         folderPath = args[i + 1];
+         i++;
+@@ -1321,6 +1325,12 @@ for (let i = 0; i < args.length; i++) {
+     }
+ }
+ 
++// If scenario is specified but mode is not, use scenario as mode
++if (scenarioArg && !modeArg) {
++    console.log(`🔄 Using scenario '${scenarioArg}' as mode`);
++    modeArg = scenarioArg;
++}
++
+ // Validate exclusive options
+ const exclusiveOptions = [folderPath, singleFilePath, changedFiles, listFilePath].filter(Boolean);
+ if (exclusiveOptions.length > 1) {
+@@ -1329,6 +1339,9 @@ if (exclusiveOptions.length > 1) {
+     process.exit(1);
+ }
+ 
++// Detect if running in GitHub Actions or CI environment
++const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
++
+ // Determine execution mode and process files accordingly
+ let executionMode = 'default';
+ let filesToProcess = [];
+@@ -1357,7 +1370,7 @@ if (singleFilePath) {
+         console.log(`🔍 Classifying file: ${singleFilePath}`);
+         let mode;
+         
+-        if (modeArg && ['new_feature', 'ui_change', 'default'].includes(modeArg)) {
++        if (modeArg && ['new_feature', 'ui_change', 'default'].includes(modeArg.toLowerCase())) {
+             // Force specific mode if provided
+             mode = modeArg;
+             console.log(`🎯 Forced mode: ${mode.toUpperCase()}`);
+@@ -1677,7 +1690,7 @@ const processNewFeature = async (filePath) => {
+         // Determine if a specific mode was specified on the command line
+         const modeIndex = args.findIndex(arg => arg === '--mode' || arg === '-m');
+         if (modeIndex !== -1 && args[modeIndex + 1]) {
+-            const mode = args[modeIndex + 1];
++            const mode = args[modeIndex + 1].toLowerCase();
+             if (['new_feature', 'ui_change', 'default'].includes(mode)) {
+                 console.log(`🎯 Using command-line specified mode: ${mode.toUpperCase()}`);
+                 return mode;
+@@ -1685,6 +1698,16 @@ const processNewFeature = async (filePath) => {
+             console.warn(`⚠️ Invalid mode specified: ${mode}, will determine automatically`);
+         }
+ 
++        // Check if scenario was specified
++        const scenarioIndex = args.findIndex(arg => arg === '--scenario');
++        if (scenarioIndex !== -1 && args[scenarioIndex + 1]) {
++            const scenario = args[scenarioIndex + 1].toLowerCase();
++            if (['new_feature', 'ui_change', 'default'].includes(scenario)) {
++                console.log(`🎯 Using command-line specified scenario as mode: ${scenario.toUpperCase()}`);
++                return scenario;
++            }
++        }
++
+         // If in CI environment, default to new_feature mode for single files
+         if (isCI) {
+             console.log(`🤖 CI environment detected, defaulting to NEW_FEATURE mode for single file`);
+@@ -1693,6 +1716,12 @@ const processNewFeature = async (filePath) => {
+ 
+         // Interactive mode selection for single file
+         console.log(`\nAvailable modes for single file:`);
++        
++        // If running in CI environment, default to new_feature without prompting
++        if (isCI) {
++            console.log(`🤖 CI environment detected, using NEW_FEATURE mode without prompting`);
++            return 'new_feature';
++        }
+ 
+         const readline = await import('node:readline');
+         const rl = readline.createInterface({

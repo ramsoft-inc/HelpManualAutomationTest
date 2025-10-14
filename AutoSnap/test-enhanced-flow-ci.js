@@ -1288,6 +1288,7 @@ const args = process.argv.slice(2);
 let changedFiles = null;
 let modeArg = null;
 let folderPath = null;
+let scenarioArg = null;
 let singleFilePath = null;
 let listFilePath = null;
 let languageCodeArg = null;
@@ -1318,7 +1319,16 @@ for (let i = 0; i < args.length; i++) {
     } else if ((args[i] === '--lang' || args[i] === '-l') && args[i + 1]) {
         languageCodeArg = args[i + 1];
         i++;
+    } else if (args[i] === '--scenario' && args[i + 1]) {
+        scenarioArg = args[i + 1];
+        i++;
     }
+}
+
+// If scenario is specified but mode is not, use scenario as mode
+if (scenarioArg && !modeArg) {
+    console.log(`🔄 Using scenario '${scenarioArg}' as mode`);
+    modeArg = scenarioArg;
 }
 
 // Validate exclusive options
@@ -1328,6 +1338,9 @@ if (exclusiveOptions.length > 1) {
     showUsage();
     process.exit(1);
 }
+
+// Detect if running in GitHub Actions or CI environment
+const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || true; // Force CI mode to avoid interactive prompts
 
 // Determine execution mode and process files accordingly
 let executionMode = 'default';
@@ -1357,7 +1370,7 @@ if (singleFilePath) {
         console.log(`🔍 Classifying file: ${singleFilePath}`);
         let mode;
         
-        if (modeArg && ['new_feature', 'ui_change', 'default'].includes(modeArg)) {
+        if (modeArg && ['new_feature', 'ui_change', 'default'].includes(modeArg.toLowerCase())) {
             // Force specific mode if provided
             mode = modeArg;
             console.log(`🎯 Forced mode: ${mode.toUpperCase()}`);

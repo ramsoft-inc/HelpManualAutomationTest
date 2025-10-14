@@ -15,7 +15,7 @@ concurrency:
 jobs:
   run-enhanced-flow:
     if: >
-      ${{ github.event.issue.pull_request != null && contains(github.event.comment.body, 'node test-enhanced-flow.js') }}
+      ${{ github.event.issue.pull_request != null && (contains(github.event.comment.body, 'node test-enhanced-flow.js') || contains(github.event.comment.body, '/run-enhanced-flow')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -107,9 +107,29 @@ jobs:
         with:
           script: |
             const body = context.payload.comment.body || '';
-            const re = /node\s+test-enhanced-flow\.js(?:\s+([\s\S]*))?/i; // capture everything after the command on the first line
-            const m = body.match(re);
-            const args = m && m[1] ? m[1].trim() : '';
+            // Handle both formats: node test-enhanced-flow.js and /run-enhanced-flow
+            const reNode = /node\s+test-enhanced-flow\.js(?:\s+([\s\S]*))?/i; // capture everything after the command on the first line
+            const reRun = /\/run-enhanced-flow(?:\s+([\s\S]*))?/i; // capture everything after the command on the first line
+            
+            let args = '';
+            
+            // Try to match node test-enhanced-flow.js format
+            let m = body.match(reNode);
+            if (m && m[1]) {
+                args = m[1].trim();
+            } else {
+                // Try to match /run-enhanced-flow format
+                m = body.match(reRun);
+                if (m && m[1]) {
+                    args = m[1].trim();
+                }
+            }
+            
+            // Handle --scenario parameter by converting it to --mode
+            if (args.includes('--scenario')) {
+                args = args.replace(/--scenario\s+(\S+)/g, '--mode $1');
+            }
+            
             core.setOutput('args', args);
 
       - name: Run enhanced flow
