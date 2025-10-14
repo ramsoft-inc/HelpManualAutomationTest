@@ -11,6 +11,13 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
         console.log(`📄 Current file being processed: ${currentFile}`);
     }
     
+    // Map 'translation' mode to 'default' for Python script compatibility
+    let pythonScenarioType = scenarioType;
+    if (scenarioType === 'translation') {
+        console.log(`ℹ️ Mapping 'translation' mode to 'default' for Python script compatibility`);
+        pythonScenarioType = 'default';
+    }
+    
     return new Promise((resolve, reject) => {
         // Build the argument list
         const args = [];
@@ -23,7 +30,7 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
             args.push('--current-file', currentFile);
         }
         // Add scenario type as the first argument
-        args.unshift('--scenario-type', scenarioType);
+        args.unshift('--scenario-type', pythonScenarioType);
         
         // Run the Python script with scenario type and other arguments
         console.log(`🔄 Running Python script with args: ${args.join(' ')}`);
