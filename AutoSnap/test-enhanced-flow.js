@@ -2214,10 +2214,10 @@ const findSimilarImage = (expectedName, generatedImages) => {
     // First, execute the workflow to process command line arguments and interactive prompts
     await executeWorkflow();
     
-    // Skip the rest of the execution if we're in translation mode with a folder
-    // The folder processing has already been done in the main code
-    if (executionMode === 'translation' && folderPath) {
-        console.log('✅ Translation mode processing completed');
+    // Skip the rest of the execution if we've already processed files in another mode
+    // This prevents duplicate execution and conflicting parameters
+    if (processedFileResults.length > 0) {
+        console.log('✅ File processing already completed, exiting');
         process.exit(0);
     }
     
