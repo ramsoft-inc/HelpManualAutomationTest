@@ -1365,19 +1365,21 @@ async function promptForMissingInfo() {
     // If mode is not specified and we're in single file mode, prompt for it
     // For folders, we've already set the mode to translation above
     if (!modeArg && singleFilePath) {
-        const modeOptions = ['new_feature', 'ui_change'];
-        console.log('\nAvailable modes for single file:');
-        modeOptions.forEach((mode, index) => {
-            console.log(`${index + 1}. ${mode}`);
-        });
+        // Check if we're running in CI/GitHub Actions environment
+        const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
         
-        // Default to ui_change without prompting if running in non-interactive mode
-        const isNonInteractive = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-        
-        if (isNonInteractive) {
-            console.log('🤖 Running in non-interactive mode, defaulting to ui_change');
+        if (isCI) {
+            // Default to ui_change in CI environments without prompting
+            console.log('🤖 Running in CI environment, defaulting to ui_change mode');
             modeArg = 'ui_change';
         } else {
+            // Interactive mode for local development
+            const modeOptions = ['new_feature', 'ui_change'];
+            console.log('\nAvailable modes for single file:');
+            modeOptions.forEach((mode, index) => {
+                console.log(`${index + 1}. ${mode}`);
+            });
+            
             let validMode = false;
             while (!validMode) {
                 const modeInput = await promptUser('Select mode (enter number or name) [ui_change]: ');
@@ -1458,10 +1460,11 @@ async function executeWorkflow() {
         fs.writeFileSync(singleFileChangedList, normalizedPath);
         console.log(`📋 Created single file changed files list: ${singleFileChangedList}`);
         
-        // Write the file path to current_md_path.txt for the browser automation
+        // Write the file path and mode to current_md_path.txt for the browser automation
         const currentMdPathFile = path.join(process.cwd(), 'current_md_path.txt');
-        fs.writeFileSync(currentMdPathFile, normalizedPath);
-        console.log(`📋 Created current_md_path.txt with file path: ${normalizedPath}`);
+        const modeInfo = modeArg || 'default';
+        fs.writeFileSync(currentMdPathFile, `${normalizedPath}|${modeInfo}`);
+        console.log(`📋 Created current_md_path.txt with file path and mode: ${normalizedPath}|${modeInfo}`);
         
         changedFiles = singleFileChangedList;
         executionMode = 'single_file';
