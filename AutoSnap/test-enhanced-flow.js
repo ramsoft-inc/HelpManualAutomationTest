@@ -1444,6 +1444,12 @@ async function executeWorkflow() {
         const normalizedPath = singleFilePath.replace(/\\/g, '/');
         fs.writeFileSync(singleFileChangedList, normalizedPath);
         console.log(`📋 Created single file changed files list: ${singleFileChangedList}`);
+        
+        // Write the file path to current_md_path.txt for the browser automation
+        const currentMdPathFile = path.join(process.cwd(), 'current_md_path.txt');
+        fs.writeFileSync(currentMdPathFile, normalizedPath);
+        console.log(`📋 Created current_md_path.txt with file path: ${normalizedPath}`);
+        
         changedFiles = singleFileChangedList;
         executionMode = 'single_file';
     } else if (folderPath) {
@@ -2593,7 +2599,7 @@ if (hasNoDocumentContent) {
                     throw new Error('Could not import AIUtilsEnhanced from any location');
                 }
             }
-            const aiUtils = new AIUtilsEnhanced(page, { mode });
+            const aiUtils = new AIUtilsEnhanced(page);
             
             // Set the current markdown file path for image reference
             // Priority order: processedFileResults -> processedFiles -> testDocPath -> default
