@@ -447,6 +447,21 @@ async function navigateToWorklist(page) {
 }
 
 /**
+ * Check if a file path is in the docs folder
+ * @param {string} filePath - Path to check
+ * @returns {boolean} True if the file is in the docs folder
+ */
+function isInDocsFolder(filePath) {
+  if (!filePath) return false;
+  
+  const normalizedPath = filePath.toLowerCase();
+  return normalizedPath.startsWith('docs/') || 
+         normalizedPath.startsWith('docs\\') || 
+         normalizedPath.includes('/docs/') || 
+         normalizedPath.includes('\\docs\\');
+}
+
+/**
  * Detect language from folder path
  * @param {string} folderPath - Path to the documentation folder
  * @returns {string} Language name or 'English' as default
@@ -454,14 +469,20 @@ async function navigateToWorklist(page) {
 function detectLanguageFromFolder(folderPath) {
   if (!folderPath) return 'English';
   
+  // IMPORTANT: First check if path is in the main docs folder (English)
+  // This check must come before any other language pattern checks
+  if (isInDocsFolder(folderPath)) {
+    console.log(`✅ DOCS FOLDER DETECTED: ${folderPath} - Setting language to English`);
+    return 'English';
+  }
+  
   const normalizedPath = folderPath.toLowerCase();
   
   // Common patterns for language folders
   const languagePatterns = {
     'Spanish': ['spanish', 'es', 'docs-es', 'docs-spanish', '/es/', '\\es\\'],
     'French': ['french', 'fr', 'docs-fr', 'docs-french', '/fr/', '\\fr\\'],
-    'Hindi': ['hindi', 'hi', 'docs-hi', 'docs-hindi', '/hi/', '\\hi\\'],
-    'Portuguese': ['portuguese', 'pt', 'pt-br', 'docs-pt', 'docs-portuguese', '/pt/', '\\pt\\', '/pt-br/', '\\pt-br\\']
+    'Hindi': ['hindi', 'hi', 'docs-hi', 'docs-hindi', '/hi/', '\\hi\\']
   };
   
   for (const [language, patterns] of Object.entries(languagePatterns)) {
@@ -2348,6 +2369,8 @@ if (hasNoDocumentContent) {
                 console.log(`🎯 Single file mode: Using specified language from command line: ${languageCodeArg}`);
                 detectedLanguage = languageCodeArg;
             } else {
+                // We'll use the detectLanguageFromFolder function which now has proper docs folder detection
+                console.log(`🔍 Detecting language for file: ${singleFilePath}`);
                 detectedLanguage = detectLanguageFromFolder(singleFilePath);
             }
             
@@ -2355,7 +2378,12 @@ if (hasNoDocumentContent) {
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
             // Check if this is ui_change or new_feature mode and file is not from docs folder
-            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && !singleFilePath.includes('/docs/') && !singleFilePath.includes('\\docs\\')) {
+            // We'll use a function to check if the file is in the docs folder
+            const isDocsFolder = isInDocsFolder(singleFilePath);
+            
+            console.log(`🔍 Checking if file is from docs folder: ${singleFilePath} - isDocsFolder: ${isDocsFolder}`);
+            
+            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && !isDocsFolder) {
                 console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
                 console.log('🛑 Exiting process with error code 1.');
                 
@@ -2423,9 +2451,16 @@ if (hasNoDocumentContent) {
             
             // Check if this is ui_change or new_feature mode and files are not from docs folder
             if (modeArg === 'ui_change' || modeArg === 'new_feature') {
-                const nonDocsFiles = processedFileResults.filter(
-                    result => result.filePath && !result.filePath.includes('/docs/') && !result.filePath.includes('\\docs\\')
-                );
+                const nonDocsFiles = processedFileResults.filter(result => {
+                    if (!result.filePath) return false;
+                    
+                    // Use our helper function to check if the file is in the docs folder
+                    const isDocsFolder = isInDocsFolder(result.filePath);
+                    
+                    console.log(`🔍 Checking if file is from docs folder: ${result.filePath} - isDocsFolder: ${isDocsFolder}`);
+                    
+                    return !isDocsFolder;
+                });
                 
                 if (nonDocsFiles.length > 0) {
                     console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
