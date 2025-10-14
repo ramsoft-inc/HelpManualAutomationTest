@@ -84,7 +84,6 @@ const LANGUAGES = {
   Hindi: "hi",
   French: "fr",
   Spanish: "es",
-  Portuguese: "pt",
   German: "de",
   Italian: "it",
   Dutch: "nl",
@@ -460,8 +459,7 @@ function detectLanguageFromFolder(folderPath) {
   const languagePatterns = {
     'Spanish': ['spanish', 'es', 'docs-es', 'docs-spanish', '/es/', '\\es\\'],
     'French': ['french', 'fr', 'docs-fr', 'docs-french', '/fr/', '\\fr\\'],
-    'Hindi': ['hindi', 'hi', 'docs-hi', 'docs-hindi', '/hi/', '\\hi\\'],
-    'Portuguese': ['portuguese', 'pt', 'pt-br', 'docs-pt', 'docs-portuguese', '/pt/', '\\pt\\', '/pt-br/', '\\pt-br\\']
+    'Hindi': ['hindi', 'hi', 'docs-hi', 'docs-hindi', '/hi/', '\\hi\\']
   };
   
   for (const [language, patterns] of Object.entries(languagePatterns)) {
@@ -2348,14 +2346,27 @@ if (hasNoDocumentContent) {
                 console.log(`🎯 Single file mode: Using specified language from command line: ${languageCodeArg}`);
                 detectedLanguage = languageCodeArg;
             } else {
-                detectedLanguage = detectLanguageFromFolder(singleFilePath);
+                // Simple check: if path contains 'docs/', it's English
+                const normalizedPath = singleFilePath.toLowerCase();
+                if (normalizedPath.includes('docs/') || normalizedPath.includes('docs\\')) {
+                    console.log(`🔍 File is in docs folder, setting language to English: ${singleFilePath}`);
+                    detectedLanguage = 'English';
+                } else {
+                    detectedLanguage = detectLanguageFromFolder(singleFilePath);
+                }
             }
             
             // Check if detected language is English (case-insensitive)
             const isEnglish = detectedLanguage.toLowerCase() === 'english' || detectedLanguage.toLowerCase() === 'en';
             
             // Check if this is ui_change or new_feature mode and file is not from docs folder
-            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && !singleFilePath.includes('/docs/') && !singleFilePath.includes('\\docs\\')) {
+            const normalizedPath = singleFilePath.toLowerCase();
+            // Simple check: if path contains 'docs/', it's in the docs folder
+            const isDocsFolder = normalizedPath.includes('docs/') || normalizedPath.includes('docs\\');
+            
+            console.log(`🔍 Checking if file is from docs folder: ${singleFilePath} - isDocsFolder: ${isDocsFolder}`);
+            
+            if ((modeArg === 'ui_change' || modeArg === 'new_feature') && !isDocsFolder) {
                 console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
                 console.log('🛑 Exiting process with error code 1.');
                 
@@ -2423,9 +2434,17 @@ if (hasNoDocumentContent) {
             
             // Check if this is ui_change or new_feature mode and files are not from docs folder
             if (modeArg === 'ui_change' || modeArg === 'new_feature') {
-                const nonDocsFiles = processedFileResults.filter(
-                    result => result.filePath && !result.filePath.includes('/docs/') && !result.filePath.includes('\\docs\\')
-                );
+                const nonDocsFiles = processedFileResults.filter(result => {
+                    if (!result.filePath) return false;
+                    
+                    const normalizedPath = result.filePath.toLowerCase();
+                    // Simple check: if path contains 'docs/', it's in the docs folder
+                    const isDocsFolder = normalizedPath.includes('docs/') || normalizedPath.includes('docs\\');
+                    
+                    console.log(`🔍 Checking if file is from docs folder: ${result.filePath} - isDocsFolder: ${isDocsFolder}`);
+                    
+                    return !isDocsFolder;
+                });
                 
                 if (nonDocsFiles.length > 0) {
                     console.log(`⛔ ERROR: ${modeArg} mode can only be used with English documentation files from the docs folder.`);
