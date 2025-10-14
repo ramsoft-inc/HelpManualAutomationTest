@@ -1275,6 +1275,14 @@ async function promptForMissingInfo() {
         process.exit(1);
     }
     
+    // Check if mode was specified but no input source
+    if (modeArg && !folderPath && !singleFilePath && !changedFiles && !listFilePath) {
+        console.warn(`⚠️ Mode '${modeArg}' was specified but no input source was provided.`);
+        console.warn('❌ Error: You must specify an input source (--file, --folder, --list, or --changed-files) when using --mode or --scenario.');
+        showUsage();
+        process.exit(1);
+    }
+    
     // If no input source is specified, prompt for one
     if (!folderPath && !singleFilePath && !changedFiles && !listFilePath) {
         console.log('🖥️  Please select an input source:');
