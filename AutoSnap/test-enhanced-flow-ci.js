@@ -456,6 +456,15 @@ function detectLanguageFromFolder(folderPath) {
   
   const normalizedPath = folderPath.toLowerCase();
   
+  // Check if path is in the main docs folder (English)
+  if (normalizedPath.startsWith('docs/') || 
+      normalizedPath.startsWith('docs\\') || 
+      normalizedPath.includes('/docs/') || 
+      normalizedPath.includes('\\docs\\')) {
+    console.log(`🔍 Detected English documentation from docs folder: ${folderPath}`);
+    return 'English';
+  }
+  
   // Common patterns for language folders
   const languagePatterns = {
     'Spanish': ['spanish', 'es', 'docs-es', 'docs-spanish', '/es/', '\\es\\'],
