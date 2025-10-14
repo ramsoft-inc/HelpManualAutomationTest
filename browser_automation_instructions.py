@@ -610,8 +610,8 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     
     # Handle empty or None changed_files
     if not changed_files:
-        print("WARNING: No files provided, generating fallback instructions")
-        return get_fallback_instructions_for_scenario(scenario_type)
+        print("ERROR: No files provided. Cannot generate instructions.")
+        raise ValueError("No files provided for instruction generation")
     
     content = ""
     english_content = ""
@@ -919,8 +919,14 @@ def main():
     parser.add_argument('--current-file', help='Path to the current file being processed (for context)')
     args = parser.parse_args()
     
-    # Get scenario type from arguments
+    # Get scenario type from arguments and validate
     scenario_type = args.scenario_type
+    valid_scenario_types = ['ui_change', 'new_feature', 'default']
+    if scenario_type not in valid_scenario_types:
+        print(f"ERROR: Invalid scenario type: {scenario_type}")
+        print(f"Valid scenario types are: {', '.join(valid_scenario_types)}")
+        sys.exit(1)
+    
     print(f"Scenario Type: {scenario_type}")
     
     # Log the current file if provided
@@ -928,6 +934,25 @@ def main():
         print(f"Current file being processed: {args.current_file}")
         # Set as environment variable for potential use in instruction generation
         os.environ['CURRENT_PROCESSING_FILE'] = args.current_file
+        
+        # Write the current file path to multiple locations to ensure it's found
+        try:
+            # Write to the project root
+            root_path_file = 'current_md_path.txt'
+            print(f"Writing current file path to project root: {root_path_file}")
+            with open(root_path_file, 'w', encoding='utf-8') as f:
+                f.write(args.current_file)
+            
+            # Also write to the AutoSnap directory
+            autosnap_path_file = os.path.join('AutoSnap', 'current_md_path.txt')
+            print(f"Writing current file path to AutoSnap dir: {autosnap_path_file}")
+            os.makedirs(os.path.dirname(autosnap_path_file), exist_ok=True)
+            with open(autosnap_path_file, 'w', encoding='utf-8') as f:
+                f.write(args.current_file)
+                
+            print(f"Successfully wrote current file path to text files")
+        except Exception as e:
+            print(f"ERROR: Failed to write current file path to text file: {e}")
     
     try:
         changed_files = []
@@ -935,17 +960,18 @@ def main():
         if args.changed_files:
             changed_files = process_changed_files_input(args.changed_files, scenario_type)
         else:
-            print("WARNING: No changed files provided. Will generate default instructions.")
+            print("ERROR: No changed files provided.")
+            raise ValueError("No changed files provided for instruction generation")
         
         # Validate files exist and are accessible
         validated_files = validate_files(changed_files)
         
         if not validated_files:
-            print("WARNING: No valid markdown files found to process!")
+            print("ERROR: No valid markdown files found to process!")
             print(f"   Provided: --changed-files={args.changed_files}")
             if args.changed_files and os.path.exists(args.changed_files):
                 print(f"   File exists but may contain no valid .md/.mdx files")
-            # Continue with empty file list - will generate fallback instructions
+            raise ValueError("No valid markdown files found for instruction generation")
         
         print(f"Generating browser instructions for scenario '{scenario_type}' with {len(validated_files)} files")
         instructions = generate_browser_instructions(scenario_type, validated_files)
@@ -959,19 +985,21 @@ def main():
         
     except Exception as e:
         import logging
+        import sys
         logging.error(f"Error in main execution: {e}")
-        print(f"Failed to generate instructions: {e}")
-        # Write fallback instructions to prevent JavaScript from failing
-        fallback_instructions = get_fallback_instructions_for_scenario(scenario_type)
-        output_file = "generated_instructions.txt"
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(fallback_instructions)
-        print(f"Fallback instructions written to {output_file}")
+        print(f"ERROR: Failed to generate instructions: {e}")
+        print("Exiting with error code 1")
+        sys.exit(1)
 
 
 def process_changed_files_input(changed_files_input, scenario_type):
     """Process the changed files input based on the scenario type."""
     changed_files = []
+    
+    # Validate input is not empty
+    if not changed_files_input or changed_files_input.strip() == '':
+        print("ERROR: Empty file path provided.")
+        raise ValueError("Empty file path provided. Please provide a valid file path.")
     
     # Check if it's a single markdown file or a list file
     if changed_files_input.endswith('.md') or changed_files_input.endswith('.mdx'):
@@ -980,12 +1008,23 @@ def process_changed_files_input(changed_files_input, scenario_type):
             changed_files = [changed_files_input]
             print(f"Processing single file: {changed_files_input}")
         else:
-            print(f"WARNING: Single file not found: {changed_files_input}")
+            print(f"ERROR: Single file not found: {changed_files_input}")
+            raise FileNotFoundError(f"File not found: {changed_files_input}")
     else:
         # List file containing paths
         try:
+            # Check if the list file exists
+            if not os.path.exists(changed_files_input):
+                print(f"ERROR: List file not found: {changed_files_input}")
+                raise FileNotFoundError(f"List file not found: {changed_files_input}")
+                
             with open(changed_files_input, 'r', encoding='utf-8') as f:
                 file_list = [line.strip() for line in f if line.strip()]
+            
+            # Check if the file list is empty
+            if not file_list:
+                print(f"ERROR: List file is empty: {changed_files_input}")
+                raise ValueError(f"List file is empty: {changed_files_input}")
             
             # Process file list based on scenario type
             changed_files = categorize_and_filter_files(file_list, scenario_type)
@@ -1046,63 +1085,57 @@ def categorize_and_filter_files(file_list, scenario_type):
 
 def validate_files(file_list):
     """Validate that files exist and are readable."""
+    if not file_list:
+        print("ERROR: Empty file list provided for validation.")
+        return []
+    
     validated_files = []
+    invalid_files = []
     
     for file_path in file_list:
-        if os.path.exists(file_path):
-            try:
-                # Try to read the file to ensure it's accessible
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    # Just check if we can open it, don't read content yet
-                    pass
-                validated_files.append(file_path)
-            except Exception as e:
-                print(f"WARNING: Cannot read file {file_path}: {e}")
-        else:
+        # Check if the file path is valid
+        if not file_path or file_path.strip() == '':
+            print("WARNING: Empty file path in list, skipping.")
+            invalid_files.append("(empty path)")
+            continue
+            
+        # Check if file exists
+        if not os.path.exists(file_path):
             print(f"WARNING: File not found: {file_path}")
+            invalid_files.append(file_path)
+            continue
+            
+        # Check if it's a markdown file
+        if not (file_path.endswith('.md') or file_path.endswith('.mdx')):
+            print(f"WARNING: Not a markdown file: {file_path}")
+            invalid_files.append(file_path)
+            continue
+            
+        try:
+            # Try to read the file to ensure it's accessible
+            with open(file_path, 'r', encoding='utf-8') as f:
+                # Just check if we can open it, don't read content yet
+                pass
+            validated_files.append(file_path)
+        except Exception as e:
+            print(f"WARNING: Cannot read file {file_path}: {e}")
+            invalid_files.append(file_path)
     
+    # Print summary
     if validated_files:
         print(f"Validated {len(validated_files)}/{len(file_list)} files")
+    
+    if invalid_files:
+        print(f"Found {len(invalid_files)} invalid files:")
+        for i, f in enumerate(invalid_files[:5], 1):  # Show first 5 invalid files
+            print(f"  {i}. {f}")
+        if len(invalid_files) > 5:
+            print(f"  ... and {len(invalid_files) - 5} more")
     
     return validated_files
 
 
-def get_fallback_instructions_for_scenario(scenario_type):
-    """Get fallback instructions based on scenario type."""
-    fallback_instructions = {
-        "ui_change": """# UI Change Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-- take screenshots of any visible UI elements that need updating
-- if you see dropdowns or menus, take screenshots without clicking them
-Done""",
-        
-        "new_feature": """# New Feature Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- navigate to the new feature area
-- take screenshots of the new feature elements
-- look for placeholder areas in the documentation and capture those screenshots
-Done""",
-        
-        "default": """# Default Translation Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-Done"""
-    }
-    
-    return fallback_instructions.get(scenario_type, fallback_instructions["default"])
+# Fallback instructions function removed
 
 if __name__ == "__main__":
     main() 

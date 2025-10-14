@@ -107,6 +107,57 @@ export class AIUtilsEnhanced {
   public setCurrentMdFilePath(mdPath: string): void {
     console.log(`📝 AIUtilsEnhanced: Setting current markdown file path: ${mdPath}`);
     
+    // Check multiple locations for the path file created by the Python script
+    const possiblePathFiles = [
+      path.join(process.cwd(), 'current_md_path.txt'),               // Project root
+      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory
+      'current_md_path.txt',                                         // Current directory
+      '../current_md_path.txt',                                      // Parent directory
+    ];
+    
+    let foundPathFile = false;
+    
+    for (const pathFile of possiblePathFiles) {
+      console.log(`🔍 Checking for path file at: ${pathFile}`);
+      
+      try {
+        if (fs.existsSync(pathFile)) {
+          console.log(`✅ Found path file at: ${pathFile}`);
+          const fileContent = fs.readFileSync(pathFile, 'utf8').trim();
+          
+          if (fileContent && fileContent.length > 0) {
+            console.log(`✅ Path file contains: ${fileContent}`);
+            
+            // Use the path from the file as the source of truth
+            const pathFromFile = this.normalizePath(fileContent);
+            this.currentMdPath = pathFromFile;
+            
+            console.log(`📝 Using path from file: ${this.currentMdPath}`);
+            
+            // Also set it as an environment variable for other components
+            process.env.CURRENT_MD_PATH = pathFromFile;
+            
+            // Create img folder in the directory where the markdown file is located
+            this.ensureImgFolder();
+            
+            foundPathFile = true;
+            return; // Exit early since we found a valid file
+          } else {
+            console.log(`⚠️ Path file exists but is empty or invalid at: ${pathFile}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error reading path file ${pathFile}: ${error}`);
+      }
+    }
+    
+    if (!foundPathFile) {
+      console.log(`⚠️ Could not find valid path file in any location`);
+    }
+    
+    // Fallback to the provided path if the file doesn't exist or is invalid
+    console.log(`⚠️ Using provided path as fallback: ${mdPath}`);
+    
     // Normalize the path for the current environment
     const normalizedPath = this.normalizePath(mdPath);
     this.currentMdPath = normalizedPath;
@@ -464,20 +515,156 @@ export class AIUtilsEnhanced {
    * This is called from screenshot_helper.ts after each successful screenshot
    */
   public async updateSingleImagePath(imagePath: string): Promise<void> {
+    // Check multiple locations for the path file created by the Python script
+    const possiblePathFiles = [
+      path.join(process.cwd(), 'current_md_path.txt'),               // Project root
+      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory
+      'current_md_path.txt',                                         // Current directory
+      '../current_md_path.txt',                                      // Parent directory
+    ];
+    
+    let foundPathFile = false;
+    
+    for (const pathFile of possiblePathFiles) {
+      console.log(`🔍 Checking for path file at: ${pathFile}`);
+      
+      try {
+        if (fs.existsSync(pathFile)) {
+          console.log(`✅ Found path file at: ${pathFile}`);
+          const fileContent = fs.readFileSync(pathFile, 'utf8').trim();
+          
+          if (fileContent && fileContent.length > 0) {
+            console.log(`✅ Path file contains: ${fileContent}`);
+            
+            // Use the path from the file as the source of truth
+            const pathFromFile = this.normalizePath(fileContent);
+            this.currentMdPath = pathFromFile;
+            
+            console.log(`📝 Using path from file: ${this.currentMdPath}`);
+            foundPathFile = true;
+            break; // Stop checking once we find a valid file
+          } else {
+            console.log(`⚠️ Path file exists but is empty or invalid at: ${pathFile}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error reading path file ${pathFile}: ${error}`);
+      }
+    }
+    
+    if (!foundPathFile) {
+      console.log(`⚠️ Could not find valid path file in any location`);
+    }
+    
     if (!this.currentMdPath) {
       console.log('⚠️  No current markdown path set, skipping single image path update');
       return;
     }
     
     try {
-      console.log(`📝 IMMEDIATE UPDATE: Updating single image path in ${this.currentMdPath} for: ${imagePath}`);
-      
       // Extract the filename from the image path
       const imageName = path.basename(imagePath);
       console.log(`🔍 Processing image: ${imageName}`);
       
+      // Determine the correct markdown file to use based on the image path
+      // Extract directory from image path to find the corresponding markdown file
+      const imgDir = path.dirname(imagePath);
+      const parentDir = path.dirname(imgDir);
+      
+      console.log(`🔍 Image directory: ${imgDir}`);
+      console.log(`🔍 Parent directory: ${parentDir}`);
+      
+      // Only use the current markdown file being processed
+      console.log(`🔍 Using current markdown file: ${this.currentMdPath}`);
+      
+      // Read the content of the current file
+      try {
+        // Read the file content
+        const content = fs.readFileSync(this.currentMdPath, 'utf8');
+        
+        // Check if the file contains a placeholder for this image
+        const imageBaseName = path.basename(imageName, path.extname(imageName));
+        
+        // Check for exact matches first
+        const exactMatch = content.includes(`<!-- placeholder for screenshot: ${imageName}`);
+        const baseNameMatch = content.includes(`<!-- placeholder for screenshot: ${imageBaseName}`);
+        
+        if (exactMatch || baseNameMatch) {
+          console.log(`✅ Found matching placeholder in current file for image: ${imageName}`);
+          console.log(`   Match type: ${exactMatch ? 'exact match' : 'base name match'}`);
+        } else {
+          // If no exact match, search for any placeholder
+          const placeholderRegex = /<!--\s*placeholder\s+for\s+screenshot:.*?-->/g;
+          const placeholders = content.match(placeholderRegex);
+          
+          if (placeholders && placeholders.length > 0) {
+            console.log(`🔍 Found ${placeholders.length} placeholders in file:`);
+            placeholders.forEach((placeholder, index) => {
+              console.log(`   ${index + 1}: "${placeholder}"`);
+            });
+          } else {
+            console.log(`ℹ️ No placeholders found in file: ${this.currentMdPath}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error reading file ${this.currentMdPath}: ${error}`);
+      }
+      
+      console.log(`📝 IMMEDIATE UPDATE: Using markdown file: ${this.currentMdPath} for: ${imagePath}`);
+      
+      // Verify the file exists
+      if (!fs.existsSync(this.currentMdPath)) {
+        console.error(`❌ ERROR: Markdown file does not exist: ${this.currentMdPath}`);
+        return;
+      }
+      
       // Read the markdown file
+      console.log(`📄 Reading markdown file: ${this.currentMdPath}`);
       const mdContent = fs.readFileSync(this.currentMdPath, 'utf8');
+      
+      // Log the first 200 characters of the markdown content for debugging
+      console.log(`📄 Markdown content preview (first 200 chars): ${mdContent.substring(0, 200).replace(/\n/g, '\\n')}`);
+      
+      // Check if the file contains any placeholders with different patterns
+      const placeholderText1 = '<!-- placeholder for screenshot:';
+      const placeholderText2 = '<!-- placeholder for screenshot';
+      const placeholderText3 = '<!-- placeholder';
+      
+      // Check for exact strings and log their positions
+      const pos1 = mdContent.indexOf(placeholderText1);
+      const pos2 = mdContent.indexOf(placeholderText2);
+      const pos3 = mdContent.indexOf(placeholderText3);
+      
+      console.log(`🔍 Placeholder text positions: '${placeholderText1}' at ${pos1}, '${placeholderText2}' at ${pos2}, '${placeholderText3}' at ${pos3}`);
+      
+      const hasNamedPlaceholders = pos1 !== -1;
+      const hasGenericPlaceholders = pos2 !== -1;
+      const hasAnyPlaceholders = pos3 !== -1;
+      
+      console.log(`🔍 File contains named placeholders: ${hasNamedPlaceholders}`);
+      console.log(`🔍 File contains generic placeholders: ${hasGenericPlaceholders}`);
+      console.log(`🔍 File contains any placeholders: ${hasAnyPlaceholders}`);
+      
+      // If there's a placeholder in the file, check for specific text
+      if (hasAnyPlaceholders) {
+        // Extract 20 characters around the placeholder
+        const start = Math.max(0, pos3 - 10);
+        const end = Math.min(mdContent.length, pos3 + 30);
+        const placeholderContext = mdContent.substring(start, end);
+        console.log(`🔍 Placeholder context: "${placeholderContext}"`);
+      }
+      
+      // If there are any placeholders, log them for debugging
+      if (hasAnyPlaceholders) {
+        console.log('🔍 Searching for placeholders in the file:');
+        const lines = mdContent.split('\n');
+        const placeholderLines = lines.filter(line => line.includes('<!-- placeholder'));
+        
+        console.log(`📌 Found ${placeholderLines.length} placeholder lines:`);
+        placeholderLines.forEach((line, index) => {
+          console.log(`   ${index + 1}: "${line}"`);
+        });
+      }
       
       // Track the generated image
       this.trackGeneratedImage(imagePath);
@@ -485,7 +672,18 @@ export class AIUtilsEnhanced {
       let updatedContent = mdContent;
       let updatesCount = 0;
       
-      // Update image paths in markdown content for this specific image
+      // First, check for placeholders and replace them if found
+      console.log(`🔄 Checking for placeholders to replace with image: ${imageName}`);
+      const placeholderUpdated = this.replacePlaceholderWithImage(updatedContent, imageName);
+      if (placeholderUpdated.updated) {
+        console.log(`✅ Successfully replaced ${placeholderUpdated.count} placeholder(s) with image reference`);
+        updatedContent = placeholderUpdated.content;
+        updatesCount += placeholderUpdated.count;
+      } else {
+        console.log(`ℹ️ No placeholders were replaced for image: ${imageName}`);
+      }
+      
+      // Then, update existing image paths in markdown content for this specific image
       const imagePatterns = [
         // Markdown image syntax: ![alt](path/to/image.ext)
         /!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|bmp|webp|svg))\)/gi,
@@ -510,10 +708,14 @@ export class AIUtilsEnhanced {
           
           // Remove any _E or _S suffixes from the new image name to get the clean base name
           let cleanNewBaseName = newBaseName;
-          if (newBaseName.endsWith('_E') || newBaseName.endsWith('_S')) {
-            cleanNewBaseName = newBaseName.replace(/[_][ES]$/, '');
-            // If there's still an _S suffix (from stock version), remove that too  
-            cleanNewBaseName = cleanNewBaseName.replace(/[_]S$/, '');
+          
+          // Check if suffix removal is disabled
+          if (process.env.DISABLE_IMAGE_SUFFIXES !== 'true') {
+            if (newBaseName.endsWith('_E') || newBaseName.endsWith('_S')) {
+              cleanNewBaseName = newBaseName.replace(/[_][ES]$/, '');
+              // If there's still an _S suffix (from stock version), remove that too  
+              cleanNewBaseName = cleanNewBaseName.replace(/[_]S$/, '');
+            }
           }
           
           // Check if this image should be updated - only if it's an exact match
@@ -570,6 +772,71 @@ export class AIUtilsEnhanced {
       console.error('❌ Error during single image path update:', error);
     }
   }
+  
+  /**
+   * Replace placeholder comments with image references
+   * @param content - The markdown content
+   * @param imageName - The name of the image file
+   * @returns Object with updated content and count of replacements
+   */
+  private replacePlaceholderWithImage(content: string, imageName: string): { updated: boolean; content: string; count: number } {
+    let updatedContent = content;
+    let replacementCount = 0;
+    
+    try {
+      // Get the base name without extension for comparison
+      const imageBaseName = path.basename(imageName, path.extname(imageName));
+      
+      // Create the image reference
+      const relativePath = `img/${imageName}`;
+      const imageReference = `![${imageBaseName}](${relativePath})`;
+      
+      console.log(`🔍 Looking for placeholder lines containing image name: ${imageName} or ${imageBaseName}`);
+      
+      // First look for exact match placeholders
+      const exactPlaceholderPattern = `<!-- placeholder for screenshot: ${imageName}`;
+      const baseNamePlaceholderPattern = `<!-- placeholder for screenshot: ${imageBaseName}`;
+      
+      // Split content into lines for line-by-line processing
+      const lines = content.split('\n');
+      let updatedLines = [...lines]; // Create a copy of the lines array
+      let lineReplaced = false;
+      
+      // First try to find exact match placeholders
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        if (line.includes(exactPlaceholderPattern) || line.includes(baseNamePlaceholderPattern)) {
+          console.log(`✅ Found exact matching placeholder line ${i + 1}: "${line}"`);
+          updatedLines[i] = imageReference;
+          replacementCount++;
+          lineReplaced = true;
+          console.log(`✅ Replacing line ${i + 1}: "${line}" with "${imageReference}"`);
+          break; // Only replace the first matching placeholder
+        }
+      }
+      
+      // If no exact match was found, don't use any fallback
+      // Only use exact matches for image names
+      
+      // If we found and replaced a placeholder, join the lines back together
+      if (lineReplaced) {
+        updatedContent = updatedLines.join('\n');
+        console.log(`✅ Successfully replaced ${replacementCount} placeholder(s) with image reference`);
+      } else {
+        console.log(`ℹ️ No placeholder specifically matching "${imageName}" or "${imageBaseName}" was found`);
+      }
+      
+      return {
+        updated: replacementCount > 0,
+        content: updatedContent,
+        count: replacementCount
+      };
+    } catch (error) {
+      console.error('❌ Error replacing placeholder with image:', error);
+      return { updated: false, content, count: 0 };
+    }
+  }
 
   /**
    * Check if an image already exists and return the original image name
@@ -588,9 +855,13 @@ export class AIUtilsEnhanced {
       
       // Extract the true base name by removing all _E and _S suffixes
       let baseName = currentBaseName;
-      // Keep removing _E and _S suffixes until we get the base name
-      while (baseName.endsWith('_E') || baseName.endsWith('_S')) {
-        baseName = baseName.replace(/[_][ES]$/, '');
+      
+      // Check if suffix removal is disabled
+      if (process.env.DISABLE_IMAGE_SUFFIXES !== 'true') {
+        // Keep removing _E and _S suffixes until we get the base name
+        while (baseName.endsWith('_E') || baseName.endsWith('_S')) {
+          baseName = baseName.replace(/[_][ES]$/, '');
+        }
       }
       
       console.log(`🔍 Extracted base name: ${currentBaseName} → ${baseName}`);
@@ -771,20 +1042,27 @@ export class AIUtilsEnhanced {
             });
             
             if (potentialMatches.length > 0) {
-              // ALWAYS prefer Enhanced (_E) over Stock (_S) - Enhanced is the target
-              const enhancedMatch = potentialMatches.find(file => file.includes('_E'));
-              const stockMatch = potentialMatches.find(file => file.includes('_S'));
-              
-              if (enhancedMatch) {
-                matchingImage = enhancedMatch;
-                console.log(`🎯 Using Enhanced version: ${enhancedMatch}`);
-              } else if (stockMatch) {
-                matchingImage = stockMatch;
-                console.log(`📸 Using Stock version (Enhanced not available): ${stockMatch}`);
-              } else {
-                // Use the first match if no _E/_S suffixes
+              // Check if suffix removal is disabled
+              if (process.env.DISABLE_IMAGE_SUFFIXES === 'true') {
+                // Use the first match if suffix removal is disabled
                 matchingImage = potentialMatches[0];
-                console.log(`📄 Using available version: ${potentialMatches[0]}`);
+                console.log(`📄 Using first matching image (suffixes disabled): ${matchingImage}`);
+              } else {
+                // ALWAYS prefer Enhanced (_E) over Stock (_S) - Enhanced is the target
+                const enhancedMatch = potentialMatches.find(file => file.includes('_E'));
+                const stockMatch = potentialMatches.find(file => file.includes('_S'));
+                
+                if (enhancedMatch) {
+                  matchingImage = enhancedMatch;
+                  console.log(`🎯 Using Enhanced version: ${enhancedMatch}`);
+                } else if (stockMatch) {
+                  matchingImage = stockMatch;
+                  console.log(`📸 Using Stock version (Enhanced not available): ${stockMatch}`);
+                } else {
+                  // Use the first match if no _E/_S suffixes
+                  matchingImage = potentialMatches[0];
+                  console.log(`📄 Using available version: ${potentialMatches[0]}`);
+                }
               }
             }
           }
@@ -803,19 +1081,25 @@ export class AIUtilsEnhanced {
               // Check if it's an _E/_S suffix match
               const baseImageName = path.basename(imageName, path.extname(imageName));
               const baseFileName = path.basename(matchingImage, path.extname(matchingImage));
-              const baseImageNameClean = baseImageName.replace(/[_-][ES]$/i, '');
-              const baseFileNameClean = baseFileName.replace(/[_-][ES]$/i, '');
               
-              if (baseImageNameClean === baseFileNameClean) {
-                if (matchingImage.includes('_E')) {
-                  console.log(`🎯 Enhanced suffix match: ${imageName} → ${matchingImage}`);
-                } else if (matchingImage.includes('_S')) {
-                  console.log(`📸 Stock suffix match: ${imageName} → ${matchingImage}`);
-                } else {
-                  console.log(`🔄 Base name suffix match: ${imageName} → ${matchingImage}`);
-                }
+              // Check if suffix removal is disabled
+              if (process.env.DISABLE_IMAGE_SUFFIXES === 'true') {
+                console.log(`📄 Suffix match (suffixes disabled): ${imageName} → ${matchingImage}`);
               } else {
-                console.log(`🔍 Similar name match found: ${imageName} → ${matchingImage}`);
+                const baseImageNameClean = baseImageName.replace(/[_-][ES]$/i, '');
+                const baseFileNameClean = baseFileName.replace(/[_-][ES]$/i, '');
+                
+                if (baseImageNameClean === baseFileNameClean) {
+                  if (matchingImage.includes('_E')) {
+                    console.log(`🎯 Enhanced suffix match: ${imageName} → ${matchingImage}`);
+                  } else if (matchingImage.includes('_S')) {
+                    console.log(`📸 Stock suffix match: ${imageName} → ${matchingImage}`);
+                  } else {
+                    console.log(`🔄 Base name suffix match: ${imageName} → ${matchingImage}`);
+                  }
+                } else {
+                  console.log(`🔍 Similar name match found: ${imageName} → ${matchingImage}`);
+                }
               }
             }
             
@@ -3303,54 +3587,98 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
 
   private getReferenceImageBase64WithPath(imageFileName: string): { base64: string; sourcePath: string | null } {
     try {
-      // Start from current markdown document directory if available
-      let searchRoot: string;
-      
-      if (this.currentMdPath) {
-        // Use the directory containing the current markdown file
-        searchRoot = path.dirname(this.currentMdPath);
-        console.log(`🔍 Searching for image '${imageFileName}' in all subdirectories under: ${searchRoot}`);
-      } else {
-        // Fallback to environment-aware docs directory
-        searchRoot = this.getDocsDirectory();
-        console.log(`🔍 Searching for image '${imageFileName}' in fallback docs directory: ${searchRoot}`);
-      }
-      
-      if (!fs.existsSync(searchRoot)) {
-        console.log(`⚠️ Search root directory does not exist: ${searchRoot}`);
+      // Only search in the current markdown document directory
+      if (!this.currentMdPath) {
+        console.log(`⚠️ No current markdown path set, cannot search for image`);
         return { base64: '', sourcePath: null };
       }
       
-      // Search in all subdirectories under the document directory first
-      const foundImagePath = this.findImageInAllSubdirectories(searchRoot, imageFileName);
+      // Use the directory containing the current markdown file
+      const searchRoot = path.dirname(this.currentMdPath);
+      console.log(`🔍 Searching for image '${imageFileName}' in document directory: ${searchRoot}`);
       
-      if (foundImagePath) {
-        console.log(`✅ Found reference image at: ${foundImagePath}`);
-        return {
-          base64: fs.readFileSync(foundImagePath).toString('base64'),
-          sourcePath: path.dirname(foundImagePath)
-        };
+      if (!fs.existsSync(searchRoot)) {
+        console.log(`⚠️ Document directory does not exist: ${searchRoot}`);
+        return { base64: '', sourcePath: null };
       }
       
-      // If not found in current document directory tree, try the docs directory as fallback
-      const docsDir = this.getDocsDirectory();
-      if (this.currentMdPath && searchRoot !== docsDir) {
-        console.log(`🔍 Image not found in document directory tree, trying docs directory fallback...`);
-        
-        if (fs.existsSync(docsDir)) {
-          const fallbackImagePath = this.findImageInAllSubdirectories(docsDir, imageFileName);
-          
-          if (fallbackImagePath) {
-            console.log(`✅ Found reference image in docs fallback at: ${fallbackImagePath}`);
-            return {
-              base64: fs.readFileSync(fallbackImagePath).toString('base64'),
-              sourcePath: path.dirname(fallbackImagePath)
-            };
-          }
+      // First check if the image exists directly in the img subdirectory (most common case)
+      const imgDir = path.join(searchRoot, 'img');
+      if (fs.existsSync(imgDir) && fs.lstatSync(imgDir).isDirectory()) {
+        const directImagePath = path.join(imgDir, imageFileName);
+        if (fs.existsSync(directImagePath)) {
+          console.log(`✅ Found image directly in img directory: ${directImagePath}`);
+          return {
+            base64: fs.readFileSync(directImagePath).toString('base64'),
+            sourcePath: imgDir
+          };
         }
       }
       
-      console.log(`❌ Image '${imageFileName}' not found in any directory`);
+      // Check if the image exists directly in the document directory
+      const directPath = path.join(searchRoot, imageFileName);
+      if (fs.existsSync(directPath)) {
+        console.log(`✅ Found image directly in document directory: ${directPath}`);
+        return {
+          base64: fs.readFileSync(directPath).toString('base64'),
+          sourcePath: searchRoot
+        };
+      }
+      
+      // Deep search for all subdirectories within the document directory
+      console.log(`🔍 Deep searching all subdirectories in document directory: ${searchRoot}`);
+      
+      try {
+        // Get all items in the document directory
+        const items = fs.readdirSync(searchRoot);
+        
+        // Find all subdirectories, regardless of name
+        const allSubdirectories = items.filter(item => {
+          const itemPath = path.join(searchRoot, item);
+          try {
+            // Check if it's a directory
+            return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
+          } catch (e) {
+            return false;
+          }
+        });
+        
+        console.log(`🔍 Found ${allSubdirectories.length} subdirectories: ${allSubdirectories.join(', ')}`);
+        
+        // Check each subdirectory for the image
+        for (const folder of allSubdirectories) {
+          const folderPath = path.join(searchRoot, folder);
+          console.log(`🔍 Checking in subdirectory: ${folderPath}`);
+          
+          // First check directly in this subdirectory
+          const imagePath = path.join(folderPath, imageFileName);
+          if (fs.existsSync(imagePath)) {
+            console.log(`✅ Found image in folder ${folder}: ${imagePath}`);
+            return {
+              base64: fs.readFileSync(imagePath).toString('base64'),
+              sourcePath: folderPath
+            };
+          }
+          
+          // Also check if there's a nested img directory
+          const nestedImgDir = path.join(folderPath, 'img');
+          if (fs.existsSync(nestedImgDir) && fs.lstatSync(nestedImgDir).isDirectory()) {
+            const nestedImagePath = path.join(nestedImgDir, imageFileName);
+            if (fs.existsSync(nestedImagePath)) {
+              console.log(`✅ Found image in nested img directory: ${nestedImagePath}`);
+              return {
+                base64: fs.readFileSync(nestedImagePath).toString('base64'),
+                sourcePath: nestedImgDir
+              };
+            }
+          }
+        }
+      } catch (searchError) {
+        console.error(`❌ Error during deep search: ${searchError}`);
+      }
+      
+      // No fallback to other directories - if not found, return empty
+      console.log(`❌ Image '${imageFileName}' not found in any folder within document directory`);
       return { base64: '', sourcePath: null };
       
     } catch (error: any) {
