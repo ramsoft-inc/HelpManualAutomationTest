@@ -84,7 +84,6 @@ const LANGUAGES = {
   Hindi: "hi",
   French: "fr",
   Spanish: "es",
-  Portuguese: "pt",
   German: "de",
   Italian: "it",
   Dutch: "nl",
@@ -454,15 +453,7 @@ async function navigateToWorklist(page) {
 function detectLanguageFromFolder(folderPath) {
   if (!folderPath) return 'English';
   
-  console.log(`🔍 DEBUG: Checking language for path: ${folderPath}`);
   const normalizedPath = folderPath.toLowerCase();
-  console.log(`🔍 DEBUG: Normalized path: ${normalizedPath}`);
-  
-  // FORCE English for docs folder paths - no exceptions
-  if (normalizedPath.includes('docs')) {
-    console.log(`🔍 DEBUG: Force detected as English (contains 'docs'): ${folderPath}`);
-    return 'English';
-  }
   
   // Check if path is in the main docs folder (English)
   if (normalizedPath.startsWith('docs/') || 
