@@ -1547,7 +1547,7 @@ async function promptForMissingInfo() {
             case '2':
                 let validFolder = false;
                 while (!validFolder) {
-                    folderPath = await promptUser('Enter path to the translation folder: ');
+                    folderPath = await promptUser('Enter path to the translated folder: ');
                     
                     // Check if input is empty
                     if (!folderPath || folderPath.trim() === '') {
@@ -1784,8 +1784,8 @@ console.log('\n' + '='.repeat(80));
 console.log(`📊 EXECUTION MODE: ${executionMode.toUpperCase()}`);
 
 if (executionMode === 'translation') {
-    console.log(`🌐 Default/Translation folder: ${folderPath}`);
-    console.log(`ℹ️  Processing files with actual images in default/translation mode`);
+    console.log(`🌐 Translation folder: ${folderPath}`);
+    console.log(`ℹ️  Processing files with actual images in translation mode`);
 } else if (executionMode === 'single_file') {
     console.log(`📄 Single file: ${singleFilePath}`);
     console.log(`ℹ️  Processing one specific file with classification`);
@@ -2213,6 +2213,13 @@ const findSimilarImage = (expectedName, generatedImages) => {
     
     // First, execute the workflow to process command line arguments and interactive prompts
     await executeWorkflow();
+    
+    // Skip the rest of the execution if we're in translation mode with a folder
+    // The folder processing has already been done in the main code
+    if (executionMode === 'translation' && folderPath) {
+        console.log('✅ Translation mode processing completed');
+        process.exit(0);
+    }
     
     console.log(`📋 Mode: ${SCENARIO_TYPE} - ${MODE_DESCRIPTIONS[SCENARIO_TYPE]}\n`);
     
