@@ -15,7 +15,7 @@ concurrency:
 jobs:
   run-enhanced-flow:
     if: >
-      ${{ github.event.issue.pull_request != null && (contains(github.event.comment.body, 'node test-enhanced-flow.js') || contains(github.event.comment.body, '/run-enhanced-flow')) }}
+      ${{ github.event.issue.pull_request != null && (contains(github.event.comment.body, 'node test-enhanced-flow.js') || contains(github.event.comment.body, '/run-enhanced-flow') || contains(github.event.comment.body, 'autosnap')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -107,9 +107,10 @@ jobs:
         with:
           script: |
             const body = context.payload.comment.body || '';
-            // Handle both formats: node test-enhanced-flow.js and /run-enhanced-flow
+            // Handle all formats: node test-enhanced-flow.js, /run-enhanced-flow, and autosnap
             const reNode = /node\s+test-enhanced-flow\.js(?:\s+([\s\S]*))?/i; // capture everything after the command on the first line
             const reRun = /\/run-enhanced-flow(?:\s+([\s\S]*))?/i; // capture everything after the command on the first line
+            const reAutosnap = /autosnap(?:\s+([\s\S]*))?/i; // capture everything after the autosnap command
             
             let args = '';
             
@@ -122,6 +123,12 @@ jobs:
                 m = body.match(reRun);
                 if (m && m[1]) {
                     args = m[1].trim();
+                } else {
+                    // Try to match autosnap format
+                    m = body.match(reAutosnap);
+                    if (m && m[1]) {
+                        args = m[1].trim();
+                    }
                 }
             }
             
@@ -272,6 +279,7 @@ jobs:
             
             let bodyContent = [
               `▶️ Ran: node test-enhanced-flow.js ${args}`.trim(),
+              `(equivalent to: autosnap ${args})`,
               `• Status: ${process.env.STATE || 'completed (see job result above)'}`,
               `• Logs & outputs uploaded as artifact: enhanced-flow-artifacts`,
               `• Workflow run: ${runUrl}`

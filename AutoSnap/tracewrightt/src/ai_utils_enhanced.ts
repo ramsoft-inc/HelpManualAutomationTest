@@ -109,8 +109,7 @@ export class AIUtilsEnhanced {
     
     // Check multiple locations for the path file created by the Python script
     const possiblePathFiles = [
-      path.join(process.cwd(), 'current_md_path.txt'),               // Project root
-      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory
+      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory (primary location)
       'current_md_path.txt',                                         // Current directory
       '../current_md_path.txt',                                      // Parent directory
     ];
@@ -533,8 +532,7 @@ export class AIUtilsEnhanced {
   public async updateSingleImagePath(imagePath: string): Promise<void> {
     // Check multiple locations for the path file created by the Python script
     const possiblePathFiles = [
-      path.join(process.cwd(), 'current_md_path.txt'),               // Project root
-      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory
+      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory (primary location)
       'current_md_path.txt',                                         // Current directory
       '../current_md_path.txt',                                      // Parent directory
     ];
@@ -1171,57 +1169,7 @@ export class AIUtilsEnhanced {
       console.error('❌ Error during markdown post-processing:', error);
     }
   }
-  
-  /**
-   * Write comprehensive token usage summary to a log file
-   * This is called at the end of execution
-   */
-  public writeTokenUsageSummary(outputPath: string = 'token_usage_summary.txt', thinkingLogPath: string = 'ai_thinking_log.txt'): void {
-    try {
-      // Write token usage summary
-      const timestamp = new Date().toISOString();
-      
-      // Format numbers with commas for readability
-      const formatNumber = (num: number): string => num.toLocaleString();
-      
-      const summary = [
-        `\n=============================================`,
-        `        COMPREHENSIVE TOKEN USAGE REPORT`,
-        `             ${timestamp}`,
-        `=============================================`,
-        `Total Input Tokens:        ${formatNumber(globalStats.totalInputTokens)}`,
-        `Total Output Tokens:       ${formatNumber(globalStats.totalOutputTokens)}`,
-        `TOTAL TOKENS USED:         ${formatNumber(globalStats.totalInputTokens + globalStats.totalOutputTokens)}`,
-        `---------------------------------------------`,
-        `Total API Calls:           ${formatNumber(globalStats.totalApiCalls)}`,
-        `Average Tokens Per Call:   ${formatNumber(Math.round((globalStats.totalInputTokens + globalStats.totalOutputTokens) / (globalStats.totalApiCalls || 1)))}`,
-        `---------------------------------------------`,
-        `Estimated Cost ($0.0005/1K tokens): $${((globalStats.totalInputTokens + globalStats.totalOutputTokens) * 0.0005 / 1000).toFixed(4)}`,
-        `=============================================`
-      ].join('\n');
-      
-      fs.appendFileSync(outputPath, summary + '\n\n');
-      
-      // Print the final report to console as well
-      
-      // Write AI thinking logs if we have any stored
-      if (this.thinkingHistory && this.thinkingHistory.length > 0) {
-        const thinkingLog = [
-          `\n===== AI Thinking Log (${timestamp}) =====`,
-          ...this.thinkingHistory.map((entry, index) => 
-            `\n--- Step ${index + 1} ---\n${entry.thinking || 'No thinking provided'}`
-          ),
-          '\n=========================================='
-        ].join('\n');
-        
-        fs.appendFileSync(thinkingLogPath, thinkingLog + '\n\n');
-        console.log(`🧠 AI thinking log written to ${thinkingLogPath}`);
-      }
-    } catch (error) {
-      console.error(`❌ Failed to write logs: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
+ 
   /**
    * Build a rich, hierarchical summary of visible containers and their interactive elements.
    * This is designed to give the LLM a high-fidelity mental model of the page structure.

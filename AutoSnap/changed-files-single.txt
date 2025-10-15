@@ -1,1 +1,1 @@
-../i18n/pt-BR/docusaurus-plugin-content-docs/current/6-Image-Viewer/1_Accessing_the_Image_Viewer_in_OmegaAI.md
+docs/6-Image-Viewer/4_MoreOptionsToolbarMenu.md

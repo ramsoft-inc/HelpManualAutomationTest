@@ -32,6 +32,11 @@ import { createRequire } from 'module';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis).require = createRequire(import.meta.url);
 
+// Define __dirname for ESM modules
+import { fileURLToPath } from 'url';
+import path from 'path';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 // Import the preprocessing functions
 import { generateInstructions, checkPythonDependencies } from './preprocess_instructions.js';
 // Import placeholder management functions
@@ -652,7 +657,9 @@ const processListMode = async (listFilePath, forcedMode = null) => {
         
         for (const filePath of filePaths) {
             // Handle both relative and absolute paths
-            const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+            // Get workspace root (parent of AutoSnap directory)
+            const workspaceRoot = path.dirname(__dirname);
+            const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(workspaceRoot, filePath);
             
             try {
                 if (!fs.existsSync(resolvedPath)) {
@@ -1491,7 +1498,8 @@ async function executeWorkflow() {
         console.log(`✅ Processed single file in ${mode.toUpperCase()} mode`);
         
         // Create a changed files list for the automation
-        const singleFileChangedList = path.join(process.cwd(), 'changed-files-single.txt');
+        // Use __dirname which is already defined at the top of the file
+        const singleFileChangedList = path.join(__dirname, 'changed-files-single.txt');
         const normalizedPath = singleFilePath.replace(/\\/g, '/');
         fs.writeFileSync(singleFileChangedList, normalizedPath);
         console.log(`📋 Created single file changed files list: ${singleFileChangedList}`);
@@ -1524,7 +1532,8 @@ if (listFilePath) {
         // For list mode, create a changed files list for the automation
         if (processedFileResults.length > 0) {
             // Create a comprehensive changed files list for list mode
-            const listChangedFilesPath = path.join(process.cwd(), 'changed-files-list.txt');
+            // Use __dirname which is already defined at the top of the file
+            const listChangedFilesPath = path.join(__dirname, 'changed-files-list.txt');
             const allProcessedFiles = processedFileResults
                 .filter(result => result.processed) // Only include successfully processed files
                 .map(result => result.filePath.replace(/\\/g, '/'));
@@ -1561,7 +1570,9 @@ if (listFilePath) {
         
         // Validate this is not the docs folder itself
         const normalizedFolderPath = path.resolve(folderPath);
-        const normalizedDocsPath = path.resolve(process.cwd(), 'docs');
+        // Get workspace root (parent of AutoSnap directory)
+        const workspaceRoot = path.dirname(__dirname);
+        const normalizedDocsPath = path.resolve(workspaceRoot, 'docs');
         
         if (normalizedFolderPath === normalizedDocsPath) {
             console.warn(`⚠️  Warning: You specified the docs folder itself. Translation mode is meant for folders that mirror docs structure.`);
@@ -1573,7 +1584,8 @@ if (listFilePath) {
         // For translation mode, create a changed files list for the automation
         if (processedFileResults.length > 0) {
             // Create a comprehensive changed files list for default/translation mode
-            const translationChangedFilesPath = path.join(process.cwd(), 'changed-files-translation.txt');
+            // Use __dirname which is already defined at the top of the file
+            const translationChangedFilesPath = path.join(__dirname, 'changed-files-translation.txt');
             const allProcessedFiles = processedFileResults.map(result => result.filePath.replace(/\\/g, '/'));
             fs.writeFileSync(translationChangedFilesPath, allProcessedFiles.join('\n'));
             
@@ -2092,10 +2104,25 @@ const findSimilarImage = (expectedName, generatedImages) => {
 
 // Note: Skip early exit for translation mode to allow language switching
 const NO_DOC_MSG = "Default: No document content was processed or an error occurred during instruction generation.";
+// Check if the browser instruction generator produced an empty instruction key
+// or if the instructions key is missing entirely
+const instructionKeyEmpty = generatedInstructions.includes('instruction: ""') || 
+                           generatedInstructions.includes('instruction:""') || 
+                           generatedInstructions.includes('instruction: []') || 
+                           generatedInstructions.includes('instruction:[]') ||
+                           generatedInstructions.includes('"instructions": ""') ||
+                           generatedInstructions.includes('"instructions":""');
+
+const instructionKeyMissing = generatedInstructions.includes('"thinking":') && 
+                             !generatedInstructions.includes('"instructions":') &&
+                             !generatedInstructions.includes('"instruction":');
+
 const hasNoDocumentContent = (
   !generatedInstructions || 
   generatedInstructions.trim() === NO_DOC_MSG ||
-  generatedInstructions.trim().startsWith("Default: No document content was processed")
+  generatedInstructions.trim().startsWith("Default: No document content was processed") ||
+  instructionKeyEmpty ||
+  instructionKeyMissing
 );
 
 // Determine if we should proceed with browser automation for language switching
@@ -2105,9 +2132,42 @@ const shouldProceedForLanguageSwitching = (
 );
 
 if (hasNoDocumentContent) {
+  if (instructionKeyEmpty) {
+    console.log("⚠️ Browser instruction generator produced an empty instruction key");
+  } else if (instructionKeyMissing) {
+    console.log("⚠️ Browser instruction generator response is missing the instructions key");
+  } else {
   console.log("❌ No document was processed or instructions are empty.");
-  console.log("🛑 Exiting process due to missing instructions.");
-  process.exit(1);
+  }
+  
+  // Check if there are more files to process
+  const hasMoreFiles = 
+    (processedFileResults && processedFileResults.length > 1) || 
+    (processedFiles && processedFiles.length > 1) || 
+    (changedFilesArray && changedFilesArray.length > 1);
+  
+  if (hasMoreFiles) {
+    console.log("⏭️ Skipping this file and continuing with the next one.");
+    
+    // Remove the current file from the processing queue
+    if (processedFileResults && processedFileResults.length > 0) {
+      const currentIndex = processedFileResults.findIndex(result => 
+        result.filePath === currentFileForInstructions);
+      if (currentIndex !== -1) {
+        processedFileResults.splice(currentIndex, 1);
+      }
+    }
+    
+    // Return to allow processing the next file
+    let reason = "Empty instructions";
+    if (instructionKeyEmpty) reason = "Empty instruction key";
+    if (instructionKeyMissing) reason = "Missing instruction key";
+    
+    return { processed: false, filePath: currentFileForInstructions, reason: reason };
+  } else {
+    console.log("🛑 No more files to process. Exiting due to missing instructions.");
+    process.exit(1);
+  }
 }
     // Step 3: Initialize browser and tracewright
     console.log('🌐 Launching browser...');
@@ -2124,7 +2184,7 @@ if (hasNoDocumentContent) {
     const { fileURLToPath, pathToFileURL } = await import('node:url');
     const { execSync } = await import('node:child_process');
 
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    // __dirname is already defined at the top of the file
     const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || !!process.env.SKIP_TW_BUILD;
 
     // The roll-up output structure can vary depending on preserveModules settings, so
@@ -2716,6 +2776,9 @@ if (hasNoDocumentContent) {
                 process.exit(1);
             }
             
+            // We already checked for empty instruction key before launching the browser
+            // This code is now redundant
+            
             // Run tracewright with enhanced screenshot interception
             // Note: Instructions are already extracted by _extract_instructions_only in Python
             console.log(`🚀 About to call tracewright with:`);
@@ -2817,36 +2880,7 @@ if (hasNoDocumentContent) {
  
         console.log('✅ Automation execution completed successfully!');
         
-        // Generate and display token usage statistics
-        try {
-            console.log('\n' + '='.repeat(80));
-            console.log('📊 GENERATING TOKEN USAGE STATISTICS');
-            
-            // Create token usage summary
-            const tokenLogPath = 'token_usage_summary.txt';
-            const timestamp = new Date().toISOString();
-            
-            // Get AI Utils instance if available
-            if (typeof AIUtilsEnhanced !== 'undefined' && aiUtils) {
-                console.log('\n📊 GENERATING FINAL TOKEN REPORT 📊');
-                aiUtils.writeTokenUsageSummary(tokenLogPath);
-                // The report is printed directly by the writeTokenUsageSummary method
-            } else {
-                // Fallback to simple token logging
-                const summary = [
-                    `\n===== Token Usage Summary (${timestamp}) =====`,
-                    '(Note: Detailed statistics not available - using simple summary)',
-                    '==========================================='
-                ].join('\n');
-                
-                fs.appendFileSync(tokenLogPath, summary + '\n\n');
-                console.log('✅ Basic token usage log created at:', tokenLogPath);
-            }
-            
-            console.log('='.repeat(80) + '\n');
-        } catch (tokenError) {
-            console.error('⚠️ Could not generate token usage statistics:', tokenError.message);
-        }
+        
         
         // Step 6: No post-processing needed - placeholders are replaced immediately when screenshots are taken
         console.log('\n' + '='.repeat(80));
