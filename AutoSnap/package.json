@@ -8,7 +8,7 @@
     "start": "node example.js",
     "run": "node run-script.js",
     "run-enhanced": "node enhanced-run-script.js",
-    "generate-instructions": "python browser_automation_instructions.py",
+    "generate-instructions": "python ./browser_automation_instructions.py",
     "setup-python": "pip install -r requirements.txt",
     "test": "npx playwright test"
   },

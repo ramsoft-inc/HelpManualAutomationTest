@@ -102,35 +102,6 @@ export const run = async (page: Page, options: TracewrightOptions) => {
   console.info(chalk.green("Average Tokens Per Step:\t"), chalk.yellow(Math.round((inputTokenTotalCount + outputTokenTotalCount) / stepCounter).toLocaleString()));
   console.info(chalk.green("==============================================="));
   
-  // Display comprehensive token usage statistics at the end
-  try {
-    // Write detailed token usage statistics to file
-    const tokenLogPath = 'token_usage_summary.txt';
-    const thinkingLogPath = 'ai_thinking_log.txt';
-    
-    // Create a comprehensive token usage summary
-    const timestamp = new Date().toISOString();
-    const tokenSummary = [
-      `\n===== Comprehensive Token Usage Summary (${timestamp}) =====`,
-      `Script completed with ${stepCounter} steps`,
-      `Input tokens: ${inputTokenTotalCount}`,
-      `Output tokens: ${outputTokenTotalCount}`,
-      `Total tokens: ${inputTokenTotalCount + outputTokenTotalCount}`,
-      `Average tokens per step: ${Math.round((inputTokenTotalCount + outputTokenTotalCount) / stepCounter)}`,
-      '====================================================='
-    ].join('\n');
-    
-    // Write the summary to file
-    const fs = await import('fs');
-    fs.appendFileSync(tokenLogPath, tokenSummary + '\n\n');
-    
-    // Don't write thinking logs at the end, they're now written in real-time
-    console.info(chalk.blue("*** AI thinking logs are written in real-time to:"), thinkingLogPath);
-    
-    console.info(chalk.blue("*** Token usage statistics written to:"), tokenLogPath);
-  } catch (e) {
-    console.warn(chalk.yellow("Could not write token usage statistics:"), e instanceof Error ? e.message : String(e));
-  }
 
 };
 

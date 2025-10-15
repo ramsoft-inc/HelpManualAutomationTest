@@ -8,15 +8,12 @@ load_dotenv()
 # Get API keys from environment variables
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-# Special API key for ReportSearch resource
-REPORTSEARCH_API_KEY = os.getenv("REPORTSEARCH_API_KEY")
 
 # Validate that required environment variables are set
 if not AZURE_OPENAI_API_KEY:
     raise ValueError("AZURE_OPENAI_API_KEY environment variable is not set. Please check your .env file.")
 if not AZURE_OPENAI_ENDPOINT:
     raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is not set. Please check your .env file.")
-# ReportSearch API key is optional - will be checked when used
 
 import logging
 from langchain_openai import AzureChatOpenAI
@@ -464,7 +461,7 @@ def get_prompt_for_new_feature(doc_content):
 Goal: Generate a single, comprehensive set of step-by-step browser actions to take screenshots ONLY for placeholder comments found in the document.
 
 Your ONLY trigger is the exact HTML comment:
-<!-- placeholder for a screenshot : image-name.png -->
+<!-- placeholder for a screenshot -->
 If no such placeholders exist in the provided content, generate nothing (NO INSTRUCTIONS ARE NEEDED).
 
 Analyze the entire document to identify ALL placeholder comments and create ONE sequential instruction set that captures every single screenshot placeholder in the most efficient navigation order.
@@ -472,7 +469,7 @@ Analyze the entire document to identify ALL placeholder comments and create ONE 
 Output format (strict):
 1) THINKING — A brief planning block that:
    - Lists every single placeholder comment found in the document with its context
-   - For each placeholder (and filename), a brief description of the expected UI state and the key elements that must be visible to match the placeholder context
+   - For each placeholder (and filename if provided), a brief description of the expected UI state and the key elements that must be visible to match the placeholder context
    - Plans the most efficient navigation route to capture all placeholder screenshots
    - Note the expected UI state and purpose for each screenshot based on surrounding documentation
 2) INSTRUCTIONS — One numbered sequence starting at 1, covering all placeholders in the document. Each step is exactly one browser action.
@@ -486,11 +483,12 @@ Rules for INSTRUCTIONS:
 - Use imperative voice for each step
 - Each step = exactly one action ("click", "type", "open", "hover", "wait until visible", "take a screenshot")
 - For every interacted element, include its English name plus brief visual/positional cues (color, icon, "top-right", etc.)
-- When capturing, filename/path is specified next to the placeholder, save using that exact name.
+- When capturing, if a filename/path is specified next to the placeholder, save using that exact name. Name the screenshot based on the context and purpose of the placeholder.
 - For screenshot steps, analyze the surrounding documentation context to determine:
   * WHAT specific UI elements should be visible
   * WHAT the screenshot should document (based on nearby text)
   * HOW the UI should be configured
+  * WHAT filename to use (derived from the context and purpose)
 - Preserve the order of placeholders in the document. Stop after the last placeholder.
 
 Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose based on context]. Save as [descriptive-filename.png]"
@@ -498,7 +496,7 @@ Screenshot step format: "take a screenshot of [specific UI area with detailed lo
 Example format:
 THINKING:
 Placeholder comments found:
- <!-- placeholder for a screenshot : image-name.png --> after text about dashboard overview - needs main interface screenshot
+- <!-- placeholder for a screenshot --> after text about dashboard overview - needs main interface screenshot
 
 Navigation plan: Homepage → Dashboard (capture dashboard overview)
 
@@ -510,10 +508,10 @@ INSTRUCTIONS:
 
 Critical requirements:
 - Include every single placeholder comment found in the document - do not miss any
-- Ignore existing image paths (![name](./path/to/image)) - only focus on <!-- placeholder for a screenshot : image-name.png --> comments
+- Ignore existing image paths (![name](./path/to/image)) - only focus on <!-- placeholder for a screenshot --> comments
 - Ensure each screenshot instruction is extremely detailed and specific
 - Every screenshot step must include "screenshot" as the action followed by comprehensive description and descriptive filename
-- name of the image is provided in the placeholder comment
+- Generate appropriate filenames based on the context and purpose of each screenshot
 - You start at homepage (Worklist) - no login steps needed
 - Ignore pop-out window commands
 
@@ -569,8 +567,10 @@ def get_english_content_path(file_path):
     # Convert to Path object for easier manipulation
     file_path = Path(file_path)
     
-    # Get the base directory (workspace root)
-    workspace_root = Path("C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest")
+    # Get the base directory (workspace root) dynamically
+    import os
+    script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    workspace_root = script_dir.parent  # Parent of AutoSnap directory
     
     # Get the relative path from workspace root
     try:
@@ -669,23 +669,7 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
             print(f"    Could not read {file_path}: {e}")
 
     # Initialize LLM here as it's needed for document instruction generation
-    # Check if ReportSearch API key is available
-    if REPORTSEARCH_API_KEY:
-        print("Using ReportSearch API endpoint for instruction generation")
-        # Use specific Azure OpenAI endpoint for ReportSearch resource with separate API key
-        llm = AzureChatOpenAI(
-            azure_deployment="gpt-4.1", 
-            openai_api_version="2025-01-01-preview",
-            azure_endpoint="https://reportsearch-resource.cognitiveservices.azure.com/openai/deployments/gpt-4.1/chat/completions?api-version=2025-01-01-preview",
-            api_key=REPORTSEARCH_API_KEY
-        )
-    else:
-        print("ReportSearch API key not found, using default Azure OpenAI endpoint")
-        # Fall back to default Azure OpenAI endpoint
-        llm = AzureChatOpenAI(
-            azure_deployment="gpt-4.1", 
-            openai_api_version="2024-02-15-preview"
-        )
+    llm = AzureChatOpenAI(azure_deployment="gpt-4.1", openai_api_version="2024-02-15-preview")
 
     # Generate instructions from document content based on scenario
     document_instructions = f"Default: No document content was processed for scenario '{scenario_type}' or an error occurred during instruction generation."
@@ -840,10 +824,15 @@ mention these in the instructions so it helps in finding the elements in the tar
 INSTRUCTIONS
 
 locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records and find the third patient record row in the worklist table and click on the patient name link to open the wheel interface
+wait until the wheel interface loads completely with all available options visible around the circular menu
 locate the "Document Viewer" (target language equivalent) button on the wheel interface — it appears as a paper/document icon in the wheel menu — and click on it
+wait until the document viewer interface loads showing the document list panel on the left and document preview area on the right
 take a screenshot of the complete document viewer interface showing the left panel with document list and the right panel with document preview area, to document the document viewing functionality. Save as document_viewer.png
+navigate back to the wheel interface by clicking the back button or wheel icon in the top navigation
+locate the "Image Viewer" (target language equivalent) button on the wheel interface — it appears as an image/picture icon in the wheel menu — and click on it
+wait until the image viewer loads with DICOM images displayed and the toolbar visible at the top
+take a screenshot of the complete image viewer interface showing the main image display area with loaded DICOM images and the top toolbar with viewing tools, to document the medical image viewing capabilities. Save as image_viewer.png
 
-just like this separate each playwright executable instruction into single steps.
 Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
 
 Document to Process
@@ -858,7 +847,7 @@ Also, you are already at the target language website homepage, logged in — con
 
 **IMPORTANT: Format your response as a valid JSON object with this structure:**
 {{
-  "thinking": "your comprehensive planning and analysis where list all the screenshots to capture",
+  "thinking": "your comprehensive planning and analysis where a numbered list of all the screenshots to capture",
   "instructions": "your complete step-by-step instructions as one text string"
 }}
 
@@ -866,18 +855,6 @@ Generate Automation Instructions for the target language website below:
 """
 
         # Log the exact prompt sent to LLM to a text file
-        try:
-            with open("llm_prompt_log.txt", "a", encoding="utf-8") as prompt_log_file:
-                prompt_log_file.write(
-                    f"\n{'='*80}\n"
-                    f"TIMESTAMP: {datetime.now().isoformat()}\n"
-                    f"SCENARIO: {scenario_type}\n"
-                    f"{'='*80}\n"
-                )
-                prompt_log_file.write(instruction_generation_prompt)
-                prompt_log_file.write(f"\n{'='*80}\n\n")
-        except Exception as log_error:
-            logging.error(f"Failed to log LLM prompt: {log_error}")
 
         try:
             response = llm.invoke(instruction_generation_prompt)
@@ -932,8 +909,14 @@ def main():
     parser.add_argument('--current-file', help='Path to the current file being processed (for context)')
     args = parser.parse_args()
     
-    # Get scenario type from arguments
+    # Get scenario type from arguments and validate
     scenario_type = args.scenario_type
+    valid_scenario_types = ['ui_change', 'new_feature', 'default']
+    if scenario_type not in valid_scenario_types:
+        print(f"ERROR: Invalid scenario type: {scenario_type}")
+        print(f"Valid scenario types are: {', '.join(valid_scenario_types)}")
+        sys.exit(1)
+    
     print(f"Scenario Type: {scenario_type}")
     
     # Log the current file if provided
@@ -941,6 +924,25 @@ def main():
         print(f"Current file being processed: {args.current_file}")
         # Set as environment variable for potential use in instruction generation
         os.environ['CURRENT_PROCESSING_FILE'] = args.current_file
+        
+        # Write the current file path and mode to multiple locations to ensure it's found
+        try:
+            # Include the mode in the file content
+            file_content = f"{args.current_file}|{scenario_type}"
+            
+            # Get script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            workspace_root = os.path.dirname(script_dir)
+            
+            # Only write to the AutoSnap directory
+            autosnap_path_file = os.path.join(script_dir, 'current_md_path.txt')
+            print(f"Writing current file path and mode to AutoSnap dir: {autosnap_path_file}")
+            with open(autosnap_path_file, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+                
+            print(f"Successfully wrote current file path and mode ({scenario_type}) to text files")
+        except Exception as e:
+            print(f"ERROR: Failed to write current file path to text file: {e}")
     
     try:
         changed_files = []
@@ -965,7 +967,8 @@ def main():
         instructions = generate_browser_instructions(scenario_type, validated_files)
         
         # Write instructions to output file
-        output_file = "generated_instructions.txt"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        output_file = os.path.join(script_dir, "generated_instructions.txt")
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(instructions)
         
@@ -984,6 +987,11 @@ def process_changed_files_input(changed_files_input, scenario_type):
     """Process the changed files input based on the scenario type."""
     changed_files = []
     
+    # Validate input is not empty
+    if not changed_files_input or changed_files_input.strip() == '':
+        print("ERROR: Empty file path provided.")
+        raise ValueError("Empty file path provided. Please provide a valid file path.")
+    
     # Check if it's a single markdown file or a list file
     if changed_files_input.endswith('.md') or changed_files_input.endswith('.mdx'):
         # Single markdown file
@@ -991,12 +999,23 @@ def process_changed_files_input(changed_files_input, scenario_type):
             changed_files = [changed_files_input]
             print(f"Processing single file: {changed_files_input}")
         else:
-            print(f"WARNING: Single file not found: {changed_files_input}")
+            print(f"ERROR: Single file not found: {changed_files_input}")
+            raise FileNotFoundError(f"File not found: {changed_files_input}")
     else:
         # List file containing paths
         try:
+            # Check if the list file exists
+            if not os.path.exists(changed_files_input):
+                print(f"ERROR: List file not found: {changed_files_input}")
+                raise FileNotFoundError(f"List file not found: {changed_files_input}")
+                
             with open(changed_files_input, 'r', encoding='utf-8') as f:
                 file_list = [line.strip() for line in f if line.strip()]
+            
+            # Check if the file list is empty
+            if not file_list:
+                print(f"ERROR: List file is empty: {changed_files_input}")
+                raise ValueError(f"List file is empty: {changed_files_input}")
             
             # Process file list based on scenario type
             changed_files = categorize_and_filter_files(file_list, scenario_type)
@@ -1057,23 +1076,52 @@ def categorize_and_filter_files(file_list, scenario_type):
 
 def validate_files(file_list):
     """Validate that files exist and are readable."""
+    if not file_list:
+        print("ERROR: Empty file list provided for validation.")
+        return []
+    
     validated_files = []
+    invalid_files = []
     
     for file_path in file_list:
-        if os.path.exists(file_path):
-            try:
-                # Try to read the file to ensure it's accessible
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    # Just check if we can open it, don't read content yet
-                    pass
-                validated_files.append(file_path)
-            except Exception as e:
-                print(f"WARNING: Cannot read file {file_path}: {e}")
-        else:
+        # Check if the file path is valid
+        if not file_path or file_path.strip() == '':
+            print("WARNING: Empty file path in list, skipping.")
+            invalid_files.append("(empty path)")
+            continue
+            
+        # Check if file exists
+        if not os.path.exists(file_path):
             print(f"WARNING: File not found: {file_path}")
+            invalid_files.append(file_path)
+            continue
+            
+        # Check if it's a markdown file
+        if not (file_path.endswith('.md') or file_path.endswith('.mdx')):
+            print(f"WARNING: Not a markdown file: {file_path}")
+            invalid_files.append(file_path)
+            continue
+            
+        try:
+            # Try to read the file to ensure it's accessible
+            with open(file_path, 'r', encoding='utf-8') as f:
+                # Just check if we can open it, don't read content yet
+                pass
+            validated_files.append(file_path)
+        except Exception as e:
+            print(f"WARNING: Cannot read file {file_path}: {e}")
+            invalid_files.append(file_path)
     
+    # Print summary
     if validated_files:
         print(f"Validated {len(validated_files)}/{len(file_list)} files")
+    
+    if invalid_files:
+        print(f"Found {len(invalid_files)} invalid files:")
+        for i, f in enumerate(invalid_files[:5], 1):  # Show first 5 invalid files
+            print(f"  {i}. {f}")
+        if len(invalid_files) > 5:
+            print(f"  ... and {len(invalid_files) - 5} more")
     
     return validated_files
 

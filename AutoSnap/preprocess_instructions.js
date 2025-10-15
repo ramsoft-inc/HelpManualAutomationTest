@@ -1,6 +1,10 @@
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Define __dirname for ESM modules
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Run the Python instruction generation script and return the generated instructions
@@ -34,7 +38,8 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
         
         // Run the Python script with scenario type and other arguments
         console.log(`🔄 Running Python script with args: ${args.join(' ')}`);
-        const pythonProcess = spawn('python', ['browser_automation_instructions.py', ...args], {
+        // Use __dirname which is already defined at the top of the file
+        const pythonProcess = spawn('python', [path.join(__dirname, 'browser_automation_instructions.py'), ...args], {
             stdio: ['pipe', 'pipe', 'pipe']
         });
         
@@ -78,7 +83,7 @@ async function generateInstructions(scenarioType = "default", changedFiles = nul
             
             try {
                 // Read the generated instructions file
-                const instructionsPath = path.join(process.cwd(), 'generated_instructions.txt');
+                const instructionsPath = path.join(__dirname, 'generated_instructions.txt');
                 const instructions = await fs.readFile(instructionsPath, 'utf8');
                 console.log('✅ Instructions generated successfully!');
                 resolve(instructions.trim());
