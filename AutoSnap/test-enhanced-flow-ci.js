@@ -640,14 +640,23 @@ const processListMode = async (listFilePath, forcedMode = null) => {
         
         // Read and parse the list file
         const listContent = fs.readFileSync(listFilePath, 'utf8');
-        const filePaths = listContent.split('\n')
+        
+        // Enhanced format: supports "filepath|mode" format
+        const fileEntries = listContent.split('\n')
             .map(line => line.trim())
-            .filter(line => line.length > 0 && !line.startsWith('#')); // Filter empty lines and comments
+            .filter(line => line.length > 0 && !line.startsWith('#')) // Filter empty lines and comments
+            .map(line => {
+                // Check if line contains a mode specification (filepath|mode)
+                const parts = line.split('|');
+                const filePath = parts[0].trim();
+                const fileMode = parts.length > 1 ? parts[1].trim() : null;
+                return { filePath, fileMode };
+            });
         
-        console.log(`📄 Found ${filePaths.length} file paths in list`);
+        console.log(`📄 Found ${fileEntries.length} file entries in list`);
         
-        if (filePaths.length === 0) {
-            console.warn(`⚠️  No valid file paths found in list file: ${listFilePath}`);
+        if (fileEntries.length === 0) {
+            console.warn(`⚠️  No valid file entries found in list file: ${listFilePath}`);
             return [];
         }
         
@@ -655,7 +664,9 @@ const processListMode = async (listFilePath, forcedMode = null) => {
         const validFiles = [];
         const invalidFiles = [];
         
-        for (const filePath of filePaths) {
+        for (const entry of fileEntries) {
+            const { filePath, fileMode } = entry;
+            
             // Handle both relative and absolute paths
             // Get workspace root (parent of AutoSnap directory)
             const workspaceRoot = path.dirname(__dirname);
@@ -673,7 +684,15 @@ const processListMode = async (listFilePath, forcedMode = null) => {
                     continue;
                 }
                 
-                validFiles.push(resolvedPath);
+                // Validate mode if specified
+                if (fileMode && !['new_feature', 'ui_change', 'default'].includes(fileMode)) {
+                    console.warn(`⚠️  Invalid mode '${fileMode}' for file: ${filePath}. Using auto-classification.`);
+                }
+                
+                validFiles.push({
+                    path: resolvedPath,
+                    mode: fileMode || null // null means auto-classify
+                });
             } catch (error) {
                 invalidFiles.push({ path: filePath, reason: error.message });
             }
@@ -695,15 +714,21 @@ const processListMode = async (listFilePath, forcedMode = null) => {
         // Process each file sequentially
         const results = [];
         for (let i = 0; i < validFiles.length; i++) {
-            const filePath = validFiles[i];
+            const fileEntry = validFiles[i];
+            const filePath = fileEntry.path;
             try {
                 console.log(`\n🔄 Processing file ${i + 1}/${validFiles.length}: ${filePath}`);
                 
                 let mode;
+                // Priority: 1. Global forced mode, 2. File-specific mode, 3. Auto-classify
                 if (forcedMode && ['new_feature', 'ui_change', 'default'].includes(forcedMode)) {
-                    // Use forced mode if provided
+                    // Use global forced mode if provided (overrides file-specific mode)
                     mode = forcedMode;
-                    console.log(`🎯 Using forced mode: ${mode.toUpperCase()}`);
+                    console.log(`🎯 Using global forced mode: ${mode.toUpperCase()}`);
+                } else if (fileEntry.mode && ['new_feature', 'ui_change', 'default'].includes(fileEntry.mode)) {
+                    // Use file-specific mode if provided
+                    mode = fileEntry.mode;
+                    console.log(`🎯 Using file-specific mode: ${mode.toUpperCase()}`);
                 } else {
                     // Auto-classify based on content
                     mode = await classifyFileMode(filePath);
@@ -1145,13 +1170,20 @@ USAGE:
 MODES:
   Default/Translation Mode:   Processes all .md/.mdx files in specified folder (default and translation are the same)
   Single File Mode:           Processes a single specified .md/.mdx file with classification
+  Multi-File Mode:            Processes multiple files specified directly on the command line
   List Mode:                  Processes multiple files from a list file with auto-classification for each
+
+REQUIRED PARAMETERS:
+  - You must specify ONE of: --folder, --file, --files, or --list
+  - When using --file in CI mode, you must also specify --mode 
+  - When using translation mode, you must specify --lang
 
 OPTIONS:
   --folder <path>            Default/Translation mode: Process folder that mirrors docs structure (NOT docs itself)
   --file <path>              Single file mode: Process one specific .md/.mdx file
+  --files <list>             Multi-file mode: Process multiple files with modes (format: "file1.md|mode1,file2.md|mode2")
   --changed-files <file>     Use specific changed files list (overrides git diff)
-  --list <file>              List mode: Process multiple files from a list file (one path per line)
+  --list <file>              List mode: Process multiple files from a list file (format: filepath|mode)
   --mode, -m <mode>          Scenario type: ui_change, new_feature, default/translation
   --lang, -l <code>          Language code or name to select in UI (overrides auto-detection)
   --help, -h                 Show this help message
@@ -1162,13 +1194,28 @@ EXAMPLES:
   node test-enhanced-flow.js --folder ./docs-fr        # Default/Translation mode on French docs (auto-detect French)
   node test-enhanced-flow.js --folder ./custom --lang es  # Default/Translation mode with explicit Spanish language code
   node test-enhanced-flow.js --folder ./docs-es --lang Spanish  # Default/Translation mode with explicit Spanish language name
-  node test-enhanced-flow.js --file ./docs/guide.md    # Single file mode
-  node test-enhanced-flow.js --file ./docs/api.md --mode new_feature  # Single file with specific mode
+  node test-enhanced-flow.js --file ./docs/guide.md --mode ui_change  # Single file with specific mode (REQUIRED in CI)
+  node test-enhanced-flow.js --file ./docs/api.md --scenario new_feature  # Single file with specific scenario
   node test-enhanced-flow.js --file ./spanish/guide.md --lang es  # Single file with explicit language
   node test-enhanced-flow.js --changed-files list.txt  # Use custom file list
   node test-enhanced-flow.js --list file-list.md       # Process files from list with auto-classification
-  node test-enhanced-flow.js --list my-files.txt --mode ui_change  # Process list with forced mode
+  node test-enhanced-flow.js --list my-files.txt --mode ui_change  # Process list with forced mode for all files
   node test-enhanced-flow.js --list my-files.txt --lang pt  # Process list with explicit Portuguese
+  
+  # Multi-file mode examples:
+  node test-enhanced-flow.js --files "docs/file1.md|ui_change,docs/file2.md|new_feature"  # Multiple files with specific modes
+  node test-enhanced-flow.js --files "docs/file1.md,docs/file2.md" --mode ui_change  # Multiple files with same mode
+  node test-enhanced-flow.js --files "docs/file1.md|ui_change,docs/file2.md"  # Mixed modes (second file auto-classified)
+  
+  # List file format examples:
+  # Simple format (auto-classify each file):
+  # docs/file1.md
+  # docs/file2.md
+  #
+  # Enhanced format (specify mode for each file):
+  # docs/file1.md|ui_change
+  # docs/file2.md|new_feature
+  # docs/file3.md         # This file will be auto-classified
 
 CONFIGURATION:
   Image Naming: The script uses simple, descriptive names for generated images based on
@@ -1239,6 +1286,9 @@ if (args.includes('--help') || args.includes('-h')) {
     process.exit(0);
 }
 
+// Variable to store multiple files with modes
+let multipleFiles = [];
+
 // Parse command-line arguments
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--changed-files' && args[i + 1]) {
@@ -1253,6 +1303,24 @@ for (let i = 0; i < args.length; i++) {
     } else if (args[i] === '--file' && args[i + 1]) {
         singleFilePath = args[i + 1];
         i++;
+    } else if (args[i] === '--files' && args[i + 1]) {
+        // New option for multiple files with modes
+        // Format: --files "file1.md|mode1,file2.md|mode2,file3.md|mode3"
+        const filesArg = args[i + 1];
+        const fileSpecs = filesArg.split(',');
+        
+        fileSpecs.forEach(spec => {
+            const parts = spec.split('|');
+            if (parts.length >= 1) {
+                const filePath = parts[0].trim();
+                const fileMode = parts.length > 1 ? parts[1].trim() : null;
+                if (filePath) {
+                    multipleFiles.push({ filePath, fileMode });
+                }
+            }
+        });
+        
+        i++;
     } else if (args[i] === '--list' && args[i + 1]) {
         listFilePath = args[i + 1];
         i++;
@@ -1262,6 +1330,18 @@ for (let i = 0; i < args.length; i++) {
     } else if (args[i] === '--scenario' && args[i + 1]) {
         scenarioArg = args[i + 1];
         i++;
+    } else if (args[i] === '--senario' && args[i + 1]) {
+        // Handle common misspelling of scenario
+        console.warn('⚠️  Warning: "--senario" is misspelled. Please use "--scenario" instead.');
+        scenarioArg = args[i + 1];
+        i++;
+    } else if (args[i].startsWith('--') && !args[i].includes('=')) {
+        // Check for unrecognized arguments
+        const knownArgs = ['--help', '-h', '--changed-files', '--mode', '-m', '--folder', '--file', 
+                           '--files', '--list', '--lang', '-l', '--scenario'];
+        if (!knownArgs.includes(args[i])) {
+            console.warn(`⚠️  Warning: Unrecognized argument "${args[i]}". It will be ignored.`);
+        }
     }
 }
 
@@ -1272,15 +1352,68 @@ if (scenarioArg && !modeArg) {
 }
 
 // Validate exclusive options
-const exclusiveOptions = [folderPath, singleFilePath, changedFiles, listFilePath].filter(Boolean);
+const hasMultipleFiles = multipleFiles.length > 0;
+const exclusiveOptions = [folderPath, singleFilePath, changedFiles, listFilePath, hasMultipleFiles].filter(Boolean);
 if (exclusiveOptions.length > 1) {
-    console.error('❌ Error: Only one of --folder, --file, --changed-files, or --list can be specified at a time.');
+    console.error('❌ Error: Only one of --folder, --file, --files, --changed-files, or --list can be specified at a time.');
     showUsage();
     process.exit(1);
 }
 
 // Detect if running in GitHub Actions or CI environment
 const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true' || true; // Force CI mode to avoid interactive prompts
+
+// Validate required parameters for CI mode
+function validateRequiredParams() {
+    // In CI mode, we need stricter validation
+    if (isCI) {
+        // Check if we have a file source (one of these must be specified)
+        const hasFileSource = folderPath || singleFilePath || changedFiles || listFilePath || hasMultipleFiles;
+        if (!hasFileSource) {
+            console.error('❌ Error: In CI mode, you must specify one of: --folder, --file, --files, --changed-files, or --list');
+            showUsage();
+            process.exit(1);
+        }
+
+        // For single file mode, validate required parameters
+        if (singleFilePath) {
+            // For single file, we need a mode/scenario
+            if (!modeArg && !scenarioArg) {
+                console.error('❌ Error: When using --file in CI mode, you must specify --mode');
+                showUsage();
+                process.exit(1);
+            }
+        }
+
+        // For multiple files mode, validate each file has a mode
+        if (hasMultipleFiles) {
+            const filesWithoutMode = multipleFiles.filter(file => !file.fileMode && !modeArg);
+            if (filesWithoutMode.length > 0) {
+                if (!modeArg) {
+                    console.warn(`⚠️  Warning: Some files in --files don't have a mode specified. They will be auto-classified.`);
+                    filesWithoutMode.forEach(file => {
+                        console.warn(`    - ${file.filePath}`);
+                    });
+                }
+            }
+        }
+
+        // For list mode, we don't need to validate mode because:
+        // 1. Global mode can be specified with --mode
+        // 2. Per-file modes can be specified in the list file
+        // 3. Auto-classification is used as a fallback
+
+        // For translation mode, validate language code
+        if (modeArg === 'translation' && !languageCodeArg) {
+            console.error('❌ Error: When using translation mode in CI mode, you must specify --lang');
+            showUsage();
+            process.exit(1);
+        }
+    }
+}
+
+// Run validation for CI mode
+validateRequiredParams();
 
 // Determine execution mode and process files accordingly
 let executionMode = 'default';
@@ -1505,10 +1638,119 @@ async function executeWorkflow() {
         console.log(`📋 Created single file changed files list: ${singleFileChangedList}`);
         changedFiles = singleFileChangedList;
         executionMode = 'single_file';
+    } else if (hasMultipleFiles) {
+        // Process multiple files specified with --files
+        const fs = require('node:fs');
+        const path = require('node:path');
+        
+        console.log(`🔍 Processing ${multipleFiles.length} files from --files parameter`);
+        
+        // Validate and process each file
+        const validFiles = [];
+        const invalidFiles = [];
+        
+        for (const fileEntry of multipleFiles) {
+            const { filePath, fileMode } = fileEntry;
+            
+            // Handle both relative and absolute paths
+            const workspaceRoot = path.dirname(__dirname);
+            const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(workspaceRoot, filePath);
+            
+            try {
+                if (!fs.existsSync(resolvedPath)) {
+                    invalidFiles.push({ path: filePath, reason: 'File does not exist' });
+                    continue;
+                }
+                
+                const isMarkdown = resolvedPath.endsWith('.md') || resolvedPath.endsWith('.mdx');
+                if (!isMarkdown) {
+                    invalidFiles.push({ path: filePath, reason: 'Not a .md or .mdx file' });
+                    continue;
+                }
+                
+                validFiles.push({
+                    path: resolvedPath,
+                    mode: fileMode || null // null means use global mode or auto-classify
+                });
+            } catch (error) {
+                invalidFiles.push({ path: filePath, reason: error.message });
+            }
+        }
+        
+        console.log(`✅ Valid files: ${validFiles.length}`);
+        console.log(`❌ Invalid files: ${invalidFiles.length}`);
+        
+        if (invalidFiles.length > 0) {
+            console.log(`⚠️  Invalid files found:`);
+            invalidFiles.forEach(file => console.log(`    - ${file.path}: ${file.reason}`));
+        }
+        
+        if (validFiles.length === 0) {
+            console.warn(`⚠️  No valid markdown files found in --files parameter`);
+            process.exit(1);
+        }
+        
+        // Process each file sequentially
+        const results = [];
+        for (let i = 0; i < validFiles.length; i++) {
+            const fileEntry = validFiles[i];
+            const filePath = fileEntry.path;
+            try {
+                console.log(`\n🔄 Processing file ${i + 1}/${validFiles.length}: ${filePath}`);
+                
+                let mode;
+                // Priority: 1. Global forced mode, 2. File-specific mode, 3. Auto-classify
+                if (modeArg && ['new_feature', 'ui_change', 'default'].includes(modeArg.toLowerCase())) {
+                    // Use global forced mode if provided (overrides file-specific mode)
+                    mode = modeArg;
+                    console.log(`🎯 Using global forced mode: ${mode.toUpperCase()}`);
+                } else if (fileEntry.mode && ['new_feature', 'ui_change', 'default'].includes(fileEntry.mode)) {
+                    // Use file-specific mode if provided
+                    mode = fileEntry.mode;
+                    console.log(`🎯 Using file-specific mode: ${mode.toUpperCase()}`);
+                } else {
+                    // Auto-classify based on content
+                    mode = await classifyFileMode(filePath);
+                    console.log(`🔍 Auto-classified as: ${mode.toUpperCase()}`);
+                }
+                
+                // Process the file based on its mode
+                const result = await processFileByMode(filePath, mode);
+                results.push({
+                    ...result,
+                    listIndex: i + 1,
+                    totalFiles: validFiles.length
+                });
+                
+                console.log(`✅ Completed file ${i + 1}/${validFiles.length} in ${mode.toUpperCase()} mode`);
+                
+            } catch (error) {
+                console.error(`❌ Error processing file ${filePath}: ${error.message}`);
+                results.push({
+                    filePath,
+                    processed: false,
+                    error: error.message,
+                    listIndex: i + 1,
+                    totalFiles: validFiles.length
+                });
+            }
+        }
+        
+        processedFileResults = results;
+        
+        // Create a changed files list for the automation
+        const multiFilesChangedList = path.join(__dirname, 'changed-files-multi.txt');
+        const normalizedPaths = validFiles
+            .map(file => file.path.replace(/\\/g, '/'));
+        
+        fs.writeFileSync(multiFilesChangedList, normalizedPaths.join('\n'));
+        console.log(`📋 Created multi-file changed files list: ${multiFilesChangedList}`);
+        changedFiles = multiFilesChangedList;
+        executionMode = 'multi_file';
     } else if (folderPath) {
         executionMode = 'translation';
         // Note: The folder processing will be handled by the main code
-} else if (listFilePath) {
+    } else if (listFilePath) {
         executionMode = 'list';
         // Note: The list processing will be handled by the main code
     }
