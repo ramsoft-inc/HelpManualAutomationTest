@@ -178,7 +178,6 @@ seen below).
 
 ![img-as-1](img/img-as-1.png)
 
-
 **Popout in Window**
 
 Allows you to open the current image in a separate window.

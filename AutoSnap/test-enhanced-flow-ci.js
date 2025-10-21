@@ -275,9 +275,9 @@ async function selectLanguage(page, languageInput) {
       const errorComment = `## ❌ LANGUAGE SELECTION FAILED\n\nThe language code '${languageInput}' is not a valid language code or name.\n\n### Supported Language Codes:\n${Object.entries(LANGUAGES).map(([name, code]) => `- ${name} (${code})`).join('\n')}\n\nPlease use one of these supported language codes.`;
       
       // Log the GitHub comment format for CI integration
-      console.log('\n\n--- GITHUB_COMMENT_START ---');
+      console.log('\n\nGITHUB_COMMENT_START');
       console.log(errorComment);
-      console.log('--- GITHUB_COMMENT_END ---\n\n');
+      console.log('GITHUB_COMMENT_END\n\n');
       
       throw new Error(`Unknown language: "${languageInput}". Valid language names: ${availableLanguages}. Valid codes: ${availableCodes}`);
     }
@@ -395,9 +395,9 @@ async function selectLanguage(page, languageInput) {
       const errorComment = `## ❌ LANGUAGE SELECTION FAILED\n\nThe language code '${langCode}' does not match any available language option in the website.\n\n### Website Supported Languages:\n${websiteLanguages.map(lang => `- ${lang}`).join('\n')}\n\nPlease use one of these supported language codes.`;
     
     // Log the GitHub comment format for CI integration
-    console.log('\n\n--- GITHUB_COMMENT_START ---');
+    console.log('\n\nGITHUB_COMMENT_START');
     console.log(errorComment);
-    console.log('--- GITHUB_COMMENT_END ---\n\n');
+    console.log('GITHUB_COMMENT_END\n\n');
     
     // Return without exiting - we'll skip tracewright later
     return;
@@ -2323,6 +2323,17 @@ const findSimilarImage = (expectedName, generatedImages) => {
     }
     
     try {
+        // Make sure changedFiles is set if we're in translation mode and have a translation file
+        if (executionMode === 'translation' && !changedFiles) {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const translationChangedFilesPath = path.join(__dirname, 'changed-files-translation.txt');
+            if (fs.existsSync(translationChangedFilesPath)) {
+                console.log(`📋 Using translation changed files list: ${translationChangedFilesPath}`);
+                changedFiles = translationChangedFilesPath;
+            }
+        }
+        
         // Pass current file along with changed files
         generatedInstructions = await generateInstructions(SCENARIO_TYPE, changedFiles, currentFileForInstructions);
         
@@ -2401,7 +2412,7 @@ if (hasNoDocumentContent) {
     }
     
     // Return to allow processing the next file
-    let reason = "Empty instructions";
+    let reason = "Empty instructions"; 
     if (instructionKeyEmpty) reason = "Empty instruction key";
     if (instructionKeyMissing) reason = "Missing instruction key";
     
@@ -2674,9 +2685,9 @@ if (hasNoDocumentContent) {
                 const errorComment = `## ❌ DEFAULT/TRANSLATION MODE ERROR\n\nYou specified English as the target language in default/translation mode.\n\nDefault/Translation mode is intended to translate content FROM English TO another language. Using English as the target language defeats the purpose of default/translation mode.\n\nPlease specify a non-English target language (e.g., --lang es for Spanish).`;
                 
                 // Log the GitHub comment format for CI integration
-                console.log('\n\n--- GITHUB_COMMENT_START ---');
+                console.log('\n\nGITHUB_COMMENT_START');
                 console.log(errorComment);
-                console.log('--- GITHUB_COMMENT_END ---\n\n');
+                console.log('GITHUB_COMMENT_END\n\n');
                 
                 // Exit with error code
                 console.log('🛑 Exiting process with error code 1.');
@@ -2742,13 +2753,13 @@ if (hasNoDocumentContent) {
                 
                 // Generate GitHub comment for CI
                 if (isCI) {
-                    console.log('\n--- GITHUB_COMMENT_START ---');
+                    console.log('\nGITHUB_COMMENT_START');
                     console.log(`### ❌ ${modeArg.toUpperCase()} mode error`);
                     console.log('');
                     console.log(`The file \`${singleFilePath}\` is not from the docs folder. UI change and new feature modes can only be used with English documentation files from the docs folder.`);
                     console.log('');
                         console.log('Please use a file from the docs folder or use default/translation mode for non-English files.');
-                    console.log('--- GITHUB_COMMENT_END ---\n');
+                    console.log('GITHUB_COMMENT_END\n');
                 }
                 
                 process.exit(1);
@@ -2823,7 +2834,7 @@ if (hasNoDocumentContent) {
                     
                     // Generate GitHub comment for CI
                     if (isCI) {
-                        console.log('\n--- GITHUB_COMMENT_START ---');
+                        console.log('\nGITHUB_COMMENT_START');
                         console.log(`### ❌ ${modeArg.toUpperCase()} mode error`);
                         console.log('');
                         console.log(`The following files are not from the docs folder. UI change and new feature modes can only be used with English documentation files from the docs folder:`);
@@ -2831,7 +2842,7 @@ if (hasNoDocumentContent) {
                         nonDocsFiles.forEach(file => console.log(`- \`${file.filePath}\``));
                         console.log('');
                         console.log('Please use files from the docs folder or use default/translation mode for non-English files.');
-                        console.log('--- GITHUB_COMMENT_END ---\n');
+                        console.log('GITHUB_COMMENT_END\n');
                     }
                     
                     process.exit(1);
@@ -3074,9 +3085,9 @@ if (hasNoDocumentContent) {
                 const overloadWarning = `## ⚠️ API OVERLOAD WARNING\n\nThe Gemini API is currently overloaded. Attempting to retry after a short delay.\n\nIf this persists, consider trying again later or using a different API provider.`;
                 
                 // Log the GitHub comment format for CI integration
-                console.log('\n\n--- GITHUB_COMMENT_START ---');
+                console.log('\n\nGITHUB_COMMENT_START');
                 console.log(overloadWarning);
-                console.log('--- GITHUB_COMMENT_END ---\n\n');
+                console.log('GITHUB_COMMENT_END\n\n');
                 
                 // Wait for 5 seconds
                 await new Promise(resolve => setTimeout(resolve, 5000));
@@ -3098,9 +3109,9 @@ if (hasNoDocumentContent) {
                     const overloadFailure = `## ❌ API OVERLOAD ERROR\n\nThe Gemini API is currently overloaded and unavailable even after retry.\n\nPlease try again later or consider using a different API provider.`;
                     
                     // Log the GitHub comment format for CI integration
-                    console.log('\n\n--- GITHUB_COMMENT_START ---');
+                    console.log('\n\nGITHUB_COMMENT_START');
                     console.log(overloadFailure);
-                    console.log('--- GITHUB_COMMENT_END ---\n\n');
+                    console.log('GITHUB_COMMENT_END\n\n');
                 }
             } else {
                 // Handle other tracewright errors
