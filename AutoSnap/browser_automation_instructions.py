@@ -553,50 +553,6 @@ def extract_image_paths_from_md(file_content):
     
     return local_paths
 
-def find_images_recursively(base_path, image_paths):
-    """
-    Recursively search for images in the docs folder structure.
-    
-    Args:
-        base_path (str): The base path in the docs folder to search from
-        image_paths (list): List of image paths to search for
-    
-    Returns:
-        dict: Mapping of image references to their full paths in the docs folder
-    """
-    import os
-    from pathlib import Path
-    
-    # Initialize result dictionary
-    image_map = {}
-    
-    # Extract just the filenames from the image paths
-    image_filenames = [os.path.basename(p) for p in image_paths]
-    filename_to_path = {os.path.basename(p): p for p in image_paths}
-    
-    print(f"Searching for {len(image_filenames)} images in {base_path}")
-    print(f"Image filenames: {', '.join(image_filenames[:5])}{'...' if len(image_filenames) > 5 else ''}")
-    
-    # Walk through all directories and files under the base path
-    for root, dirs, files in os.walk(base_path):
-        for file in files:
-            # Check if this file matches any of our target image filenames
-            if file in image_filenames:
-                # Get the full path to the image
-                full_path = os.path.join(root, file)
-                # Map the original image reference to this full path
-                image_map[filename_to_path[file]] = full_path
-                print(f"✅ Found image: {file} at {full_path}")
-    
-    # Report on missing images
-    found_filenames = set(os.path.basename(p) for p in image_map.values())
-    missing_filenames = set(image_filenames) - found_filenames
-    
-    if missing_filenames:
-        print(f"⚠️ Could not find {len(missing_filenames)} images: {', '.join(missing_filenames)}")
-    
-    return image_map
-
 def get_english_content_path(file_path):
     """
     Convert a file path to the corresponding English content path in the docs folder.
@@ -634,24 +590,6 @@ def get_english_content_path(file_path):
         return str(english_path)
     
     return None
-
-def get_corresponding_docs_dir(file_path):
-    """
-    Get the corresponding directory in the docs folder for a given file path.
-    
-    Example:
-    Input: C:/Users/Rohith.MR/test/HelpManualAutomationTest/spanish/5-Document-Viewer/document_explorer.md
-    Output: C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs/5-Document-Viewer/
-    """
-    import os
-    from pathlib import Path
-    
-    english_path = get_english_content_path(file_path)
-    if not english_path:
-        return None
-    
-    # Get the directory containing the corresponding English file
-    return os.path.dirname(english_path)
 
 def read_english_content(file_path):
     """Read the English content from the corresponding docs file."""
@@ -727,16 +665,6 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
                 if file_image_paths:
                     print(f"  Found {len(file_image_paths)} image references in {file_path}")
                     all_image_paths.extend(file_image_paths)
-                    
-                    # For translation mode, find the corresponding images in the docs folder
-                    if scenario_type == "default":
-                        # Get the corresponding directory in the docs folder
-                        docs_dir = get_corresponding_docs_dir(file_path)
-                        if docs_dir and os.path.exists(docs_dir):
-                            print(f"  Searching for images in corresponding docs directory: {docs_dir}")
-                            # Find images recursively in the docs folder
-                            image_map = find_images_recursively(docs_dir, file_image_paths)
-                            print(f"  Found {len(image_map)} out of {len(file_image_paths)} images in docs directory")
         except Exception as e:
             print(f"    Could not read {file_path}: {e}")
 
@@ -784,7 +712,7 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
             instruction_generation_prompt = get_prompt_for_new_feature(content)
         else:
             print("Using Translation/Default prompt")
-            # Translation mode (default): use the Spanish website translation prompt with comprehensive image search
+            # Translation mode (default): use the Spanish website translation prompt
             instruction_generation_prompt = f"""
 The goal is to take screenshots of the target language version of the website to replace each and every image currently shown from the source language website in the documentation.
 You are going to write instructions that help navigate through the target language website to reach the exact position needed to take the screenshot.

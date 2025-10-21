@@ -3018,6 +3018,12 @@ if (hasNoDocumentContent) {
             }
             const aiUtils = new AIUtilsEnhanced(page);
             
+            // Set the current mode based on the execution mode
+            if (executionMode === 'translation') {
+                console.log('🌐 Setting AIUtilsEnhanced mode to translation');
+                aiUtils.setCurrentMode('translation');
+            }
+            
             // Set the current markdown file path for image reference
             // Priority order: processedFileResults -> processedFiles -> default
             let currentFilePath = null;
