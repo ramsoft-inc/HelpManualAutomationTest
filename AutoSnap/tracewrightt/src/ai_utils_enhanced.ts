@@ -3587,6 +3587,15 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         return { base64: '', sourcePath: null };
       }
       
+      // For translation mode, first try to find the image in the corresponding docs folder
+      if (this.currentMode === 'translation') {
+        const result = this.findImageInCorrespondingDocsFolder(imageFileName);
+        if (result.base64) {
+          console.log(`✅ Found image in corresponding docs folder: ${result.sourcePath}`);
+          return result;
+        }
+      }
+      
       // First check if the image exists directly in the img subdirectory (most common case)
       const imgDir = path.join(searchRoot, 'img');
       if (fs.existsSync(imgDir) && fs.lstatSync(imgDir).isDirectory()) {
@@ -3672,6 +3681,168 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     }
   }
 
+  /**
+   * Search for an image file in all subdirectories under the document directory
+   * This focuses on the specific document's folder structure
+   */
+  /**
+   * Find an image in the corresponding docs folder for translation mode
+   * This implements a brute force search across all subdirectories in the docs folder
+   * that correspond to the current markdown file's directory structure
+   */
+  private findImageInCorrespondingDocsFolder(imageFileName: string): { base64: string; sourcePath: string | null } {
+    try {
+      if (!this.currentMdPath) {
+        console.log(`⚠️ No current markdown path set, cannot find corresponding docs folder`);
+        return { base64: '', sourcePath: null };
+      }
+
+      // Get the current file path and extract the relative path structure
+      const currentPath = this.currentMdPath;
+      console.log(`🔍 Finding corresponding docs path for: ${currentPath}`);
+      
+      // Extract the language-specific part to find the corresponding structure in docs
+      // Example: if path is 'spanish/6-Image-Viewer/file.md', we want '6-Image-Viewer/file.md'
+      const pathParts = currentPath.split(path.sep);
+      
+      // Find the index where the docs-like structure starts (look for numbered folders like '6-Image-Viewer')
+      let startIndex = -1;
+      for (let i = 0; i < pathParts.length; i++) {
+        if (/^\d+-[A-Za-z0-9-_]+$/.test(pathParts[i])) {
+          startIndex = i;
+          break;
+        }
+      }
+      
+      if (startIndex === -1) {
+        console.log(`⚠️ Could not identify docs structure in path: ${currentPath}`);
+        return { base64: '', sourcePath: null };
+      }
+      
+      // Extract the relative path from the numbered folder onwards
+      const relativePath = pathParts.slice(startIndex, -1).join(path.sep);
+      console.log(`📂 Identified relative path structure: ${relativePath}`);
+      
+      // Construct the corresponding path in the docs folder
+      const workspaceRoot = process.cwd();
+      const docsBasePath = path.join(workspaceRoot, 'docs');
+      const correspondingDocsPath = path.join(docsBasePath, relativePath);
+      
+      console.log(`🔍 Looking for image in corresponding docs path: ${correspondingDocsPath}`);
+      
+      if (!fs.existsSync(correspondingDocsPath)) {
+        console.log(`⚠️ Corresponding docs path does not exist: ${correspondingDocsPath}`);
+        return { base64: '', sourcePath: null };
+      }
+      
+      // Perform a brute force search in all subdirectories of the corresponding docs path
+      return this.bruteForceImageSearch(correspondingDocsPath, imageFileName);
+    } catch (error) {
+      console.error(`❌ Error finding image in corresponding docs folder: ${error}`);
+      return { base64: '', sourcePath: null };
+    }
+  }
+  
+  /**
+   * Perform a brute force search for an image in all subdirectories
+   */
+  private bruteForceImageSearch(searchRoot: string, imageFileName: string): { base64: string; sourcePath: string | null } {
+    try {
+      console.log(`🔍 Performing brute force search for ${imageFileName} in ${searchRoot}`);
+      
+      // First check directly in the root directory
+      const directPath = path.join(searchRoot, imageFileName);
+      if (fs.existsSync(directPath)) {
+        console.log(`✅ Found image directly in root: ${directPath}`);
+        return {
+          base64: fs.readFileSync(directPath).toString('base64'),
+          sourcePath: searchRoot
+        };
+      }
+      
+      // Check in common image directories first (optimization)
+      const commonImageDirs = ['img', 'images', 'Images', 'IMG', 'assets', 'screenshots'];
+      for (const imgDir of commonImageDirs) {
+        const imgDirPath = path.join(searchRoot, imgDir);
+        if (fs.existsSync(imgDirPath) && fs.lstatSync(imgDirPath).isDirectory()) {
+          const imgPath = path.join(imgDirPath, imageFileName);
+          if (fs.existsSync(imgPath)) {
+            console.log(`✅ Found image in ${imgDir} directory: ${imgPath}`);
+            return {
+              base64: fs.readFileSync(imgPath).toString('base64'),
+              sourcePath: imgDirPath
+            };
+          }
+        }
+      }
+      
+      // Recursively search all subdirectories
+      const searchResult = this.recursiveImageSearch(searchRoot, imageFileName);
+      if (searchResult) {
+        console.log(`✅ Found image through recursive search: ${searchResult}`);
+        return {
+          base64: fs.readFileSync(searchResult).toString('base64'),
+          sourcePath: path.dirname(searchResult)
+        };
+      }
+      
+      console.log(`❌ Image not found in any subdirectory: ${imageFileName}`);
+      return { base64: '', sourcePath: null };
+    } catch (error) {
+      console.error(`❌ Error in brute force image search: ${error}`);
+      return { base64: '', sourcePath: null };
+    }
+  }
+  
+  /**
+   * Recursively search for an image file in all subdirectories
+   */
+  private recursiveImageSearch(searchDir: string, imageFileName: string): string | null {
+    try {
+      if (!fs.existsSync(searchDir) || !fs.lstatSync(searchDir).isDirectory()) {
+        return null;
+      }
+      
+      // Check directly in this directory
+      const directPath = path.join(searchDir, imageFileName);
+      if (fs.existsSync(directPath)) {
+        return directPath;
+      }
+      
+      // Get all items in the directory
+      const items = fs.readdirSync(searchDir);
+      
+      // Check each item
+      for (const item of items) {
+        const itemPath = path.join(searchDir, item);
+        
+        try {
+          if (fs.lstatSync(itemPath).isDirectory()) {
+            // Skip common non-content directories
+            const skipDirs = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out'];
+            if (skipDirs.includes(item)) {
+              continue;
+            }
+            
+            // Recursively search this subdirectory
+            const foundPath = this.recursiveImageSearch(itemPath, imageFileName);
+            if (foundPath) {
+              return foundPath;
+            }
+          }
+        } catch (e) {
+          // Skip items we can't access
+          continue;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      // Silent error for individual directory access issues
+      return null;
+    }
+  }
+  
   /**
    * Search for an image file in all subdirectories under the document directory
    * This focuses on the specific document's folder structure

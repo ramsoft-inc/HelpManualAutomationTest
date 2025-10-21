@@ -253,15 +253,48 @@ jobs:
           
           # Only add modified or new PNG and MD files
           echo "Finding modified or new PNG and MD files..."
+          echo "Current git status:"
+          git status
           
-          # Find all modified or new files first
+          # Find all modified files (Added, Modified, Renamed)
           modified_files=$(git diff --name-only --diff-filter=AMR)
           
+          # Find all deleted files
+          deleted_files=$(git diff --name-only --diff-filter=D)
+          
+          # Find all untracked files and combine with modified files
+          untracked_files=$(git ls-files --others --exclude-standard)
+          # Combine files with proper formatting
+          all_files=$(printf "%s\n%s" "$modified_files" "$untracked_files")
+
+          # Handle deleted files separately
+          if [ ! -z "$deleted_files" ]; then
+            echo "Adding deleted files to git:"
+            echo "$deleted_files"
+            echo "$deleted_files" | while IFS= read -r file; do
+              git rm "$file" || true
+            done
+          fi
+          
           # Process MD files if any exist
-          echo "$modified_files" | grep -E '\.md$|\.mdx$' || true | xargs -r git add
+          md_files=$(echo "$all_files" | grep -E '\.md$|\.mdx$' || true)
+          if [ ! -z "$md_files" ]; then
+            echo "Adding MD files:"
+            echo "$md_files"
+            echo "$md_files" | while IFS= read -r file; do
+              git add "$file"
+            done
+          fi
           
           # Process PNG files if any exist
-          echo "$modified_files" | grep -E '\.png$' || true | xargs -r git add
+          png_files=$(echo "$all_files" | grep -E '\.png$' || true)
+          if [ ! -z "$png_files" ]; then
+            echo "Adding PNG files:"
+            echo "$png_files"
+            echo "$png_files" | while IFS= read -r file; do
+              git add "$file"
+            done
+          fi
           
           # Show what will be committed
           echo "Files to be committed:"
@@ -269,8 +302,21 @@ jobs:
           
           # Check if there are changes to commit
           if git diff --staged --quiet; then
-            echo "No changes to commit."
-            exit 0
+            echo "No changes staged for commit. Checking if we missed any files..."
+            
+            # Double check for any PNG and MD files we might have missed
+            echo "Forcibly adding all PNG and MD files that were modified or added"
+            find . \( -name "*.png" -o -name "*.md" -o -name "*.mdx" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' file; do
+              git add "$file" || true
+            done
+            
+            # Check again if we have anything to commit
+            if git diff --staged --quiet; then
+              echo "Still no changes to commit after forced add."
+              exit 0
+            else
+              echo "Found changes after forced add. Proceeding with commit."
+            fi
           fi
           
           # Commit and push
