@@ -2353,6 +2353,17 @@ const findSimilarImage = (expectedName, generatedImages) => {
     }
     
     try {
+        // Make sure changedFiles is set if we're in translation mode and have a translation file
+        if (executionMode === 'translation' && !changedFiles) {
+            const fs = await import('node:fs');
+            const path = await import('node:path');
+            const translationChangedFilesPath = path.join(__dirname, 'changed-files-translation.txt');
+            if (fs.existsSync(translationChangedFilesPath)) {
+                console.log(`📋 Using translation changed files list: ${translationChangedFilesPath}`);
+                changedFiles = translationChangedFilesPath;
+            }
+        }
+        
         // Pass current file along with changed files
         generatedInstructions = await generateInstructions(SCENARIO_TYPE, changedFiles, currentFileForInstructions);
         

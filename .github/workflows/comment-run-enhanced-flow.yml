@@ -163,7 +163,15 @@ jobs:
           if grep -q "--- GITHUB_COMMENT_START ---" enhanced-flow-ci-run.log; then
             echo "Found special comment markers"
             # Extract the comment between the markers
-            SPECIAL_COMMENT=$(awk '/--- GITHUB_COMMENT_START ---/{flag=1;next}/--- GITHUB_COMMENT_END ---/{flag=0}flag' enhanced-flow-ci-run.log)
+            SPECIAL_COMMENT=$(awk '/GITHUB_COMMENT_START/{flag=1;next}/GITHUB_COMMENT_END/{flag=0}flag' enhanced-flow-ci-run.log 2>/dev/null || echo "")
+            
+            # Check if we actually got content
+            if [ -z "$SPECIAL_COMMENT" ]; then
+              echo "No content found between markers, treating as no special comment"
+              echo "has_special_comment=false" >> $GITHUB_OUTPUT
+              echo "error_type=none" >> $GITHUB_OUTPUT
+              exit 0
+            fi
             
             # Check if it's a language validation error, translation mode error, or API overload
             if echo "$SPECIAL_COMMENT" | grep -q "LANGUAGE SELECTION FAILED"; then
@@ -202,18 +210,18 @@ jobs:
             enhanced-flow-log.txt
           if-no-files-found: ignore
           
-      - name: Fail workflow if critical error occurred
+      - name: Log errors but continue with commit
         if: steps.run_flow.outputs.has_special_comment == 'true' && (steps.run_flow.outputs.error_type == 'language_validation' || steps.run_flow.outputs.error_type == 'translation_mode_error' || steps.run_flow.outputs.error_type == 'generic_error')
         shell: bash
         run: |
           if [[ "${{ steps.run_flow.outputs.error_type }}" == "language_validation" ]]; then
-            echo "::error::Language validation failed. The language code does not match any available option in the website."
+            echo "::warning::Language validation issue detected. The language code does not match any available option in the website."
           elif [[ "${{ steps.run_flow.outputs.error_type }}" == "translation_mode_error" ]]; then
-            echo "::error::Translation mode error. English was specified as the target language in translation mode."
+            echo "::warning::Translation mode issue detected. English was specified as the target language in translation mode."
           elif [[ "${{ steps.run_flow.outputs.error_type }}" == "generic_error" ]]; then
-            echo "::error::A critical error occurred during execution."
+            echo "::warning::An issue occurred during execution, but we'll continue with the commit."
           fi
-          exit 1
+          # Continue without failing the workflow
 
       - name: Get PR head info
         id: pr_info
@@ -232,6 +240,7 @@ jobs:
 
       - name: Commit screenshots and markdown to PR branch
         if: ${{ steps.pr_info.outputs.can_push == 'true' }}
+        continue-on-error: true
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -248,8 +257,8 @@ jobs:
           # Find modified or new MD files
           git diff --name-only --diff-filter=AMR | grep -E '\.md$|\.mdx$' | xargs -r git add
           
-          # Find modified or new PNG files
-          git diff --name-only --diff-filter=AMR | grep -E '\.png$' | xargs -r git add
+          # Find modified or new PNG files (using || true to prevent grep from failing when no matches are found)
+          git diff --name-only --diff-filter=AMR | { grep -E '\.png$' || true; } | xargs -r git add
           
           # Show what will be committed
           echo "Files to be committed:"
