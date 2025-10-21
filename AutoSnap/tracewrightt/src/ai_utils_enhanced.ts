@@ -3572,6 +3572,12 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
 
   private getReferenceImageBase64WithPath(imageFileName: string): { base64: string; sourcePath: string | null } {
     try {
+      // Log current mode information for debugging
+      console.log(`💡 Current mode settings:`);
+      console.log(`   - this.currentMode: ${this.currentMode}`);
+      console.log(`   - process.env.CURRENT_MD_MODE: ${process.env.CURRENT_MD_MODE || 'not set'}`);
+      console.log(`   - File being processed: ${this.currentMdPath || 'not set'}`);
+      
       // Only search in the current markdown document directory
       if (!this.currentMdPath) {
         console.log(`⚠️ No current markdown path set, cannot search for image`);
@@ -3587,14 +3593,27 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         return { base64: '', sourcePath: null };
       }
       
-      // For translation mode, first try to find the image in the corresponding docs folder
-      if (this.currentMode === 'translation') {
+      // Get the mode from current_md_path.txt (already set in this.currentMode)
+      // For translation or default mode, search in docs folder first
+      // This ensures images are found in the docs folder regardless of the current mode
+      const forceDocsSearch = process.env.FORCE_DOCS_SEARCH === 'true' || 
+                            this.currentMode === 'translation' || 
+                            this.currentMode === 'default' || 
+                            process.env.CURRENT_MD_MODE === 'translation' || 
+                            process.env.CURRENT_MD_MODE === 'default';
+      
+      if (forceDocsSearch) {
+        console.log(`🔍 Searching for image in docs folder first (mode: ${this.currentMode}, env mode: ${process.env.CURRENT_MD_MODE || 'not set'})`);
         const result = this.findImageInCorrespondingDocsFolder(imageFileName);
         if (result.base64) {
           console.log(`✅ Found image in corresponding docs folder: ${result.sourcePath}`);
           return result;
         }
       }
+      
+      // Always enable fallback to docs search as a last resort
+      const fallbackToDocsSearch = true;
+      let docsFallbackResult = null;
       
       // First check if the image exists directly in the img subdirectory (most common case)
       const imgDir = path.join(searchRoot, 'img');
@@ -3671,7 +3690,17 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         console.error(`❌ Error during deep search: ${searchError}`);
       }
       
-      // No fallback to other directories - if not found, return empty
+      // If standard search failed but fallback is enabled, try docs folder as last resort
+      if (fallbackToDocsSearch) {
+        console.log(`🔍 Fallback: Searching for image in docs folder (mode: ${this.currentMode})`);
+        docsFallbackResult = this.findImageInCorrespondingDocsFolder(imageFileName);
+        if (docsFallbackResult && docsFallbackResult.base64) {
+          console.log(`✅ Found image in docs folder (fallback): ${docsFallbackResult.sourcePath}`);
+          return docsFallbackResult;
+        }
+      }
+      
+      // If all searches failed, return empty
       console.log(`❌ Image '${imageFileName}' not found in any folder within document directory`);
       return { base64: '', sourcePath: null };
       
@@ -3724,8 +3753,8 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       console.log(`📂 Identified relative path structure: ${relativePath}`);
       
       // Construct the corresponding path in the docs folder
-      const workspaceRoot = process.cwd();
-      const docsBasePath = path.join(workspaceRoot, 'docs');
+      // Use the repository root that's properly set in the constructor
+      const docsBasePath = this.getDocsDirectory();
       const correspondingDocsPath = path.join(docsBasePath, relativePath);
       
       console.log(`🔍 Looking for image in corresponding docs path: ${correspondingDocsPath}`);
