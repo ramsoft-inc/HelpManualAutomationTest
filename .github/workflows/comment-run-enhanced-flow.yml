@@ -254,11 +254,14 @@ jobs:
           # Only add modified or new PNG and MD files
           echo "Finding modified or new PNG and MD files..."
           
-          # Find modified or new MD files
-          git diff --name-only --diff-filter=AMR | grep -E '\.md$|\.mdx$' | xargs -r git add
+          # Find all modified or new files first
+          modified_files=$(git diff --name-only --diff-filter=AMR)
           
-          # Find modified or new PNG files (using || true to prevent grep from failing when no matches are found)
-          git diff --name-only --diff-filter=AMR | { grep -E '\.png$' || true; } | xargs -r git add
+          # Process MD files if any exist
+          echo "$modified_files" | grep -E '\.md$|\.mdx$' || true | xargs -r git add
+          
+          # Process PNG files if any exist
+          echo "$modified_files" | grep -E '\.png$' || true | xargs -r git add
           
           # Show what will be committed
           echo "Files to be committed:"
