@@ -2460,7 +2460,7 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
         },
         duration,
       };
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       if (process.env.VERBOSE_LLM === 'true') {
         console.log(`✅ Azure response status: ${response.status}`);
@@ -2604,7 +2604,7 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
         },
         duration,
       };
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       // Surface error and fall back
       throw err;
@@ -3596,6 +3596,9 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       // Get the mode from current_md_path.txt (already set in this.currentMode)
       // For translation or default mode, search in docs folder first
       // This ensures images are found in the docs folder regardless of the current mode
+      // Check if we should force docs search:
+      // 1. If explicitly set via environment variable
+      // 2. If in translation or default mode
       const forceDocsSearch = process.env.FORCE_DOCS_SEARCH === 'true' || 
                             this.currentMode === 'translation' || 
                             this.currentMode === 'default' || 
@@ -3608,6 +3611,8 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
         if (result.base64) {
           console.log(`✅ Found image in corresponding docs folder: ${result.sourcePath}`);
           return result;
+        } else {
+          console.log(`❌ Image not found in docs folder, continuing with local search`);
         }
       }
       
@@ -3751,10 +3756,13 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       // Extract the relative path from the numbered folder onwards
       const relativePath = pathParts.slice(startIndex, -1).join(path.sep);
       console.log(`📂 Identified relative path structure: ${relativePath}`);
+      console.log(`📂 Path parts: ${JSON.stringify(pathParts)}`);
+      console.log(`📂 Start index: ${startIndex}, using parts from ${startIndex} to ${pathParts.length - 1}`);
       
       // Construct the corresponding path in the docs folder
       // Use the repository root that's properly set in the constructor
       const docsBasePath = this.getDocsDirectory();
+      console.log(`📂 Docs base path: ${docsBasePath}`);
       const correspondingDocsPath = path.join(docsBasePath, relativePath);
       
       console.log(`🔍 Looking for image in corresponding docs path: ${correspondingDocsPath}`);
