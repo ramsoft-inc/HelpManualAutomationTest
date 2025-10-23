@@ -105,7 +105,7 @@ export class ClaudeProvider implements LLMProvider {
           duration
         };
 
-        apiLogger.logAPICall(logEntry);
+        // apiLogger.logAPICall(logEntry);
 
         return {
           code: "done",
@@ -149,7 +149,7 @@ export class ClaudeProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       return {
         code: parsedResponse.code,
@@ -201,7 +201,7 @@ export class ClaudeProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
       throw error;
     }
   }

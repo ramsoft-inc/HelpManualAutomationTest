@@ -598,7 +598,7 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
           duration
         };
 
-        apiLogger.logAPICall(logEntry);
+        // apiLogger.logAPICall(logEntry);
 
         if (process.env.VERBOSE_LLM === 'true') console.log(`✅ Azure response status: ${response.status}`);
 
@@ -643,7 +643,7 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
           duration
         };
 
-        apiLogger.logAPICall(errorLogEntry);
+        // apiLogger.logAPICall(errorLogEntry);
         throw error;
       }
 

@@ -82,13 +82,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt || echo "Python requirements install failed, script has fallbacks"
 
-      - name: Create CI clone of test-enhanced-flow.js and patch paths
+      - name: Ensure CI configuration for test-enhanced-flow-ci.js
         working-directory: AutoSnap
         shell: bash
         run: |
-          cp test-enhanced-flow.js test-enhanced-flow-ci.js
-          # Patch hardcoded Windows fallback path(s) to repo-relative path for CI
-          sed -i "s#C:/Users/Rohith\.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg\.md#docs/1-Getting-Started/addorg.md#g" test-enhanced-flow-ci.js
           # Ensure CI runs headless Chromium and not Chrome channel
           sed -i "s/headless: false/headless: true/g" test-enhanced-flow-ci.js
           sed -i "/channel: 'chrome',/d" test-enhanced-flow-ci.js
