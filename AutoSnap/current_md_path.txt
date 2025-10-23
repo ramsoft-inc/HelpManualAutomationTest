@@ -1,1 +1,1 @@
-C:\Users\Rohith.MR\test\HelpManualAutomationTest\spanish\6-Image-Viewer\4_MoreOptionsToolbarMenu.md|default
+C:/Users/Rohith.MR/test/HelpManualAutomationTest/spanish/6-Image-Viewer/4_MoreOptionsToolbarMenu.md|default
