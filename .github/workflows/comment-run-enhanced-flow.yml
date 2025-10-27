@@ -359,6 +359,8 @@ jobs:
               
               
               bodyContent.push('\nPlease check the commit made to this PR for updated screenshots and markdown files.');
+              
+              }
             }
             
             await github.rest.issues.createComment({
