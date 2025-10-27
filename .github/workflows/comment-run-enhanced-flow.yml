@@ -82,13 +82,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt || echo "Python requirements install failed, script has fallbacks"
 
-      - name: Create CI clone of test-enhanced-flow.js and patch for CI
+      - name: Create CI clone of test-enhanced-flow.js and patch paths
         working-directory: AutoSnap
         shell: bash
         run: |
           cp test-enhanced-flow.js test-enhanced-flow-ci.js
-          # Patch hardcoded Windows fallback path(s) to repo-relative path for CI
-          
           # Ensure CI runs headless Chromium and not Chrome channel
           sed -i "s/headless: false/headless: true/g" test-enhanced-flow-ci.js
           sed -i "/channel: 'chrome',/d" test-enhanced-flow-ci.js
@@ -328,25 +326,20 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const args = `${{ steps.parse.outputs.args }}` || '(none)';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            
-            // Check if there's a special comment to include
             const hasSpecialComment = '${{ steps.run_flow.outputs.has_special_comment }}' === 'true';
             const errorType = '${{ steps.run_flow.outputs.error_type }}';
             
-            let bodyContent = [
-              `▶️ Ran: node test-enhanced-flow.js ${args}`.trim(),
-              `(equivalent to: autosnap ${args})`,
-              `• Status: ${process.env.STATE || 'completed (see job result above)'}`,
-              `• Logs & outputs uploaded as artifact: enhanced-flow-artifacts`,
-              `• Workflow run: ${runUrl}`
-            ];
+            let bodyContent = [];
             
-            // Add special comment if present
+            // Check if there was an error
             if (hasSpecialComment) {
+              // Process failed with error
+              bodyContent.push('❌ **Enhanced flow run failed.**');
+              
+              // Add the specific error message
               const specialComment = `${{ steps.run_flow.outputs.special_comment }}`;
-              bodyContent.push('\n---\n');
+              bodyContent.push('\n**Error details:**');
               bodyContent.push(specialComment);
               
               // Add specific advice based on error type
@@ -356,6 +349,17 @@ jobs:
                 bodyContent.push('\nPlease use a non-English target language with translation mode (e.g., --lang es for Spanish).');
               } else if (errorType === 'api_overload') {
                 bodyContent.push('\nThis is a temporary issue with the API service. Please try again in a few minutes.');
+              }
+              
+              // Add link to workflow run for more details
+              bodyContent.push(`\n[View workflow run](${runUrl})`);
+            } else {
+              // Process completed successfully
+              bodyContent.push('✅ **Enhanced flow run successful.**');
+              
+              
+              bodyContent.push('\nPlease check the commit made to this PR for updated screenshots and markdown files.');
+              
               }
             }
             
