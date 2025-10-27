@@ -39,6 +39,7 @@ Permite gravar o estudo atual em um disco (inicia o download de um pequeno arqui
 
 Permite ativar/desativar aspectos específicos da imagem, incluindo os recursos abaixo:
 
+
 ![mo2](img/mo2.png)
 
 - **Sobreposição:** Permite sobrepor diferentes camadas de imagem.
