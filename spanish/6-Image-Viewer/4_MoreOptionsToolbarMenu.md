@@ -18,6 +18,7 @@ tags:
 O menu "Mais Opções" (menu de 3 pontos) na barra de ferramentas do Visualizador de Imagens OmegaAI oferece uma variedade de funcionalidades que aprimoram a interação do usuário com imagens médicas. Este menu fornece ferramentas para baixar estudos, gerenciar configurações de visualização, vincular séries e muito mais, tudo com o objetivo de otimizar a visualização e o manuseio de dados de imagens médicas.
 
 
+
 ![mo1](img/mo1.png)
 
 ## Funcionalidades do Menu da Barra de Ferramentas Mais Opções
