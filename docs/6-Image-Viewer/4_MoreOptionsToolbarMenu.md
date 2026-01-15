@@ -117,7 +117,9 @@ options:
 This feature allows you to download the current image or study. It
 offers two options:
 
-![mo5](./img/mo5.png)
+{/*
+  placeholder for a screenshot
+*/}
 
 - **Download Image**: Downloads the currently viewed image.
 
