@@ -16,7 +16,7 @@ OmegaAI has a Study Locking feature designed to protect studies marked as "PRIOR
 
 When a study reaches the "PRIOR" status, it is automatically locked, making it read-only across the Worklist and Study pages. The lock is applied through a **Workflow Step** setting: **PREVENT MODIFICATION>= PRIOR**.
 
-![StudyLocking](./img/StudyLocking/StudyLockingWorkflowStep.png)
+![StudyLocking](img/StudyLockingWorkflowStep.png)
 
 **Note**: The **Prevent Modification** workflow step mapping with **Study Status** is configurable.
 
@@ -34,7 +34,7 @@ Users without the Modify Locked Study privilege won't see edit buttons, instead 
 
 Hovering over this icon displays the below message.
 
-![StudyLocking](./img/StudyLocking/StudyLockMessage.png)
+![StudyLocking](img/StudyLockMessage.png)
 
 #### Popup Confirmation for Users with Privilege
 
@@ -44,7 +44,7 @@ Users with the Modify Locked Study privilege will see the Edit button. On attemp
     
 *   \[No\] → Action is canceled
 
-![StudyLocking](./img/StudyLocking/ConfirmStudyStatusMessage2.png)
+![StudyLocking](img/ConfirmStudyStatusMessage2.png)
     
 ## Modify Locked Study - UAC Privilege
 
