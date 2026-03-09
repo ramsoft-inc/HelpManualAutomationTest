@@ -85,7 +85,7 @@ jobs:
       - name: Sync POM cache (optional)
         working-directory: AutoSnap
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
           GITHUB_PRIVATE_KEY: ${{ secrets.GITHUB_PRIVATE_KEY }}
           GITHUB_INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
@@ -169,6 +169,8 @@ jobs:
           echo "Running: node AutoSnap/test-enhanced-flow.mjs $args"
           node AutoSnap/test-enhanced-flow.mjs $args 2>&1 | tee enhanced-flow-ci-run.log
           flow_exit=${PIPESTATUS[0]}
+          # Default to 1 if empty (e.g. step killed before capture)
+          if [ -z "${flow_exit}" ]; then flow_exit=1; fi
           echo "flow_exit_code=$flow_exit" >> $GITHUB_OUTPUT
           
           # Check for special comment markers in the log (language validation failure or API overload)
@@ -210,6 +212,13 @@ jobs:
             echo "No special comments detected"
             echo "has_special_comment=false" >> $GITHUB_OUTPUT
             echo "error_type=none" >> $GITHUB_OUTPUT
+          fi
+          
+          # Success = flow reached its "done" message (Job completed successfully)
+          if grep -q "Job completed successfully" enhanced-flow-ci-run.log 2>/dev/null; then
+            echo "flow_finished_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "flow_finished_ok=false" >> $GITHUB_OUTPUT
           fi
           
           # Fail the step if the flow exited with error (so job status reflects failure)
@@ -254,15 +263,17 @@ jobs:
             core.setOutput('can_push', canPush ? 'true' : 'false');
 
       - name: Commit screenshots and markdown to PR branch
+        id: commit_step
         if: ${{ steps.pr_info.outputs.can_push == 'true' }}
         continue-on-error: true
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
           HEAD_REPO: ${{ steps.pr_info.outputs.head_repo }}
           HEAD_REF: ${{ steps.pr_info.outputs.head_ref }}
         run: |
           set -e
+          echo "committed=false" >> $GITHUB_OUTPUT
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
@@ -274,17 +285,18 @@ jobs:
           # Find all modified files (Added, Modified, Renamed)
           modified_files=$(git diff --name-only --diff-filter=AMR)
           
-          # Find all deleted files
-          deleted_files=$(git diff --name-only --diff-filter=D)
+          # Find deleted files (only PNG/MD - do not commit removal of lockfiles etc.)
+          deleted_all=$(git diff --name-only --diff-filter=D)
+          deleted_files=$(echo "$deleted_all" | grep -E '\.(md|mdx|png)$' || true)
           
           # Find all untracked files and combine with modified files
           untracked_files=$(git ls-files --others --exclude-standard)
           # Combine files with proper formatting
           all_files=$(printf "%s\n%s" "$modified_files" "$untracked_files")
 
-          # Handle deleted files separately
+          # Handle deleted PNG/MD files only (stage their removal)
           if [ ! -z "$deleted_files" ]; then
-            echo "Adding deleted files to git:"
+            echo "Staging deleted docs/screenshots:"
             echo "$deleted_files"
             echo "$deleted_files" | while IFS= read -r file; do
               git rm "$file" || true
@@ -336,7 +348,8 @@ jobs:
           
           # Commit and push
           git commit -m "chore(ci): add screenshots and update markdown from enhanced flow run [skip ci]"
-          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${HEAD_REPO}.git" HEAD:${HEAD_REF}
+          echo "committed=true" >> $GITHUB_OUTPUT
+          git push "https://x-access-token:${REPO_ACCESS_TOKEN}@github.com/${HEAD_REPO}.git" HEAD:${HEAD_REF}
 
       - name: Reply on PR with run summary
         if: always()
@@ -346,21 +359,16 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const hasSpecialComment = '${{ steps.run_flow.outputs.has_special_comment }}' === 'true';
             const errorType = '${{ steps.run_flow.outputs.error_type }}';
-            const flowExitCode = '${{ steps.run_flow.outputs.flow_exit_code }}';
+            const flowFinishedOk = '${{ steps.run_flow.outputs.flow_finished_ok }}' === 'true';
+            const hadUpdates = ('${{ steps.commit_step.outputs.committed }}' || 'false') === 'true';
             
             let bodyContent = [];
             
-            // Check if there was an error
             if (hasSpecialComment) {
-              // Process failed with structured error message
               bodyContent.push('❌ **Enhanced flow run failed.**');
-              
-              // Add the specific error message
               const specialComment = `${{ steps.run_flow.outputs.special_comment }}`;
               bodyContent.push('\n**Error details:**');
               bodyContent.push(specialComment);
-              
-              // Add specific advice based on error type
               if (errorType === 'language_validation') {
                 bodyContent.push('\nPlease check the language code and try again with a supported language.');
               } else if (errorType === 'translation_mode_error') {
@@ -368,17 +376,19 @@ jobs:
               } else if (errorType === 'api_overload') {
                 bodyContent.push('\nThis is a temporary issue with the API service. Please try again in a few minutes.');
               }
-              
               bodyContent.push(`\n[View workflow run](${runUrl})`);
-            } else if (flowExitCode && flowExitCode !== '0') {
-              // Flow exited with error but no structured comment (e.g. crash, missing env)
+            } else if (!flowFinishedOk) {
               bodyContent.push('❌ **Enhanced flow run failed.**');
-              bodyContent.push('\nThe run exited with an error. Check the workflow logs for details.');
+              bodyContent.push('\nThe run did not complete successfully (e.g. timeout, crash, or error before finishing). Check the workflow logs for details.');
               bodyContent.push(`\n[View workflow run](${runUrl})`);
             } else {
-              // Process completed successfully
               bodyContent.push('✅ **Enhanced flow run successful.**');
-              bodyContent.push('\nPlease check the commit made to this PR for updated screenshots and markdown files.');
+              if (hadUpdates) {
+                bodyContent.push('\nScreenshots and/or markdown were updated and committed to this PR.');
+              } else {
+                bodyContent.push('\nRun completed with no file updates.');
+              }
+              bodyContent.push(`\n[View workflow run](${runUrl})`);
             }
             
             await github.rest.issues.createComment({

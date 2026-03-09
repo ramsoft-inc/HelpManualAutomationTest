@@ -16,6 +16,8 @@ Omega AI’s image viewer includes a powerful “Customized Wheel” feature tha
 
 ## Accessing the Customized Wheel in OmegaAI
 
+
+
 To begin customizing the Image Control Wheel:
 
 1. Launch the **OmegaAI Image Viewer**.
