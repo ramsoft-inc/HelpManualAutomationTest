@@ -1,0 +1,67 @@
+# Gitleaks Configuration for Help Manual Repositories
+# This file should be added to each Help Manual repository
+# File location: .gitleaks.toml
+#
+# This configuration extends the default Gitleaks rules and adds
+# custom allowlists for Help Manual specific false positives
+
+title = "Gitleaks config for Help Manual repositories"
+
+[extend]
+useDefault = true
+
+# Custom rules specific to Help Manual repositories
+[[rules]]
+id = "help-manual-api-key"
+description = "Detect potential API keys in documentation"
+regex = '''(?i)(api[_-]?key|apikey|access[_-]?token)\s*[:=]\s*['"]?[a-zA-Z0-9_\-]{20,}['"]?'''
+tags = ["key", "api", "documentation"]
+
+# Allowlists for common false positives in documentation
+[[allowlists]]
+description = "Ignore example/placeholder values in documentation"
+regexes = [
+    'YOUR_API_KEY_HERE',
+    'your-api-key',
+    'example-key',
+    'placeholder',
+    'REPLACE_WITH_YOUR',
+    'INSERT_YOUR',
+    '<YOUR_',
+    'xxx+',
+    'yyy+',
+    'zzz+',
+    'abc123',
+    'test-key',
+    'demo-key',
+    'sample-key',
+    'dummy-key',
+]
+
+[[allowlists]]
+description = "Ignore code blocks and examples in markdown"
+paths = [
+    '**/examples/**',
+    '**/docs/examples/**',
+    '**/samples/**',
+]
+
+[[allowlists]]
+description = "Ignore build and dependency files"
+paths = [
+    'node_modules/**',
+    'build/**',
+    'dist/**',
+    '.docusaurus/**',
+    'package-lock.json',
+    'yarn.lock',
+]
+
+[[allowlists]]
+description = "Ignore common documentation patterns"
+regexes = [
+    # Ignore lines that are markdown code fence markers (Gitleaks evaluates line-by-line)
+    '''^\s*```''',
+    # Ignore lines within inline code (single backticks on same line)
+    '''`[^`]+`''',
+]

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 10
 title: Managing Patient Record
 ---
 
@@ -135,39 +135,43 @@ until it is changed to some other person.
 
 ### Patients Contact and Address Information
 
-- Go to Patient record from home page.
+- Go to **Patient Record** from the home page.
 
-- Expand the Contact information section to view the Contact and Address
-  information details of the Patient.
+- Expand the **Contact Information** section to view the contact and
+  address information details of the patient.
 
 ![mp1](./img/mpn8.png)
 
-The Users would be able to View/Add/Edit the following information as
-part of the Contact information section.
+The users would be able to **view/add/edit** the following information as part of the Contact Information section.
 
-![mp1](./img/mpn9.png)
+- **Email ID (Multiple)**
 
-- Email ID (Multiple)
+- **Phone Number (Multiple)**
 
-- Phone Number (Multiple)
+- **Address**
 
-- Address
+## Review/Edit Patient Contact information
 
-**Review/Edit Patient Contact information**
+- On the hover of each field, the in-line **edit** for each field will be enabled.
 
-- On hover of each field, the in-line edit for each of the fields would
-  be enabled.
+- Users can update the information of each field by clicking on it.
 
-- Users would be able to update the information of each field by
-  clicking on each of them.
+- To **add an additional email address or phone number**, click the
+  **"+" icon**.
 
-- Once they have updated the information, they can click the Save
-  button appearing on the right-hand side of the Contact information
-  section.
+- To **delete an email address or phone number**, click the **trash
+  icon** next to the email or phone field.
 
-- If the user wants to discard the changes made, they can click the
-  Cancel button appearing on the right-hand side of the Contact
-  information section.
+- To **set an email as the primary contact**, click on the **star icon** next to the email field.
+
+ **Note**: A Blume invite will be sent to the primary email address.
+
+- After updating the information, click the **Save** button on the
+  right-hand side of the **Contact Information** section.
+
+- To discard changes, click the **Cancel** button on the right-hand side of the **Contact Information** section.
+
+![mp1](./img/Mprecords1.png)
 
 ### Patients Emergency Contact Details
 

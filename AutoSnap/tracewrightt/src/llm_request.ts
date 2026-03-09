@@ -20,7 +20,8 @@ export class LLMRequestHandler {
     currentStepErrorCode: string,
     includeSystemInstruction: boolean,
     isCodeAnswer: boolean,
-    previousStepThinking?: string // Added optional parameter
+    previousStepThinking?: string, // Added optional parameter
+    availableActions?: string // Added optional parameter for POM actions
   ): Promise<GenerateCodeResponse> {
     return this.provider.generateWithContext(
       systemInstruction,
@@ -32,7 +33,8 @@ export class LLMRequestHandler {
       currentStepErrorCode,
       includeSystemInstruction,
       isCodeAnswer,
-      previousStepThinking // Pass to provider
+      previousStepThinking, // Pass to provider
+      availableActions // Pass to provider
     );
   }
 }

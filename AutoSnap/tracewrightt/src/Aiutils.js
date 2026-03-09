@@ -751,50 +751,6 @@ export class AIUtils {
 			.replace('{{elements}}', JSON.stringify(pageContent.elements, null, 2))
 			.replace('{{url}}', pageContent.url);
 
-		// Create logs directory if it doesn't exist
-		const logsDir = path.join(process.cwd(), 'ai-logs');
-		if (!fs.existsSync(logsDir)) {
-			fs.mkdirSync(logsDir, { recursive: true });
-		}
-
-		// Generate timestamp for the log file
-		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-		const logFileName = `ai-request-${timestamp}.json`;
-		const logFilePath = path.join(logsDir, logFileName);
-
-		// Prepare the log data
-		const logData = {
-			timestamp: new Date().toISOString(),
-			command,
-			promptKey,
-			url: pageContent.url,
-			elements: pageContent.elements,
-			request: {
-				messages: [
-					{
-						role: 'system',
-						content: systemPrompt
-					},
-					{
-						role: 'user',
-						content: command
-					}
-				],
-				temperature: 0,
-				top_p: 1,
-				max_tokens: 1000,
-				response_format: { type: 'json_object' }
-			}
-		};
-
-		// Save the log data
-		try {
-			fs.writeFileSync(logFilePath, JSON.stringify(logData, null, 2));
-			console.log(`AI request data saved to: ${logFilePath}`);
-		} catch (error) {
-			console.error('Error saving AI request data:', error);
-		}
-
 		// Log the actual request payload being sent to AI
 		const requestPayload = {
 			messages: [

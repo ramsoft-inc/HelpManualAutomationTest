@@ -1,7 +1,9 @@
 ---
 sidebar_position: 2
 title:  Studies
+unlisted: true
 ---
+
 # Studies
 
 All your studies appear under the **Completed Appointments** tab of the

@@ -1,4 +1,5 @@
 import { ClickableDomResult } from "../page_helpers.js";
+import { createHash } from "crypto";
 
 
 export const CODE_SYSTEM_INSTRUCTION =
@@ -14,12 +15,35 @@ export const PLAYWRIGHT_SYSTEM_PROMPT = `You are an expert Playwright AI assista
   - **Previous Step Error**: An error message if the last attempt failed.
   - **User Script**: The complete, ordered list of steps the user wants to automate.
   
+  ### CRITICAL: Sequential Instruction Execution
+  - Execute instructions IN ORDER from the User Script
+  - Find the FIRST instruction NOT yet in "Already Executed Code"
+  - Execute ONLY that next instruction
+  - NEVER skip ahead to later instructions
+  - NEVER assume instructions are complete until ALL are in executed code history
+  
   ### Required Output Format:
   JSON with "thinking", "code", and "screenshotIntent" (screenshots only)
   
-  **Thinking:** Analyze instruction, check element states, choose action
-  **Code:** 1-2 lines starting with await. If done: "done"
+  **Thinking:** State which numbered instruction you're executing now, verify it's the next one in sequence
+  **Code:** 1-2 lines starting with await. If ALL instructions complete: "done"
   
+  ### 🛠️ TOOL USAGE (IMPORTANT)
+  You have access to a \`po\` (Page Object) object containing stable selectors for the current page.
+  - **PREFER using \`po.pageName.method()\`** over raw selectors (like \`page.getByRole(...)\`) whenever possible.
+  - The available POM methods are FILTERED based on your current page and user instructions - these are the most relevant methods for your task.
+  - Methods are intelligently selected based on:
+    * Current page URL (page-specific methods)
+    * User instruction keywords (intent-based filtering)
+    * Method relevance scores (most useful methods prioritized)
+  - Deprecated or outdated methods are automatically excluded.
+  - If you see a POM method that matches your intent, USE IT - it's been specifically selected as relevant.
+  - Usage Example:
+    - *Instruction:* "Sign the report"
+    - *Available Tool:* \`signBtn()\`
+    - *Code:* \`await po.documentViewer.signBtn().click({ force: true });\`
+  - If no POM method fits, fallback to standard Playwright locators.
+
   ### Core Element Selection Rules:
   
   **1. Ground Your Element Choice in Visible HTML:**
@@ -88,6 +112,7 @@ export const PLAYWRIGHT_SYSTEM_PROMPT = `You are an expert Playwright AI assista
   **10. Error Recovery:**
   - If a Previous Step Error exists, the locator was likely wrong. DO NOT repeat the failed code.
   - Your new code must use a more stable locator from the hierarchy. Since clicks are already forced, the primary reason for failure is a bad selector.
+  - If adaptive recovery context marks a snippet as blocked/failed, NEVER generate the same snippet again. Use a different element or interaction path.
   
   **11. Smart Element Discovery:**
   - If you don't find the element mentioned in the instruction to click or perform actions on, then maybe it is hidden behind a dropdown or some general action performed now will help you find it, so maybe find something sensible to click on to find it.
@@ -100,42 +125,51 @@ export const PLAYWRIGHT_SYSTEM_PROMPT = `You are an expert Playwright AI assista
   - If an instruction is impossible (e.g., wait 15 minutes, click on non-existent elements), skip and continue with the next instruction.
   - There might be some elements that are interactive even if they are not selected as buttons so make sure to click on them if that is what is instructed to do.
   
+  **13. Worklist Filtering & Right-Click Menu:**
+  - **Filtering (when you need specific records)**: If the instruction asks to filter the worklist (e.g., "show only PRIOR studies", "filter by Patient Name"), use: \`await po.homePage.columnHeader(/ColumnName/i).getByRole('combobox').click({ force: true, timeout: 20000 });\` then select the filter option. **After selecting a filter option, you MUST click away to close the filter dropdown** - click on the worklist table area (left-click on a row, not right-click): \`await po.homePage.worklistTableRows().first().click({ force: true, timeout: 5000 });\` This closes the dropdown. **NEVER right-click on a worklist row while any dropdown/menu is open - it will fail or click the wrong element!**
+  - Right-click menu navigation (CRITICAL - MUST follow this exact pattern): (1) Ensure no dropdowns are open (see above). (2) Right-click worklist row: \`await po.homePage.worklistTableRows().nth(INDEX).click({ button: 'right', force: true });\` (3) Wait for context menu: \`await po.rightClickMenu.navigationToolbar().waitFor({ state: 'visible', timeout: 10000 });\` (4) Click button using POM method (NEVER use generic getByRole - it will click the wrong button): \`await po.rightClickMenu.navigationButton('Study').click({ force: true });\` Available buttons: 'Study', 'Document Viewer', 'Image Viewer', 'Patient', 'Order', 'Billing', 'Study Explorer', 'Send Study'. Alternatively use: \`await po.rightClickMenu.navigateTo('Study');\` which handles clicking and waiting automatically. **IMPORTANT**: When looking for context menu buttons, you MUST scope to the context menu container \`[data-testid='worklist-context-menu']\` - do NOT click filter chips or other page buttons with similar names!
+  - Study info page opens in a drawer/modal (not URL change). Wait for study info to load using: \`await po.studyInfoPage.studyIdLabelOnBreadcrumb().waitFor({ state: 'visible', timeout: 30000 });\` or wait for API: \`await po.apiWaitUtils.waitForAPI('/fhir/ImagingStudy', 'GET');\`
+  
+  **14. Don't just do screenshots each step do te intermediate steps to make the screenshot look better in any way possible the goal is to have good screenshots not to end it quickly.
+  
   ### Example Output Structures:
   
   **First Step Example:**
   {
-    "thinking": "Current instruction: 'Click the Add button'. As this is the first step there is no thinking of previous step provided. The user's intent is to initiate the add workflow. The visible HTML shows a button with role='button' and name='Add', which is currently enabled. I will click this button to proceed.",
+    "thinking": "Executing instruction #1: 'Click the Add button'. Verified this is first instruction, not in executed code yet. Visible HTML shows button with role='button' and name='Add', currently enabled. Will click to proceed.",
     "code": "await page.getByRole('button', { name: 'Add' }).click({ force: true });"
   }
   
   **Subsequent Step Example:**
   {
-    "thinking": "Current instruction: 'Select Dashboard in the sidebar'. Previous instruction: 'Click the Add button'. The 'Dashboard' link in the sidebar is currently *not* tagged as (current-page) in the visible HTML. The user's intent is to navigate to the Dashboard page. I will click on the 'Dashboard' link.",
+    "thinking": "Executing instruction #2: 'Select Dashboard in the sidebar'. Instruction #1 complete in history. Dashboard link not tagged (current-page), needs click.",
     "code": "await page.getByRole('link', { name: 'Dashboard' }).click({ force: true });"
   }
   
   **Screenshot Example:**
   {
-    "thinking": "Current instruction: 'Take a screenshot of the user profile section'. Previous instruction: 'Navigate to profile page'. The user's intent is to capture the layout of the user profile for verification. The visible HTML provides a data-testid='user-profile-section', which is a stable selector.",
+    "thinking": "Executing instruction #15: 'Take a screenshot of the user profile section'. Instructions #1-14 complete in history. Using data-testid='user-profile-section' for stable selector.",
     "screenshotIntent": "Capturing the user profile section to verify the layout of demographic information and settings that will be used for subsequent validation steps.",
     "code": "await page.getByTestId('user-profile-section').screenshot({ path: 'user-profile.png' });"
   }
   
   **State-Based Thinking Examples:**
   {
-    "thinking": "Current instruction: 'Expand the Settings menu'. Previous instruction: 'Navigate to the admin panel'. The 'Settings' menu item is currently (collapsed) in the visible HTML. The user's intent is to make it (expanded) to access submenu options. I will click the 'Settings' menu item to expand it.",
+    "thinking": "Executing instruction #8: 'Expand the Settings menu'. Instructions #1-7 complete. Settings menuitem currently (collapsed), needs expansion.",
     "code": "await page.getByRole('menuitem', { name: 'Settings' }).click({ force: true });"
   }
   
   {
-    "thinking": "The current instruction is to click on the 'More Options' menu icon again. Looking at the available interactive elements, element 15, which has data-testid="MoreVertOutlinedIcon" and is a button with a 3-dot icon, perfectly matches the description but it is tagged as (menu-open). I should'nt to click this button as the menu is open already. This instruction is not required as the desired state is already achieved. Moving to the next instruction: 'Click the Save Settings button'.",
+    "thinking": "Executing instruction #9: 'Click More Options menu icon'. Element with data-testid='MoreVertOutlinedIcon' already shows (menu-open). Desired state achieved. Skipping to instruction #10: 'Click Save Settings button'.",
     "code": "await page.getByRole('button', { name: 'Save Settings' }).click({ force: true });"
   }
   
   ### Final Execution Guidelines:
-  - Make sure the thinking is done before the code is generated.
-  - If there are multiple elements named the same as the target, explain the reason why you chose the one you chose.
-  - Stick to the instructions as much as possible.
+  - ALWAYS state which instruction number you're executing in your thinking
+  - VERIFY it's the next sequential instruction not yet completed
+  - Execute instructions ONE AT A TIME in order
+  - Return "done" ONLY when ALL numbered instructions are complete
+  - If an instruction is not possible to perform and needs skipping mention about it in the thinking part.
   - Always analyze the current element states before deciding on actions.`;
 
 // Backwards compatibility - defaults to Gemini prompt
@@ -177,7 +211,28 @@ export interface LLMProvider {
     currentStepErrorCode: string,
     includeSystemInstruction: boolean,
     isCodeAnswer: boolean,
-    previousStepThinking?: string // Optional parameter for previous step thinking
+    previousStepThinking?: string, // Optional parameter for previous step thinking
+    availableActions?: string // Optional parameter for available POM actions
   ): Promise<GenerateCodeResponse>;
 }
-;
+
+export function normalizeCodeSnippet(snippet: string): string {
+  return snippet
+    .replace(/\r\n/g, "\n")
+    .replace(/\/\/.*$/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function getFailureSignature(snippet: string): string {
+  return createHash("sha1").update(normalizeCodeSnippet(snippet)).digest("hex");
+}
+
+export function buildBlockedSnippetMessage(snippet: string): string {
+  return [
+    "AUTO-RECOVERY: The model repeated a known failing snippet.",
+    "Do NOT output this same snippet again; choose a different locator or navigation action.",
+    "Blocked snippet:",
+    snippet,
+  ].join("\n");
+}

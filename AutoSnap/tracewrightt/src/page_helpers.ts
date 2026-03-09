@@ -40,7 +40,8 @@ export const executeCode = async (
   logger?: any, 
   stepNumber?: number,
   mdFilePath?: string,
-  aiUtils?: any
+  aiUtils?: any,
+  poManager?: any
 ) => {
   console.log('🚀 Starting code execution...');
   console.log('📍 Page URL:', page.url());
@@ -98,8 +99,8 @@ export const executeCode = async (
     } else {
       // Execute non-screenshot code directly without AIUtilsEnhanced wrapper
       console.log('⚡ Executing code without AIUtilsEnhanced (no screenshot detected)...');
-      const func = new Function('page', `return (async () => { ${codeResponse.code} })()`);
-      await func(page);
+      const func = new Function('page', 'po', `return (async () => { ${codeResponse.code} })()`);
+      await func(page, poManager);
       console.log('✅ Code execution completed successfully');
     }
     
@@ -162,8 +163,8 @@ export const executeCode = async (
       console.log('✅ Retry execution completed successfully');
     } else {
       console.log('⚡ Executing retry without AIUtilsEnhanced (no screenshot detected)...');
-      const retryFunc = new Function('page', `return (async () => { ${modifiedCode} })()`);
-      await retryFunc(page);
+      const retryFunc = new Function('page', 'po', `return (async () => { ${modifiedCode} })()`);
+      await retryFunc(page, poManager);
       console.log('✅ Retry execution completed successfully');
     }
     } else {

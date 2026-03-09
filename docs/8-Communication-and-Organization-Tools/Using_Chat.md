@@ -115,9 +115,7 @@ contacts directly within the platform.
 
 2.  **Interaction Options in an Open Chat:**
 
-    - **Call:** Click the Call button to initiate a voice call with
-      the contact.
-
+   
     - **Add Group Participant:** Add more contacts to the chat if
       needed.
 

@@ -1,0 +1,76 @@
+{
+  "urlPatterns": [
+    {
+      "pattern": "/viewer",
+      "type": "includes",
+      "pages": ["documentViewer"],
+      "priority": 10,
+      "description": "Document viewer page"
+    },
+    {
+      "pattern": "/study/[^/]+$",
+      "type": "regex",
+      "pages": ["studyInfoPage"],
+      "priority": 10,
+      "description": "Study information page"
+    },
+    {
+      "pattern": "/login|/auth",
+      "type": "regex",
+      "pages": ["loginPage"],
+      "priority": 10,
+      "description": "Login and authentication pages"
+    },
+    {
+      "pattern": "/worklist|/home",
+      "type": "regex",
+      "pages": ["homePage", "rightClickMenu"],
+      "priority": 10,
+      "description": "Worklist and home page (includes right-click context menu)"
+    },
+    {
+      "pattern": "/patient/[^/]+$",
+      "type": "regex",
+      "pages": ["patientInformationPage"],
+      "priority": 10,
+      "description": "Patient information page"
+    },
+    {
+      "pattern": "/scheduler",
+      "type": "includes",
+      "pages": ["scheduler"],
+      "priority": 10,
+      "description": "Scheduler page"
+    },
+    {
+      "pattern": "/organization",
+      "type": "includes",
+      "pages": ["organizationDirectoryPage", "organizationDetailPage"],
+      "priority": 8,
+      "description": "Organization pages"
+    },
+    {
+      "pattern": "/order",
+      "type": "includes",
+      "pages": ["orderDrawer"],
+      "priority": 10,
+      "description": "Order pages"
+    },
+    {
+      "pattern": "/visit",
+      "type": "includes",
+      "pages": ["visitInformationPage"],
+      "priority": 10,
+      "description": "Visit information page"
+    },
+    {
+      "pattern": ".*",
+      "type": "regex",
+      "pages": ["common", "sidebar"],
+      "priority": 1,
+      "description": "Common methods available on all pages"
+    }
+  ],
+  "fallbackPages": ["common", "sidebar"],
+  "description": "URL pattern configuration for POM page detection. Patterns are evaluated in order of priority (highest first)."
+}

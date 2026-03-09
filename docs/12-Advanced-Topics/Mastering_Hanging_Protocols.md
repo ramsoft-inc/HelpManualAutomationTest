@@ -7,285 +7,593 @@ title: Mastering Hanging Protocols
 
 ## Overview
 
-The Hanging Protocols Configuration Screen in OmegaAI is a robust
-interface designed for setting up and customizing the display of medical
-imaging studies according to specific user preferences or clinical
-requirements. This screen is segmented into three main areas, each
-serving a distinct purpose in the configuration process.
+The **Hanging Protocols Configuration Screen** in OmegaAI is a
+comprehensive interface designed to help users configure and customize
+how medical imaging studies are displayed. It enables radiologists and
+technologists to create tailored viewing layouts that align with
+clinical workflows and preferences. The screen is organized into three
+main sections, each supporting a different part of the configuration
+process.
+
+Refer <u>*[Hanging Protocols in OmegaAI](https://help.omegaai.com/docs/Image-Viewer/Hanging_Protocols_in_OmegaAI)*</u>
 
 ## Configuration Screen Layout
+The Configuration Screen Layout provides a visual workspace where you define how images are arranged, assigned, and displayed within the viewer. This screen is divided into intuitive panels that guide you through setting up viewports, assigning view codes and modifiers, and managing rules for each viewport.
 
-### Viewport Setup (Top Left)
+![mhp](./img/mhp_1.png#large)
 
-This section is dedicated to defining the layout and specific settings
-of the viewports used in a hanging protocol.
+### 1. Viewport Setup
 
-![Mastering Hanging Protocols](./Images/1.png)
+**Location:** Top-left panel
 
-- **Defining Viewports**: Click on any viewport to select and configure
-  it. Options include setting specific modifiers, particularly useful in
-  mammography studies for applying special viewing conditions.
+**Purpose:** Allows you to configure the structure and organization of
+viewports within the imaging viewer.
 
-- **Search Functionality**: Use the search icon to look through
-  available view codes and modifiers to find specific settings quickly.
+- The Viewport Setup area displays the grid where you can define the
+  number and arrangement of viewports (e.g., 1×1, 2×2, 3×1).
 
-  ![Mastering Hanging Protocols](./Images/2.png)
+- **A single left-click** on the Viewport Setup area opens the **Select
+  a layout** option, where you can choose their preferred viewport grid.
 
-### View Quotes and Modifiers (Lower Left)
+  - Click on the grid cells to assign active viewports (highlighted in
+    blue).
 
-Here, you will find a list of view codes along with applicable
-modifiers, with enhanced options for mammography.
+![mhp](./img/mhp_3.png#large)
 
-- **Adding Modifiers**: For specialized studies like mammography,
-  modifiers like implant displacement can be added to viewports to
-  refine what images are displayed.
+#### Resetting the Layout
 
-### Hanging Protocol Rules (Right Side)
+- To restore the default layout, click the **Reset** button located in
+  the top-right corner of the **Viewport Setup** panel.
 
-This area allows for the customization of rules and additional options
-for the hanging protocols.
+- From the dropdown, select **Reset Viewport**.
 
-- **Accessing Existing Protocols**: Click the star icon to view a list
-  of existing hanging protocols available to your user profile.
+- This action clears all assigned layouts and configurations and returns
+  the workspace to the default single-viewport setup.
 
-- **Duplicating and Sharing Protocols**: Options for duplicating and
-  sharing protocols are available to facilitate collaborative settings
-  and standardize practices across users.
+![mhp](./img/mhp_4.png#large)
 
-  ![Mastering Hanging Protocols](./Images/3.png)
+## 2. View Codes and Modifiers Panel
 
-## Creating and Managing Hanging Protocols
+**Location:** Bottom-left panel
+**Purpose:** Provides a searchable list of predefined **View Codes** and
+**MG Modifiers** used to accurately assign images to the correct
+viewports.
 
-### Adding and Editing Protocols
+#### View Codes
 
-- **Creating New Protocols**: Click the "+" icon to initiate the
-  creation of a new protocol. Customize by dragging and dropping view
-  codes into the desired viewports.
+**View codes** represent specific imaging orientations, projections, or
+series types.
+They help the system determine **which images should be placed into each
+viewport** when a hanging protocol is executed. By selecting the
+appropriate View Code, you ensure that the correct image type populates
+the corresponding viewport during the protocol setup.
 
-  ![Mastering Hanging Protocols](./Images/4.png)
+**Examples include:**
 
-- **Editing Protocols**: Hover over an existing protocol to see options
-  such as accessing configuration settings (information icon) or
-  deleting the protocol (delete icon).
+- AP (Anteroposterior)
 
-  ![Mastering Hanging Protocols](./Images/5.png)
+- PA (Posteroanterior)
 
-### Configuring Viewport Display
+- LAT (Lateral)
 
-- **Tile Mode Setup**: This option allows you to configure whether the
-  viewport displays images in tile mode or stack mode, along with
-  choosing a layout for tile mode.
+- OBLIQUE
 
-  ![Mastering Hanging Protocols](./Images/6.png)
+- CT: AXIAL
 
-  ![Mastering Hanging Protocols](./Images/7.png)
+- CT: CORONAL
 
-- **Prior Study Display**: Set up viewports to display prior studies by
-  selecting the appropriate prior from the menu. Adjustments include
-  matching models and labeling for clarity in the viewport.
+- ANY X-RAY
 
-  ![Mastering Hanging Protocols](./Images/8.png)
+![mhp](./img/mhp_5.png#large)
 
-## Advanced Configuration Options
+#### MG Modifiers
 
-### Manipulations
+Modifiers provide additional descriptors specific to mammography,
+capturing variations in breast positioning, orientation, or specialized
+imaging techniques. These are essential for exams involving modified
+projections.
 
-- **Orientation and Windowing**: Customize image orientation (e.g.,
-  flipping, rotating) and window settings (manual or preset
-  adjustments).
+**Examples include:**
 
-  ![Mastering Hanging Protocols](./Images/9.png)
+- ID -- Implant Displaced
 
-  ![Mastering Hanging Protocols](./Images/10.png)
+- RM -- Right Mediolateral
 
-- **Scaling**: Set the zoom level or fit options to optimize how images
-  fill the viewport.
+- RI -- Right Inferior
 
-  ![Mastering Hanging Protocols](./Images/11.png)
+- RS -- Right Superior
 
-### Toggles for Enhanced Viewing
+- RL -- Right Lateral
 
-- **Linking and Scrolling**: Configure settings for linking series in
-  the same plane and scrolling through series within a viewport.
+- NP -- Nipple in Profile
 
-- **Visibility Toggles**: Control the display of annotations, findings,
-  overlays, and reference lines. Activate cine mode as needed.
+![mhp](./img/mhp_6.png#large)
 
-  ![Mastering Hanging Protocols](./Images/12.png)
+### How View Codes and MG Modifiers Are Used
 
-### Conditions for Filtering
+- Users **drag and drop** View Codes or MG Modifiers into the desired
+  viewport within the layout.
 
-- **Filtering with DICOM Tags**: Define conditions to filter series
-  based on specific DICOM tags, enhancing the relevance of displayed
-  images.
+- The system then uses these assignments to automatically load the
+  correct image series or orientation when a study is opened.
 
-  ![Mastering Hanging Protocols](./Images/13.png)
+- This ensures consistent, accurate, and predictable image placement
+  according to modality, orientation, and exam type.
+
+  ![mhp](./img/mhp_7.png#large)
+
+### Search Functionality
+
+- A **search** icon is available in the top-right corner of the View
+  codes panel.
+
+- It allows you to quickly find specific **View Codes** or **MG
+  Modifiers** by typing relevant keywords or abbreviations.
+
+  ![mhp](./img/mhp_8.png#large)
+
+## 3. Hanging Protocol Rules Panel:
+
+**Location:** Right side of the configuration screen.
+**Purpose:** Defines how each viewport behaves when a hanging protocol
+is applied.
+
+The **Hanging Protocol Rules Panel** provides a comprehensive set of
+configuration options that control how images behave, appear, and are
+selected within each viewport when a hanging protocol is executed. These
+rules allow you to fine-tune the viewing experience, ensuring that
+images are displayed consistently and in alignment with clinical
+workflow requirements.
+
+Each rule applies specifically to the **selected viewport**, and
+together they determine everything from visual behavior and image sizing
+to windowing, orientation, and metadata-driven image selection. The
+Rules Panel includes the following categories:
+
+- Click on the viewport name (e.g., *Viewport 1*) to select it.
+  Click the **"+"** button to add a new rule configuration.
+  After clicking **"+"**, options appear around the button, such as
+
+  a.  **Toggles**
+
+  b.  **Conditions**
+
+  c.  **Scaling**
+
+  d.  **Window Presets**
+
+  e.  **Orientation**
+
+Select the desired rule type to configure how images are displayed and
+interact with in the selected viewport.
+
+![mhp](./img/mhp_9.png#medium)![mhp](./img/mhp_10.png#medium)
+
+#### a. Toggles
+
+The **Toggles** option allows you to enable or disable specific viewing
+features for the selected viewport. These settings define which tools,
+visual elements, and interaction behaviors are active when the hanging
+protocol loads.
+
+When a toggle rule is added, you can choose from the following options:
+
+![mhp](./img/mhp_11.png#medium)
+
+**• Linking**
+
+Synchronizes scrolling, planning, zooming, and slice navigation across
+linked viewports.
+
+**• Scroll Between Series**
+
+It allows you to scroll through multiple series within the same
+viewport.
+
+**• Show Annotations**
+
+Displays system-generated or user-created annotations within the
+viewport.
+
+**• Show CAD Findings**
+
+Shows computer-aided detection (CAD) markers when available for the
+study.
+
+**• Show Overlay**
+
+Enables DICOM or system overlays such as patient demographics, study
+metadata, and acquisition details.
+
+**• Show Reference Lines**
+
+Displays cross-reference (scout) lines between linked viewports.
+
+**• Show Scout Image Overlay**
+
+Displays scout (topo-gram) locator lines on CT images when scrolling
+through slices.
+
+- Each toggle can be set to **Active** or **Inactive**, giving users
+  complete control over how the selected viewport behaves and what
+  visual elements are displayed.
+
+#### b. Scaling
+
+The **scaling** option defines how images are sized and displayed within
+the selected viewport when the hanging protocol is applied. These
+settings ensure consistent zoom behavior and image fit across different
+studies and series.
+
+Users can configure the following:
+
+- **Zoom (%)**
+  Zoom applies a fixed zoom level to the image, allowing precise control
+  over magnification.
+
+- **Fit Type**
+  Determines how the image fits within the viewport:
+
+- **Viewport**---Fits the entire image within the viewport while
+  maintaining aspect ratio.
+
+- **Fill**---Fills the viewport completely, which may crop parts of the
+  image.
+
+- Use **scaling** settings to maintain a uniform viewing experience,
+  particularly when comparing multiple series, modalities, or
+  orientations.
+
+![mhp](./img/mhp_12.png#medium)
+
+#### c. Window Presets
+
+The **Window Presets** option allows you to define the window level
+(WL) and window width (WW) that will be applied to the **selected
+viewport** when the hanging protocol is loaded. This ensures
+consistent brightness and contrast settings across studies.
+
+  You can either:
+
+- Select **Custom** and enter **WL/WW values**, or
+
+- Select from **predefined imaging presets**, such as
+
+- Brain (70/30)
+
+- Bone (2000/500)
+
+- Abdomen (400/40)
+
+- Soft Tissue (350/50)
+
+- Liver (160/60)
+
+- Lung (1500/600)
+
+- Mediastinum (500/50)
+
+- Window presets help standardize image appearance and streamline review
+  across body regions and modalities.
+
+- The **Window Level Preset Sync** feature in OmegaAI ensures any
+  presets created using the **Window Level Tool** are automatically
+  available for use in Hanging Protocols.
+
+- Any hanging protocol saved with a specific **window level
+  configuration** will also be listed under the available window
+  presets, allowing for easy reuse and consistency across studies.
+
+![mhp](./img/mhp_13.png#medium)
+
+ #### d. Conditions
+
+- The **Conditions** option lets you set rules that decide **when a
+  viewport configuration should be applied**.
+
+- These rules are based on **DICOM tags**, so the system can match
+  images using specific metadata.
+
+  Each condition includes:
+
+- **DICOM Tag** -- The attribute you want to check (example: *0008,103e
+  -- Series Description*).
+
+- **Operator**---How the value should be compared:
+
+  - **Equal** -- Value must match exactly.
+
+  - **Not equal** --- Value must be different.
+
+  - **Includes**---Value must contain the text you enter.
+
+  - **Not include**---Value must *not* contain the text you enter.
+
+- **Value**---The text or number you want to match (example: *LUNG 1.25
+  MM*).
+
+ **Purpose:**\
+ Conditions help the system select the correct images for each viewport
+ based on modality, series description, body part, or any other DICOM
+ header tag.
+
+![mhp](./img/mhp_14.png#medium)
+
+#### e. Orientation
+
+ The **Orientation** option allows you to control how images are
+ flipped, rotated, or aligned within the **selected viewport** when the
+ hanging protocol is applied. These settings ensure that images always
+ appear in consistent and clinically appropriate orientation.
+
+ You can configure:
+
+- **Flip**---Flip the image horizontally or vertically.
+
+- **Rotate**---Rotate the image clockwise or counterclockwise.
+
+- **Align**---Align the image to a specific side of the viewport:
+
+  - **Top**
+
+  - **Bottom**
+
+  - **Right**
+
+  - **Left**
+
+ Orientation rules help standardize image presentation across different
+ studies and modalities.
+
+![mhp](./img/mhp_15.png#medium)
+
+## Hanging Protocol Stages Management
+
+Hanging Protocol Stages Management allows you to organize and control
+how images are displayed across multiple stages within a hanging
+protocol. Each stage represents a specific viewing layout or
+configuration tailored for different parts of the interpretation
+workflow---such as localizer views, core series review, or comparison
+studies.
+
+The **Hanging Protocol Stages Management** panel is located along the
+**bottom border of the Hanging Protocol Configuration screen**. It
+appears as a horizontal navigation bar below the **Viewport Setup** and
+**View Codes** sections.
+
+![mhp](./img/mhp_16.png#large)
+
+### Creating a Stage
+
+- Click the **"+" (Add Stage)** icon located at the bottom-left of the
+  stage bar.
+
+- A new stage will be added to your Hanging Protocol.
+
+- You can create **as many stages as required**, depending on your
+  workflow or multi-step reading process.
+
+- Each stage is represented by a **dot indicator** on the bar, and each
+  dot is labeled with a unique stage number.
+
+- Click on any dot indicator to **review, configure, or switch** between
+  stages.
+
+### Deleting a Stage
+
+- Click on the **stage indicator dot** for the stage you want to delete.
+
+- A **trash can icon** will appear next to the selected stage.
+
+- **Right-click and hold** the trash icon to delete the stage.
+
+- The stage will be removed, and the remaining stages will automatically
+  be renumbered.
+
+![mhp](./img/mhp_17.png#large)
+
+### Stage Navigation in the Image Viewer
+
+ Stage navigation in the OmegaAI Image Viewer allows you to move
+ between different stages defined within a Hanging Protocol. Each stage
+ represents a unique layout or configuration designed to guide the
+ reading workflow.
+
+- In a **multi-stage protocol**, use **Page Up** to move to the previous
+  stage and **Page Down** to move to the next stage.
+
+- In a **single-stage protocol**, Page Up/Page Down will load the **next
+  series** instead of switching stages.
+
+- **Empty stages** (stages with no matching images) are automatically
+  skipped during navigation.
+  
 
 ## Prior Matching Model Configuration in OmegaAI
 
-The Prior Matching Model Configuration in OmegaAI allows users to define
-how previous studies are matched to current studies based on a variety
-of criteria. This functionality is crucial for ensuring relevant
-historical data is accessible and appropriately aligned with new imaging
-studies for diagnostic assessments.
+The **Prior Matching Model Configuration** in OmegaAI enables you to
+define how previous imaging studies are matched to the current study
+based on specific criteria, ensuring accurate and relevant prior
+retrieval for diagnostic review.
 
 ### Accessing the Prior Matching Model
 
 To access the Prior Matching Model Configuration:
 
-1.  **Open the Configuration Drawer**: This drawer includes all the
-    prior matching models that you have created. The model currently in
-    use for the hanging protocol will be highlighted.
+1.  **Open the Configuration**
+ Drawer, which displays all created matching models, with the active
+ model for the current hanging protocol highlighted.
 
-2.  **Default Model Identification**: A default label indicates the
-    model that is set as the default for all hanging protocols.
+2.  **Identify the Default Model**\
+  Indicates which matching model is automatically applied across all
+  hanging protocols.
 
-### Creating and Editing Matching Models
+### Creating and Managing Matching Models
 
-#### Adding a New Model
+ **Adding a New Model**
 
-- **Create New Model**: Select **Matching Model** option from the
-  dropdown, then click the "+" icon at the top of the drawer to initiate
-  the creation of a new matching model.
+- **Create New Model**
+  Initiates the setup of a new matching model for prior study retrieval.
 
-  ![Mastering Hanging Protocols](./Images/14.png)
+![mhp](./img/mhp_20.png#large)
 
-  ![Mastering Hanging Protocols](./Images/15.png)
+![mhp](./img/mhp_21.png#small)
 
-#### Managing Existing Models
+- **Managing Existing Models**
 
-- **Edit or Delete**: Click on the three dots beside any existing model
-  to open options for editing, deleting, or setting it as the default
+ The **three-dot menu** beside each model provides quick management
+ options.
+
+- **Edit**---Modify the existing model configuration.
+
+- **Delete**---Remove the model permanently.
+
+- **Set as Default** -- Assign the model as the default selection for
+  future use.
+
+![mhp](./img/mhp_22.png#medium)
+
+### Configuration Options
+
+**a. Model Name**
+
+- **Purpose:** Defines a unique and identifiable name for the matching
   model.
+  Enter a clear and descriptive name in the **Query model name** field.
 
-  ![Mastering Hanging Protocols](./Images/16.png)
+**b. Body Part**
 
-#### Configuration Options
+- **Purpose:** Ensures prior studies are selected based on the relevant
+  anatomical region.
 
-Model Name
+- **Default:** Matches the body part of the current study.
 
-**Purpose**: Serves as the identifier for the matching model.
+- **Customization:** Specify one or more body parts to broaden or refine
+  the matching criteria.
 
-Body Part
+![mhp](./img/mhp_23.png#medium)
 
-**Default**: Automatically set to match the body part of the current
-study.
+**c. Study Date**
 
-**Customization**: Allows specification of one or more body parts for
-matching.
+- **Purpose:** Filters prior studies based on how recent they are
+  relative to the current exam.
+  Enter the desired range in months (up to **360 months**) to identify
+  relevant prior studies.
 
-Study Date
+![mhp](./img/mhp_24.png#medium)
 
-**Range**: Defines the timeframe within which to search for prior
-studies, up to a maximum of 360 months from the date of the current
-study.
+**d. Study Status**
 
-Study Status
+- **Purpose:** Includes prior studies based on their workflow or
+  completion status.
 
-**Default**: Set to match the status of the current study by default.
+- **Default:** Matches the status of the current study.
 
-**Custom Options**: Enables the inclusion of specific study statuses in
-the matching model.
+- **Custom Options:** Select one or more statuses, such as
+  **\"Completed\" or \"In Progress**\"
 
-Modality
+![mhp](./img/mhp_25.png#medium)
 
-**Default**: Set to match the modality of the current study by default.
+**e. Modality**
 
-**Multiple Modalities**: Allows selection of additional modalities to be
-included in the matching.
+- **Purpose:** Ensures matching is limited to relevant imaging
+  modalities.
 
-Laterality
+- **Default:** Matches the modality of the current study.
 
-**Default**: Matches the laterality of the current study by default.
+- **Customization:** Select one or more modalities to expand or restrict
+  matching.
 
-**Additional Options**: Permits the addition of more laterality options
-if required.
+![mhp](./img/mhp_26.png#medium)
 
-Procedure Code
+**f. Laterality**
 
-**Default**: Matches the procedure code of the current study by default.
+- **Purpose:** Matches prior studies based on the anatomical side being
+  scanned.
 
-**Expansion**: Allows adding more procedure codes to the matching model.
+- **Default:** Matches the laterality of the current study.
 
-Study Description
+- **Options:** **Left**, **Right**, **Both**, **Unpaired**.
 
-**Functionality**: A text search field that enables keyword searches
-within study descriptions.
+![mhp](./img/mhp_27.png#medium)
 
-**Criteria Options**: Includes the ability to specify text using options
-like includes, not includes, equals, or not equal.
+**g. Procedure Code**
 
-#### Finalizing the Model
+- **Purpose:** Matches prior studies using standardized procedure codes.
 
-Once you have configured the desired settings:
+- **Default:** Uses the current study's procedure code.
 
-- **Save Changes**: Click **Save** to apply and save the modifications
-  or the creation of a new matching model.
+- **Expansion:** Select additional procedure codes to ensure inclusion
+  of relevant exams.
 
-## Publishing Hanging Protocols in OmegaAI
+![mhp](./img/mhp_28.png#medium)
 
-Publishing hanging protocols in OmegaAI involves finalizing the
-configurations and settings of a protocol to ensure it is tailored for
-specific clinical needs and then making it available for use within an
-organization or for individual users. This process is crucial for the
-efficient application of standardized viewing settings across different
-studies and modalities.
+**h. Study Description**
 
-### Steps for Publishing Hanging Protocols
+- **Purpose:** Allows filtering of prior studies based on keywords or
+  phrases within the study description.\
+  Supports text-based conditions such **as \"includes,\" \"does not
+  include**,**\" \"equals,\" and \"does not equal**.\"
 
-#### Saving the Protocol
+![mhp](./img/mhp_29.png#medium)
 
-1.  **Finalize Configurations**: Ensure all desired changes and settings
-    are properly adjusted in your hanging protocol.
+**Saving the Matching Model**
 
-2.  **Save the Protocol**: Click the **+** icon and then "Save" to save
-    your configured hanging protocol.
+- Review all configured criteria for accuracy.
 
-    ![Mastering Hanging Protocols](./Images/17.png)
+- Click **Save** to store the newly created or updated matching model.
 
-#### Setting Protocol Details
+- The saved model will appear in the list and can be assigned to
+  viewports during Hanging Protocol configuration.
 
-When saving a hanging protocol, you will need to provide specific
-details to ensure the protocol is appropriately applied and accessible:
+## Managing organizations in Hanging Protocols.
 
-- **Protocol Name**: Enter a unique name for the hanging protocol to
-  easily identify it later.
+- When saving a Hanging Protocol, organizations determine **where** the
+  protocol will be available and **who** can use it. OmegaAI supports
+  flexible organization selection using ancestor and descendant
+  structures.
 
-- **Organization Selection**: Choose the specific organization within
-  which the hanging protocol will be used. This determines the scope of
-  accessibility.
+- After configuring the desired layout, click the **Star** button in the
+  top-right corner to open the **Save Protocol** dialog.
 
-- **Modality**: Define which modalities (e.g., MRI, CT, X-ray) the
-  hanging protocol should be applied to. This ensures that the protocol
-  is only used with relevant imaging studies.
+- Under the **Organization** dropdown, you can assign the protocol to
+  one or more organizational levels:
 
-- **Procedure Code**: Specify the procedure codes that this hanging
-  protocol is designed for. This narrows down its application to
-  specific types of studies.
+![mhp](./img/mhp_18.png#medium)
 
-- **Body Part**: Indicate which body parts are relevant for this hanging
-  protocol, ensuring it is triggered appropriately based on the images
-  being viewed.
+### Organization Selection
 
-- **Laterality**: Determine if laterality (left, right, bilateral)
-  should be considered in the application of the hanging protocol.
+Under the **Organization** dropdown, you can assign the protocol to one
+or more organizational levels:
 
-  ![Mastering Hanging Protocols](./Images/18.png)
+You can select organizations in different ways based on your
+requirements:
 
-#### Accessibility and Usage Level
+- **Selecting an Ancestor Organization:**
+  Selecting an Ancestor (e.g., *Ancestor A*) automatically includes all
+  its Descendants (e.g., *Descendant 1, 2, 3*).
+  *Example:* Choosing *Ancestor B* will auto-select *Descendant X, Y,
+  Z.*
 
-- **Level Selection**: Choose between "Site" or "User" level for
-  protocol accessibility:
+- **Selecting Mixed Organizations:**
+  Selecting one ancestor (e.g., *Ancestor A*) and individual Descendants
+  from another (e.g., *Descendant X, Y* under *Ancestor B*) will include
+  all Descendants under *Ancestor A* plus the chosen Descendants from
+  *Ancestor B.*
 
-  - **Site Level**: The hanging protocol will be available to all users
-    within the selected organization, allowing for wide usage and
-    modifications.
+- **Selecting Only Descendants:**
+  You can manually select individual Descendant Organizations (e.g.,
+  *Descendant 2, 3* from *Ancestor A* and *Descendant X, Y* from
+  *Ancestor B*).
+  When a Descendant is selected, its peer Descendants will also be
+  displayed for multi-selection.
 
-  - **User Level**: The protocol will be accessible only to your user
-    account, making it private and tailored to your specific needs.
+- **Selecting Only Ancestors:**
+  To select only an Ancestor Organization without its Descendants, check
+  the Ancestor box and deselect its Descendants as needed.
 
-#### Setting as Default
-
-- **Default Protocol**: You have the option to set this hanging protocol
-  as the default for the specified modality. This means it will
-  automatically be applied unless another specific protocol is chosen.
+**Default Behavior:**
+If no organization is selected, the **organization of the study
+currently being viewed** is automatically applied by default.
+ 
+ ![mhp](./img/mhp_19.png#medium)

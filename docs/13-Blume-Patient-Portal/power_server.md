@@ -1,6 +1,7 @@
 ---
 sidebar_position: 6
 title: Power Server - Blume Integration
+unlisted: true
 ---
 # Power Server Blume Integration
 
@@ -17,7 +18,7 @@ accurately created and configured.
 
 ## Creating Healthcare Resources in PowerServer
 
-## Create Organization in OmegaAI and Powerserver
+### Create Organization in OmegaAI and Powerserver
 
  **PowerServer Login**
 
@@ -208,7 +209,7 @@ accurately created and configured.
 
 3.  Edit Healthcare Services:
 
-- Click Edit Healthcare Services.
+    - Click Edit Healthcare Services.
 
 ![PS8](./Images/PS8.png)
 
@@ -216,16 +217,66 @@ accurately created and configured.
 
 ![PS9](./Images/PS9.png)
 
- 5.Enter Resource Details:
+5.Enter Resource Details:
 
-- Provide the required information, such as resource name, modality,
-  default duration, working hours, etc.
+    - Provide the required information, such as resource name, modality,
+      default duration, working hours, etc.
 
-6.Assign the resource to specific departments or users if required.
+6.Assign the resource to specific departments or users if required.  
 
-7. Save and Verify: save the new resource entry and verify its accuracy in the system.
+7. Save and Verify: save the new resource entry and verify its accuracy in the system.  
 
 ![PS10](./Images/PS10.png)
+
+## Enabling Form Visibility on PowerServer
+
+### 1\. Purpose
+This configuration ensures that forms and uploaded documents submitted from **Blume** or **OmegaAI (OAI)** are visible in **PowerServer**.\
+If this setup is not completed, users will still be able to submit forms in Blume or OAI, but the submitted data will not appear under the patient record in PowerServer.
+
+### 2\. Procedure
+#### Step 1: Access Mirth Connect Manager
+1. Log in to **Mirth Connect Manager**.
+1. Locate the channel named:\
+   **Outbound FHIRJSON to HL7 XML – ORU R01 FHIRJSON to HL7 XML to 6.0**
+1. From the left-hand panel, select **Transformer** to open the configuration view.
+
+#### Step 2: Enable the Required Document Types
+1. In the Transformer section, find the parameter **allowedOutputDocumentTypes**.
+1. By default, only two document types are enabled:
+   1. **56444-3**
+   1. **55188-7**
+1. To ensure all relevant forms and documents from Blume or OAI can be transferred to PowerServer:
+   1. Verify that all required document type codes are listed.
+   1. Add any missing document type codes according to your organization’s configuration needs.
+1. Once updated, click **Save** to apply the changes.
+
+**Important:**\
+If the required document type codes are not included, submitted forms or documents will not appear in PowerServer, even though the patient successfully completes and submits them in Blume.
+
+#### Step 3: Save and Apply Configuration
+1. After saving, **redeploy** or **restart** the channel to activate the new configuration.
+1. Confirm that the channel status displays as **Active** and running without errors.
+
+### 3\. Verification
+After completing the configuration:
+
+1. Add or update a patient record in PowerServer.
+1. Schedule an appointment for the same patient.
+1. Confirm that the patient receives a **Form Notification** in Blume.
+1. Access the form through Blume, fill it out, and submit it.
+1. Return to PowerServer and verify that:
+   1. The submitted form appears under the patient’s record.
+   1. The **Mirth Connect Manager** shows successful message processing without channel errors.
+
+**Tip:**\
+You can review message logs in Mirth Connect Manager to ensure form data is transmitting correctly from Blume or OAI to PowerServer.
+
+### 4\. Result
+Once the configuration is completed:
+
+- All forms and uploaded documents submitted through **Blume** or **OmegaAI** will automatically appear under the correct patient record in **PowerServer**.
+- This setup enables seamless synchronization between PowerServer and the connected systems.
 
 
 ## Form Configuration in OmegaAI
@@ -234,51 +285,51 @@ accurately created and configured.
 
 1.  Start Form Creation:
 
-- Click the 'Create' icon or upload a fillable PDF form.
+    - Click the 'Create' icon or upload a fillable PDF form.
 
-- This action opens the form editor.
+    - This action opens the form editor.
 
-- Supported form types: 1. Normal Form 2. PDF Form
+    - Supported form types: 1. Normal Form 2. PDF Form
 
 2.  Add Questions:
 
-- In the form editor, click the 'Add Question' button.
+    - In the form editor, click the 'Add Question' button.
 
-- Choose from various question types:
+    - Choose from various question types:
 
-  1.  Short Answer
+                      1.  Short Answer
 
-  2.  Multiple Choice
+                      2.  Multiple Choice
 
-  3.  Checkboxes
+                      3.  Checkboxes
 
 3.  Configure Question Settings:
 
-- Customize settings for each question:
+    - Customize settings for each question:
 
-  1.  Mark as mandatory (if required).
+                      1.  Mark as mandatory (if required).
 
-  2.  Add subcategories.
+                      2.  Add subcategories.
 
-  3.  Define answer options.
+                      3.  Define answer options.
 
-- Ensure all necessary information is collected.
+    - Ensure all necessary information is collected.
 
 4.  Preview and Publish:
 
-- Preview the form to confirm it meets your requirements.
+    - Preview the form to confirm it meets your requirements.
 
-- If everything is satisfactory, click 'Publish' to make the form
-  available for patients.
+    - If everything is satisfactory, click 'Publish' to make the form
+      available for patients.
 
 
  **Accessing Blume Forms**
 
-- Log in to your OmegaAI account.
+    - Log in to your OmegaAI account.
 
-- Navigate to the 'Apps' section.
+    - Navigate to the 'Apps' section.
 
-- Click on the 'Settings' icon within the Blume application.
+    - Click on the 'Settings' icon within the Blume application.
 
 
 **Managing Existing Blume Forms**
@@ -289,11 +340,11 @@ accurately created and configured.
 
 3.  Use the three dots menu next to the form to:
 
-- View
+    - View
 
-- Edit
+    - Edit
 
-- Unpublish as needed.
+    - Unpublish as needed.
 
 **Submitted Forms**
 
@@ -317,40 +368,46 @@ accurately created and configured.
 
 ![PS12](./Images/PS12.png)
 
-3.  Publish Form window appears.
+5.  Publish Form window appears.
 
-4.  Select a template Registration Form or Clinical Form from the
+6.  Select a template Registration Form or Clinical Form from the
     drop-down.
 
 ![PS13](./Images/PS13.png)
 
-5.  Add relevant fields (e.g., patient information, medical history).
+7.  Add relevant fields (e.g., patient information, medical history).
 
-![PS14](./Images/PS14.png)
+![Asset](./Images/Asset21_1.png)
 
-6.  Customize field properties (mandatory, optional, etc.).
+![Asset](./Images/Asset26_6.png)
+
+8.  Customize field properties (mandatory, optional, etc.).
 
 ![PS15](./Images/PS15.png)
 
-7.  Click on **PUBLISH** button in top right corner to publish the form.
+9.  Click on **PUBLISH** button in top right corner to publish the form.
 
-8.  Click the *Publish* button in the top right corner to publish the
+10.  Click the *Publish* button in the top right corner to publish the
     form.
 
-![PS16](./Images/PS16.png)
+![Asset](./Images/Asset24_4.png)  
 
-8.  Click on three dots and select the *Unpublish* option to discard the
+![Asset](./Images/Asset25_5.png)   
 
-9.  Click on three dots and select the **Unpublish** option to discard the
+11.  Click on three dots and select the *Unpublish* option to discard the
+
+12.  Click on three dots and select the **Unpublish** option to discard the
 main form.
 
 ![PS17](./Images/PS17.png)
 
 ![PS18](./Images/PS18.png)
 
-![PS19](./Images/PS19.png)
 
-![PS20](./Images/PS20.png)
+![Asset](./Images/Asset22_2.png)  
+
+
+![Asset](./Images/Asset23_3.png) 
 
 
 ## PowerServer Homepage
@@ -379,26 +436,26 @@ main form.
 
 ![PS22](./Images/PS22.png)
 
-3.  Enter patient demographic details (name, date of birth, contact
+4.  Enter patient demographic details (name, date of birth, contact
     information).
 
-4.  Upload any relevant documents or health records.
+5.  Upload any relevant documents or health records.
 
-5.  Save the patient profile.
+6.  Save the patient profile.
 
 ![PS23](./Images/PS23.png)
 
 
 **Book Appointment**
 
-  1.  ***Creating a New Appointment***
+  1.  **Creating a New Appointment**
 
 The integration facilitates smooth management and confirmation of
 appointments. Once an appointment is confirmed, the details, along with
 any forms, are sent to the document viewer, ensuring that all
 information is easily accessible for review.
 
-2.  ***Initial Setup***
+  2.  **Initial Setup**
 
 First, access the Power Server portal and ensure you are logged in with
 the appropriate credentials. To initiate a new appointment, navigate to
@@ -419,7 +476,7 @@ all facilities in the scheduler.
 
 ![PS24](./Images/PS24.png)
 
-Method 1: Right-click on Open Time Slot
+**_Method 1_**: Right-click on Open Time Slot
 
 The available resources and their schedules for a facility are set in
 the Resources section under Settings -> Users and Facilities -> tab.
@@ -430,7 +487,7 @@ the Resources section under Settings -> Users and Facilities -> tab.
 
 4. Click Ok.
 
-**Method 2**:
+**_Method 2_**:
 
 Double-clicking the slot in Scheduler.
 
@@ -444,7 +501,7 @@ and then the steps can be followed as explained above.
 Type durations for appointments scheduled with less than 15 minutes time
 slot.)
 
-**Method 3**:
+**_Method 3_**:
 
 Dragging appropriate resources into Scheduler
 
@@ -459,7 +516,7 @@ study's scheduled modality. The study should be at the status of ORDERED
 and time, the system will automatically update the Study date and time
 in the Study Info screen.
 
-**Method 4:**
+**_Method 4_**:
 
 Create an Appointment option
 
@@ -490,8 +547,8 @@ Confirmed to Scheduled.
 2.  Double-click on the respective date and time to create a new
     appointment.
 
-*Refer to the other methods of creating appointments as explained
-above.*
+_Refer to the other methods of creating appointments as explained
+above._
 
 ![PS28](./Images/PS28.png)
 
@@ -614,6 +671,7 @@ above.*
 
 ![PS41](./Images/PS41.png)
 
+**Note**: The uploaded forms will be visible in the patient record only when the required Power Server configuration is in place.
 
 ## Share the Study on the Blume Portal
 
@@ -663,14 +721,139 @@ view the shared study.)
 
 ## Pull Prior on **PowerServer.**
 
-1.  Use the Pull Prior function to retrieve previous records or
-    images.
+The **Pull Prior** feature on PowerServer enables automated retrieval of prior studies (DICOMs) into Blume, enhancing continuity of care and clinical efficiency. However, the behaviour of this feature varies depending on the type of organization setup within OmegaAI.
 
-2.  Filter based on date or type of prior data (e.g., imaging reports,
-    lab results).
+### Applicability
 
-3.  Review the pulled information and integrate it into the current
-    patient workflow.
+_This workflow applies exclusively to organizations configured as _Blume-only Organizations_ within OmegaAI._
+
+### Organization Types in OmegaAI
+
+OmegaAI supports two types of organizational configurations:
+
+1. **Standard Organizations**
+   1. Created and managed directly within OmegaAI.
+   1. Studies uploaded to PowerServer are automatically visible in Blume without additional conditions.
+1. **Blume-only Organizations**
+   1. Created through a distinct provisioning process (via internal infrastructure).
+   2. These organizations follow a specialized flow for study ingestion and user validation.
+
+### Pull Prior Workflow for Blume-only Organizations
+
+For Blume-only organizations, the Pull Prior mechanism includes an additional validation layer:
+
+- When a study is uploaded to PowerServer:
+  - If the **patient/user account already exists in Blume**, the study is ingested and displayed as expected.
+  - If the **user account does not exist in Blume**, the study is **automatically moved to the archive**.
+- Once the user creates an account in Blume using the **same email address** associated with the study, the system will:
+  - **Automatically retrieve the archived study** using the Pull Prior automation.
+  - Display the study in the Blume worklist.
+
+Example: A study is uploaded for a specific user email id under a Blume-only org. If that user has not yet registered on Blume, the study is archived. Once the same user signs up using the same email, the study is pulled back into Blume automatically.
+
+### Enhanced Pull Prior Configuration
+
+The Pull Prior feature also supports advanced configuration for retrieving prior studies across multiple organizations and PACS stations:
+
+- **Organization Selection**: Users can select from all associated organizations, including child and affiliated entities.
+- **PACS Station Selection**: After selecting organizations, users can choose from linked PACS stations.
+- **Prior Study Limit**: Users can specify how many recent prior studies to retrieve (default: 5, maximum: 10).
+- **Scheduling Options**:
+  - Default: Prefetch priors at any time.
+  - Optional: Restrict prefetching to specific time ranges for operational efficiency.
+
+This intelligent automation ensures that patient data is only surfaced when the user is registered, maintaining both **data integrity** and **privacy compliance** within Blume-only environments.
+
+### Configuration Steps for Pull Prior on PowerServer
+
+The **Pull Prior** action in PowerServer is designed to automatically retrieve relevant prior studies once a patient is successfully matched with a Blume user. This is particularly applicable to **Blume-only organizations**, such as @rs-blume-test.
+
+#### Trigger Condition
+
+**Trigger:** _Patient is successfully matched with the Blume user._
+
+This ensures that prior studies are only fetched once the user account exists in Blume, maintaining data integrity and compliance.
+
+#### 1. Add the “Pull Prior” Action
+
+- In the WFA rule editor, select the action: **Pull Prior**.
+- This action fetches prior studies associated with the same patient from a specified organization and PACS station.
+
+![Bpullprior1](./Images/Bpullprior1.png)
+
+#### 2. Select Organization and PACS Station
+
+- Use **Meta Search** to select:
+  - **Organization** (e.g., @rs-blume-test)
+  - **PACS Station** (e.g., _Radish_)
+- You may select **multiple PACS stations** simultaneously.
+
+![Bpullprior2](./Images/Bpullprior2.png)
+
+#### 3. Choose a Prior Matching Model
+
+- Click the **Prior Matching Model** dropdown.
+- A list of available models (e.g., _1 Year_, _CT Chest_) will appear on the left panel.
+
+![Bpullprior3](./Images/Bpullprior3.png)
+
+#### 4. Create or Customize a Prior Matching Model
+
+To define clinical relevance, create or modify a model using the following filters:
+
+|**Filter Type**|**Description**|
+| :- | :- |
+|**Body Part**|Select anatomical regions (e.g., Abdomen, Brain, Adrenal Gland).|
+|**Study Date**|Filter by time range (e.g., last 6 or 12 months).|
+|**Modality**|Choose imaging modalities (e.g., CT, CR, MRI).|
+|**Study Status**|Filter by status (e.g., Verified, Completed).|
+|**Study Description**|Add keywords (e.g., “Follow-up”, “Cancer Screening”).|
+
+- Customize each filter as needed.
+- Rename the model descriptively (e.g., _“CT Chest Priors Last 6M”_, _“MRI Brain Same Patient”_).
+- Click **Save** to store or **Cancel** to discard changes.
+
+**Note:** The Prior Matching Model defines the constraints for fetching clinically relevant prior studies.
+
+![Bpullprior4](./Images/Bpullprior4.png)
+
+![Bpullprior5](./Images/Bpullprior5.png)
+
+![Bpullprior6](./Images/Bpullprior6.png)
+
+![Bpullprior7](./Images/Bpullprior7.png)
+
+#### 5. Set Prefetching Schedule
+
+- **Default Option**: _Prefetch relevant priors at any time_ (may increase system load).
+- **Recommended Option**: _Execute prefetching only in the time range from:_
+  - Define a **start and end time** (e.g., _6:00 AM – 10:00 PM_).
+  - Even if the rule is triggered outside this window, execution will occur only during the defined hours.
+
+![Bpullprior8](./Images/Bpullprior8.png)
+
+![Bpullprior9](./Images/Bpullprior9.png)
+
+#### 6. Set Maximum Number of Prior Studies
+
+- Field: **Maximum number of most recent prior studies**
+- **Default**: 10
+- Leave blank to pull the latest 10 studies, or enter a custom number (e.g., 5).
+
+**Example**: If a patient has 30 prior studies and the limit is set to 5, only the **most recent 5** will be retrieved.
+
+![Bpullprior10](./Images/Bpullprior10.png)
+
+### Example Use Case
+
+A **CT Brain** study is marked as _Verified_. The WFA rule executes the **Pull Prior** action after the patient is matched with a Blume user. The system:
+
+- Searches the **@rs-blume-test** organization.
+- Pulls from the **Radish** PACS station.
+- Applies the **“CT Brain – Last 12M”** matching model.
+- Retrieves the **latest 5 CT Brain studies** from the past year.
+- Makes them available in **OmegaAI** for radiologist review.
+
 
 ## Self-Scheduling in Blume and Confirming Appointments on PowerServer.
 

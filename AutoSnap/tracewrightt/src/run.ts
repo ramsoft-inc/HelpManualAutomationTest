@@ -1,13 +1,30 @@
 import { Page } from "@playwright/test";
 import chalk from "chalk";
+import { buildBlockedSnippetMessage, getFailureSignature } from "./llm_providers/base_provider.js";
 import { GenerateCodeResponse } from "./llm_request.js";
 import { clearElementHighlights } from "./page_helpers.js";
 import { cleanStepFiles, generateStep, performStep } from "./step.js";
 import { TracewrightOptions } from "./types.js";
+import { POMContextManager } from "./pom_context_manager.js";
 
 export const run = async (page: Page, options: TracewrightOptions) => {
   const { script, alternateDoneString, beforeEach, aiUtils, currentFile } = options;
   const doneString = alternateDoneString || "done";
+
+  let preflightInfo: { repoRoot: string; poManagerPath: string };
+  try {
+    preflightInfo = await POMContextManager.preflightPOManager(process.cwd());
+    console.info(chalk.green("✅ POManager preflight passed"));
+    console.info(chalk.gray(`repoRoot: ${preflightInfo.repoRoot}`));
+    console.info(chalk.gray(`poManagerPath: ${preflightInfo.poManagerPath}`));
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    console.error(chalk.red("❌ Strict mode: POManager preflight failed."));
+    console.error(chalk.red(details));
+    throw error;
+  }
+
+  const pomManager = await POMContextManager.create(page);
 
   let stepCounter = 1;
   let inputTokenTotalCount = 0;
@@ -17,6 +34,8 @@ export const run = async (page: Page, options: TracewrightOptions) => {
   let currentStepErroredCode: string[] = [];
   let previousStepThinking: string = ""; // Track previous step's thinking
   const previousStepsThinking: string[] = []; // Store all steps' thinking for logging
+  const failedCodeRegistry = new Map<string, string>();
+  const repeatGuardAttempts = new Map<string, number>();
 
   cleanStepFiles();
 
@@ -42,13 +61,20 @@ export const run = async (page: Page, options: TracewrightOptions) => {
     }
 
     console.info("generating code...");
+
+    const availableActions = await pomManager.getAvailableActions(page.url(), script);
+    if (availableActions) {
+      console.info(chalk.cyan("✨ Injecting filtered POM actions for context..."));
+    }
+
     currentStepCodeResponse = await generateStep(
       page,
       script,
       stepCounter,
       allExecutedStepCode.join("\n"),
       currentStepErroredCode.join("\n\n"),
-      previousStepThinking
+      previousStepThinking,
+      availableActions
     );
     console.info(chalk.gray(currentStepCodeResponse.code));
 
@@ -69,16 +95,36 @@ export const run = async (page: Page, options: TracewrightOptions) => {
       break;
     }
 
-    const stepErrorStack = await performStep(page, currentStepCodeResponse, aiUtils);
+    const currentCodeSignature = getFailureSignature(currentStepCodeResponse.code);
+    if (failedCodeRegistry.has(currentCodeSignature)) {
+      const repeatAttempts = (repeatGuardAttempts.get(currentCodeSignature) ?? 0) + 1;
+      repeatGuardAttempts.set(currentCodeSignature, repeatAttempts);
+
+      const blockedSnippet = failedCodeRegistry.get(currentCodeSignature) ?? currentStepCodeResponse.code;
+      const blockedMessage = buildBlockedSnippetMessage(blockedSnippet);
+      currentStepErroredCode.push(blockedMessage);
+      console.warn(chalk.yellow("⚠️ Auto-recovery blocked a repeated failing snippet; requesting regeneration."));
+
+      if (repeatAttempts >= 2) {
+        throw new Error(
+          "Strict mode abort: model repeated a blocked failing snippet multiple times. Fix POM/action mapping before retrying."
+        );
+      }
+      continue;
+    }
+
+    const stepErrorStack = await performStep(page, currentStepCodeResponse, aiUtils, pomManager.poManager);
     if (stepErrorStack) {
       console.error(chalk.red("error executing step"), stepCounter);
       console.error(stepErrorStack);
+      failedCodeRegistry.set(currentCodeSignature, currentStepCodeResponse.code);
       currentStepErroredCode.push(stepErrorStack);
       continue;
     }
 
     allExecutedStepCode.push(currentStepCodeResponse.code);
     currentStepErroredCode = [];
+    repeatGuardAttempts.clear();
     
     // Store the current step's thinking for the next step
     previousStepThinking = currentStepCodeResponse.thinking || "";
@@ -102,35 +148,6 @@ export const run = async (page: Page, options: TracewrightOptions) => {
   console.info(chalk.green("Average Tokens Per Step:\t"), chalk.yellow(Math.round((inputTokenTotalCount + outputTokenTotalCount) / stepCounter).toLocaleString()));
   console.info(chalk.green("==============================================="));
   
-  // Display comprehensive token usage statistics at the end
-  try {
-    // Write detailed token usage statistics to file
-    const tokenLogPath = 'token_usage_summary.txt';
-    const thinkingLogPath = 'ai_thinking_log.txt';
-    
-    // Create a comprehensive token usage summary
-    const timestamp = new Date().toISOString();
-    const tokenSummary = [
-      `\n===== Comprehensive Token Usage Summary (${timestamp}) =====`,
-      `Script completed with ${stepCounter} steps`,
-      `Input tokens: ${inputTokenTotalCount}`,
-      `Output tokens: ${outputTokenTotalCount}`,
-      `Total tokens: ${inputTokenTotalCount + outputTokenTotalCount}`,
-      `Average tokens per step: ${Math.round((inputTokenTotalCount + outputTokenTotalCount) / stepCounter)}`,
-      '====================================================='
-    ].join('\n');
-    
-    // Write the summary to file
-    const fs = await import('fs');
-    fs.appendFileSync(tokenLogPath, tokenSummary + '\n\n');
-    
-    // Don't write thinking logs at the end, they're now written in real-time
-    console.info(chalk.blue("*** AI thinking logs are written in real-time to:"), thinkingLogPath);
-    
-    console.info(chalk.blue("*** Token usage statistics written to:"), tokenLogPath);
-  } catch (e) {
-    console.warn(chalk.yellow("Could not write token usage statistics:"), e instanceof Error ? e.message : String(e));
-  }
 
 };
 

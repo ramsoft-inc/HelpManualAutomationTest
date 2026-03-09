@@ -15,7 +15,7 @@ concurrency:
 jobs:
   run-enhanced-flow:
     if: >
-      ${{ github.event.issue.pull_request != null && contains(github.event.comment.body, 'node test-enhanced-flow.js') }}
+      ${{ github.event.issue.pull_request != null && (contains(github.event.comment.body, 'node test-enhanced-flow.mjs') || contains(github.event.comment.body, '/run-enhanced-flow') || contains(github.event.comment.body, 'autosnap')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -82,16 +82,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt || echo "Python requirements install failed, script has fallbacks"
 
-      - name: Create CI clone of test-enhanced-flow.js and patch paths
+      - name: Sync POM cache (optional)
         working-directory: AutoSnap
-        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          GITHUB_PRIVATE_KEY: ${{ secrets.GITHUB_PRIVATE_KEY }}
+          GITHUB_INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
         run: |
-          cp test-enhanced-flow.js test-enhanced-flow-ci.js
-          # Patch hardcoded Windows fallback path(s) to repo-relative path for CI
-          sed -i "s#C:/Users/Rohith\.MR/test/HelpManualAutomationTest/docs/1-Getting-Started/addorg\.md#docs/1-Getting-Started/addorg.md#g" test-enhanced-flow-ci.js
-          # Ensure CI runs headless Chromium and not Chrome channel
-          sed -i "s/headless: false/headless: true/g" test-enhanced-flow-ci.js
-          sed -i "/channel: 'chrome',/d" test-enhanced-flow-ci.js
+          yarn sync-pom || echo "POM sync skipped or failed (flow may use fallback)"
+        continue-on-error: true
 
       - name: Ensure Azure env defaults
         shell: bash
@@ -107,50 +107,136 @@ jobs:
         with:
           script: |
             const body = context.payload.comment.body || '';
-            const re = /node\s+test-enhanced-flow\.js(?:\s+([\s\S]*))?/i; // capture everything after the command on the first line
-            const m = body.match(re);
-            const args = m && m[1] ? m[1].trim() : '';
+            // Handle: node test-enhanced-flow.mjs, /run-enhanced-flow, autosnap (args parsed from comment)
+            const reNodeMjs = /node\s+test-enhanced-flow\.mjs(?:\s+([\s\S]*))?/i;
+            const reRun = /\/run-enhanced-flow(?:\s+([\s\S]*))?/i;
+            const reAutosnap = /autosnap(?:\s+([\s\S]*))?/i;
+            
+            let args = '';
+            let m = body.match(reNodeMjs);
+            if (m && m[1]) {
+                args = m[1].trim();
+            } else {
+                m = body.match(reRun);
+                if (m && m[1]) {
+                    args = m[1].trim();
+                } else {
+                    m = body.match(reAutosnap);
+                    if (m && m[1]) {
+                        args = m[1].trim();
+                    }
+                }
+            }
+            
+            // Handle --scenario parameter by converting it to --mode
+            if (args.includes('--scenario')) {
+                args = args.replace(/--scenario\s+(\S+)/g, '--mode $1');
+            }
+            
             core.setOutput('args', args);
 
+      - name: Verify enhanced flow script
+        shell: bash
+        run: |
+          SCRIPT=AutoSnap/test-enhanced-flow.mjs
+          if [ ! -f "$SCRIPT" ]; then
+            echo "::error::Missing $SCRIPT"
+            exit 1
+          fi
+          echo "Using $SCRIPT (CI env will force headless Chromium, no Chrome channel)"
+
       - name: Run enhanced flow
+        id: run_flow
         shell: bash
         env:
+          GITHUB_ACTIONS: "true"
+          CI: "true"
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           LLM_PROVIDER: gemini
           DISABLE_IMG_AS: "true"
+          LOGIN_EMAIL: ${{ secrets.LOGIN_EMAIL }}
+          LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+          APPLICATION_URL: ${{ secrets.APPLICATION_URL }}
         run: |
           args="${{ steps.parse.outputs.args }}"
-          if [ -n "$args" ]; then
-            echo "Running: node AutoSnap/test-enhanced-flow-ci.js $args"
-            node AutoSnap/test-enhanced-flow-ci.js $args 2>&1 | tee enhanced-flow-ci-run.log
-          else
-            echo "No args provided in comment. Running default: node AutoSnap/test-enhanced-flow-ci.js"
-            node AutoSnap/test-enhanced-flow-ci.js 2>&1 | tee enhanced-flow-ci-run.log
+          # When no args: use a default so the flow does not hang on interactive prompts in CI
+          if [ -z "$args" ]; then
+            args="--mode ui_change --file docs/2-Getting-Started/StudyLocking.md"
+            echo "No args provided in comment. Using CI default: $args"
           fi
+          echo "Running: node AutoSnap/test-enhanced-flow.mjs $args"
+          node AutoSnap/test-enhanced-flow.mjs $args 2>&1 | tee enhanced-flow-ci-run.log
+          flow_exit=${PIPESTATUS[0]}
+          echo "flow_exit_code=$flow_exit" >> $GITHUB_OUTPUT
+          
+          # Check for special comment markers in the log (language validation failure or API overload)
+          if grep -q "--- GITHUB_COMMENT_START ---" enhanced-flow-ci-run.log; then
+            echo "Found special comment markers"
+            # Extract the comment between the markers
+            SPECIAL_COMMENT=$(awk '/GITHUB_COMMENT_START/{flag=1;next}/GITHUB_COMMENT_END/{flag=0}flag' enhanced-flow-ci-run.log 2>/dev/null || echo "")
+            
+            # Check if we actually got content
+            if [ -z "$SPECIAL_COMMENT" ]; then
+              echo "No content found between markers, treating as no special comment"
+              echo "has_special_comment=false" >> $GITHUB_OUTPUT
+              echo "error_type=none" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            
+            # Check if it's a language validation error, translation mode error, or API overload
+            if echo "$SPECIAL_COMMENT" | grep -q "LANGUAGE SELECTION FAILED"; then
+              echo "Found language validation failure comment"
+              ERROR_TYPE="language_validation"
+            elif echo "$SPECIAL_COMMENT" | grep -q "TRANSLATION MODE ERROR"; then
+              echo "Found translation mode error comment"
+              ERROR_TYPE="translation_mode_error"
+            elif echo "$SPECIAL_COMMENT" | grep -q "API OVERLOAD"; then
+              echo "Found API overload comment"
+              ERROR_TYPE="api_overload"
+            else
+              echo "Found generic error comment"
+              ERROR_TYPE="generic_error"
+            fi
+            
+            # Set output variables with the extracted comment
+            echo "has_special_comment=true" >> $GITHUB_OUTPUT
+            echo "error_type=$ERROR_TYPE" >> $GITHUB_OUTPUT
+            echo "special_comment<<EOF" >> $GITHUB_OUTPUT
+            echo "$SPECIAL_COMMENT" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "No special comments detected"
+            echo "has_special_comment=false" >> $GITHUB_OUTPUT
+            echo "error_type=none" >> $GITHUB_OUTPUT
+          fi
+          
+          # Fail the step if the flow exited with error (so job status reflects failure)
+          exit $flow_exit
 
-      - name: Upload logs and outputs
+      - name: Upload logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: enhanced-flow-artifacts
+          name: enhanced-flow-logs
           path: |
             enhanced-flow-ci-run.log
             enhanced-flow-log.txt
-            changed-files-*.txt
-            changed-files-screenshots.txt
-            token_usage_summary.txt
-            AutoSnap/enhanced-flow-log.txt
-            AutoSnap/token_usage_summary.txt
-            AutoSnap/changed-files-*.txt
-            AutoSnap/api_logs/
-            AutoSnap/screenshots/
-            docs/**/img_as/**
-            spanish/**/img_as/**
-            docs/**/img/**
-            spanish/**/img/**
           if-no-files-found: ignore
+          
+      - name: Log errors but continue with commit
+        if: steps.run_flow.outputs.has_special_comment == 'true' && (steps.run_flow.outputs.error_type == 'language_validation' || steps.run_flow.outputs.error_type == 'translation_mode_error' || steps.run_flow.outputs.error_type == 'generic_error')
+        shell: bash
+        run: |
+          if [[ "${{ steps.run_flow.outputs.error_type }}" == "language_validation" ]]; then
+            echo "::warning::Language validation issue detected. The language code does not match any available option in the website."
+          elif [[ "${{ steps.run_flow.outputs.error_type }}" == "translation_mode_error" ]]; then
+            echo "::warning::Translation mode issue detected. English was specified as the target language in translation mode."
+          elif [[ "${{ steps.run_flow.outputs.error_type }}" == "generic_error" ]]; then
+            echo "::warning::An issue occurred during execution, but we'll continue with the commit."
+          fi
+          # Continue without failing the workflow
 
       - name: Get PR head info
         id: pr_info
@@ -169,6 +255,7 @@ jobs:
 
       - name: Commit screenshots and markdown to PR branch
         if: ${{ steps.pr_info.outputs.can_push == 'true' }}
+        continue-on-error: true
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -179,9 +266,50 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Simple approach: add all changes including new and modified files
-          echo "Adding all changes..."
-          git add -A
+          # Only add modified or new PNG and MD files
+          echo "Finding modified or new PNG and MD files..."
+          echo "Current git status:"
+          git status
+          
+          # Find all modified files (Added, Modified, Renamed)
+          modified_files=$(git diff --name-only --diff-filter=AMR)
+          
+          # Find all deleted files
+          deleted_files=$(git diff --name-only --diff-filter=D)
+          
+          # Find all untracked files and combine with modified files
+          untracked_files=$(git ls-files --others --exclude-standard)
+          # Combine files with proper formatting
+          all_files=$(printf "%s\n%s" "$modified_files" "$untracked_files")
+
+          # Handle deleted files separately
+          if [ ! -z "$deleted_files" ]; then
+            echo "Adding deleted files to git:"
+            echo "$deleted_files"
+            echo "$deleted_files" | while IFS= read -r file; do
+              git rm "$file" || true
+            done
+          fi
+          
+          # Process MD files if any exist
+          md_files=$(echo "$all_files" | grep -E '\.md$|\.mdx$' || true)
+          if [ ! -z "$md_files" ]; then
+            echo "Adding MD files:"
+            echo "$md_files"
+            echo "$md_files" | while IFS= read -r file; do
+              git add "$file"
+            done
+          fi
+          
+          # Process PNG files if any exist
+          png_files=$(echo "$all_files" | grep -E '\.png$' || true)
+          if [ ! -z "$png_files" ]; then
+            echo "Adding PNG files:"
+            echo "$png_files"
+            echo "$png_files" | while IFS= read -r file; do
+              git add "$file"
+            done
+          fi
           
           # Show what will be committed
           echo "Files to be committed:"
@@ -189,8 +317,21 @@ jobs:
           
           # Check if there are changes to commit
           if git diff --staged --quiet; then
-            echo "No changes to commit."
-            exit 0
+            echo "No changes staged for commit. Checking if we missed any files..."
+            
+            # Double check for any PNG and MD files we might have missed
+            echo "Forcibly adding all PNG and MD files that were modified or added"
+            find . \( -name "*.png" -o -name "*.md" -o -name "*.mdx" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' file; do
+              git add "$file" || true
+            done
+            
+            # Check again if we have anything to commit
+            if git diff --staged --quiet; then
+              echo "Still no changes to commit after forced add."
+              exit 0
+            else
+              echo "Found changes after forced add. Proceeding with commit."
+            fi
           fi
           
           # Commit and push
@@ -202,19 +343,49 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const args = `${{ steps.parse.outputs.args }}` || '(none)';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = [
-              `▶️ Ran: node test-enhanced-flow.js ${args}`.trim(),
-              `• Status: ${process.env.STATE || 'completed (see job result above)'}`,
-              `• Logs & outputs uploaded as artifact: enhanced-flow-artifacts`,
-              `• Workflow run: ${runUrl}`
-            ].join('\n');
+            const hasSpecialComment = '${{ steps.run_flow.outputs.has_special_comment }}' === 'true';
+            const errorType = '${{ steps.run_flow.outputs.error_type }}';
+            const flowExitCode = '${{ steps.run_flow.outputs.flow_exit_code }}';
+            
+            let bodyContent = [];
+            
+            // Check if there was an error
+            if (hasSpecialComment) {
+              // Process failed with structured error message
+              bodyContent.push('❌ **Enhanced flow run failed.**');
+              
+              // Add the specific error message
+              const specialComment = `${{ steps.run_flow.outputs.special_comment }}`;
+              bodyContent.push('\n**Error details:**');
+              bodyContent.push(specialComment);
+              
+              // Add specific advice based on error type
+              if (errorType === 'language_validation') {
+                bodyContent.push('\nPlease check the language code and try again with a supported language.');
+              } else if (errorType === 'translation_mode_error') {
+                bodyContent.push('\nPlease use a non-English target language with translation mode (e.g., --lang es for Spanish).');
+              } else if (errorType === 'api_overload') {
+                bodyContent.push('\nThis is a temporary issue with the API service. Please try again in a few minutes.');
+              }
+              
+              bodyContent.push(`\n[View workflow run](${runUrl})`);
+            } else if (flowExitCode && flowExitCode !== '0') {
+              // Flow exited with error but no structured comment (e.g. crash, missing env)
+              bodyContent.push('❌ **Enhanced flow run failed.**');
+              bodyContent.push('\nThe run exited with an error. Check the workflow logs for details.');
+              bodyContent.push(`\n[View workflow run](${runUrl})`);
+            } else {
+              // Process completed successfully
+              bodyContent.push('✅ **Enhanced flow run successful.**');
+              bodyContent.push('\nPlease check the commit made to this PR for updated screenshots and markdown files.');
+            }
+            
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body
+              body: bodyContent.join('\n')
             });
 
 

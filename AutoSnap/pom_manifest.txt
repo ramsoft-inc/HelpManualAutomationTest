@@ -1,0 +1,14 @@
+AVAILABLE PAGE OBJECT MODELS AND METHODS:
+(Only methods referenced in test files are included)
+
+Page: HomePage (po.homePage)
+Methods: worklistTableRows
+
+
+============================================================
+SUMMARY:
+Total Pages Scanned: 46
+Total Methods Available: 1789
+Methods Referenced in Tests: 1
+Reduction: 99.9%
+============================================================

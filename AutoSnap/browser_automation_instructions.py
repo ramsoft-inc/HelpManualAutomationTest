@@ -1,8 +1,6 @@
 # Load environment variables from .env file
 import os
 from dotenv import load_dotenv
-
-# Load environment variables from .env file
 load_dotenv()
 
 # Get API keys from environment variables
@@ -17,9 +15,9 @@ if not AZURE_OPENAI_ENDPOINT:
 
 import logging
 from langchain_openai import AzureChatOpenAI
-from datetime import datetime  # Local import to avoid polluting global namespace if not used elsewhere
 import sys
 import argparse
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -32,42 +30,44 @@ OMEGAAI_NAV_PLAYBOOK = {
             ""
         ]
     },
-    "1-Getting-Started": {
+    "2-Getting-Started": {
         "first_steps": [
             "From the left navigation, open the area relevant to your task (e.g., Organization, User Profile, Logs).",
             "Follow the specific guide in Getting Started (e.g., add users, configure devices, set up forms)."
             "if its something related to organization choose the organization named ramsoft"
         ]
     },
-    "2-OmegaAI-Homepage": {
+    "1-OmegaAI-Homepage": {
         "first_steps": [
             "If you navigated away, click Home on the left navigation to return to the Homepage (Worklist)."
         ]
     },
     "3-Worklist": {
         "first_steps": [
-            "You are already at the Worklist table."
+            "You are already at the Worklist table.",
+            "right click on any record at any point to get the menu with the options to go to document viewer, image viewer or study info",
+            "scroll horizontally to the right to find other columns and maybe sort them if required."
         ]
     },
-    "4-Scheduler": {
+    "5-Scheduler": {
         "first_steps": [
             "Click the Calendar/Scheduler icon on the navigation bar to open the in-grid calendar.",
             "Use the date selector or view options as needed."
         ]
     },
-    "5-Document-Viewer": {
+    "6-Document-Viewer": {
         "first_steps": [
-            "Click on a patient's name in the worklist table.",
-            "Click on the Document Viewer button on the wheel that popped up."
+            "Right click on a patient's name in the worklist table.",
+            "Click on the Document Viewer button on the box that popped up."
         ]
     },
-    "6-Image-Viewer": {
+    "7-Image-Viewer": {
         "first_steps": [
-            "Click on a patient's name in the worklist table.",
-            "Click on the Image Viewer button on the wheel that popped up."
+            "Right click on a patient's name in the worklist table.",
+            "Click on the Image Viewer button on the box that popped up."
         ]
     },
-    "7-Global-Search": {
+    "4-Global-Search": {
         "first_steps": [
             "Click the search bar at the top of the Worklist.",
             "Type your query (e.g., patient, study, organization) and press Enter."
@@ -99,19 +99,19 @@ OMEGAAI_NAV_PLAYBOOK = {
             ]
         }
     },
-    "9-Root-Business-Analytics-and-Reporting": {
+    "Root-Business-Analytics-and-Reporting": {
         "first_steps": [
             "Left navigation → My Apps.",
             "Click Root Business Analytics."
         ]
     },
-    "10-Workflow-Automation": {
+    "12-Workflow-Automation": {
         "first_steps": [
             "Left navigation → My Apps (if available for your role).",
             "Click Workflow Automation; if not visible, use Global Search and type 'Workflow Automation'."
         ]
     },
-    "11-OmegaAI-Link": {
+    "10-OmegaAI-Link": {
         "first_steps": [
             "Left navigation → Organization.",
             "Open the Devices tab to manage/download OmegaAI Link."
@@ -142,20 +142,32 @@ OMEGAAI_NAV_PLAYBOOK = {
 # Fast path-based mapping from docs folders to playbook labels
 PATH_LABEL_MAP = {
     "0-introduction": "0-Introduction",
-    "1-getting-started": "1-Getting-Started",
-    "2-omegaai-homepage": "2-OmegaAI-Homepage",
+    "1-omegaai-homepage": "1-OmegaAI-Homepage",
+    "2-getting-started": "2-Getting-Started",
     "3-worklist": "3-Worklist",
-    "4-scheduler": "4-Scheduler",
-    "5-document-viewer": "5-Document-Viewer",
-    "6-image-viewer": "6-Image-Viewer",
-    "7-global-search": "7-Global-Search",
+    "4-global-search": "4-Global-Search",
+    "5-scheduler": "5-Scheduler",
+    "6-document-viewer": "6-Document-Viewer",
+    "7-image-viewer": "7-Image-Viewer",
     "8-communication-and-organization-tools": "8-Communication-and-Organization-Tools",
-    "9-root-business-analytics-and-reporting": "9-Root-Business-Analytics-and-Reporting",
-    "10-workflow-automation": "10-Workflow-Automation",
-    "11-omegaai-link": "11-OmegaAI-Link",
+    "10-omegaai-link": "10-OmegaAI-Link",
     "12-advanced-topics": "12-Advanced-Topics",
+    "12-workflow-automation": "12-Workflow-Automation",
     "13-blume-patient-portal": "13-Blume-Patient-Portal",
+    "root-business-analytics-and-reporting": "Root-Business-Analytics-and-Reporting",
 }
+
+# Application context for the OmegaAI website — used in prompts so automation knows how the app works
+OMEGAAI_APPLICATION_CONTEXT = """
+### Application context (OmegaAI)
+- **Product**: Healthcare RIS/PACS-style application (worklist, studies, patients, orders, document viewer, image viewer for DICOM, scheduler, global search).
+- **Homepage**: The Worklist — a table of patient/study records. Most features are reached by **right-clicking a row** → context menu (Document Viewer, Image Viewer, Study Info, Patient, Order, Billing, Study Explorer, Send Study).
+- **Organization**: When docs or instructions refer to "organization", use the organization named **Ramsoft** (or "ramsoft").
+- **Filtering**: Column headers have combobox filters. After selecting a filter option, **click on the worklist table** (left-click a row) to close the dropdown before right-clicking; otherwise the menu can be blocked.
+- **Study Info**: Opens in a **drawer/modal** (no URL change). Wait for Study ID in breadcrumb/header to confirm load.
+- **Navigation**: Left sidebar = Home, Organization, User Profile, Logs, My Apps. Top bar has global search. Right-side icons for Chat, Notifications.
+- **Picking rows**: When choosing "the 3rd" or similar, use the third row (index 2). Prefer rows that are clearly visible and not covered by dropdowns.
+"""
 
 def _get_steps_by_path(path_label: str) -> list[str]:
     """Get first steps for a top-level or nested playbook path.
@@ -205,23 +217,6 @@ def _detect_label_from_docs_path(file_path: str) -> str | None:
             return label
     return None
 
-def detect_primary_label(file_path: str, file_content: str) -> str | None:
-    """Detect the most relevant playbook section based on file path.
-
-    Uses direct docs path mapping for deterministic matches.
-    """
-    # Direct docs path mapping (most deterministic)
-    path_label = _detect_label_from_docs_path(file_path)
-    return path_label
-
-def extract_first_steps_for_file(file_path: str) -> list[str]:
-    """Return only the initial steps for the single best-matching section.
-
-    This enforces the rule: if processing Image Viewer documentation, include Image Viewer first steps only.
-    """
-    label = _detect_label_from_docs_path(file_path)
-    return _get_steps_by_path(label) if label else []
-
 def build_playbook_hints_for_changed_files(file_to_content: dict[str, str]) -> str:
     """Build a markdown section containing per-file contextual first steps (single best match per file)."""
     sections: list[str] = []
@@ -237,19 +232,6 @@ def build_playbook_hints_for_changed_files(file_to_content: dict[str, str]) -> s
     return "\n---\n## Contextual First Steps (auto-detected)\n" + "\n\n".join(sections) + "\n---\n"
 
 def _extract_instructions_only(text: str) -> str:
-    """Extract instruction lines from the LLM output within an INSTRUCTIONS section.
-    
-    Also attempts to parse the instructions as JSON if possible and logs both formats.
-    If the response is in JSON format with "instructions" field, returns just that field.
-
-    Strategy:
-    - First try to parse the entire response as JSON and extract the "instructions" field
-    - If not JSON, look for an explicit INSTRUCTIONS section
-    - Include all lines within the INSTRUCTIONS section, not just numbered steps
-    - If no INSTRUCTIONS section is found, return the original text trimmed
-    - Try to parse instructions as JSON and log both formats
-    """
-    import re
     import json
     
     # First try to parse the entire text as JSON
@@ -362,21 +344,107 @@ def _extract_instructions_only(text: str) -> str:
         print(f"Error while processing JSON: {e}")
         return plain_instructions
 
-def get_prompt_for_ui_change(doc_content):
+def format_navigation_playbook():
+    """Format the OMEGAAI_NAV_PLAYBOOK dictionary as a readable string for prompts."""
+    import json
+    output = []
+    for section, content in OMEGAAI_NAV_PLAYBOOK.items():
+        if isinstance(content, dict) and 'first_steps' in content:
+            # Top-level section with direct first_steps
+            output.append(f"**{section}**")
+            for step in content['first_steps']:
+                if step.strip():
+                    output.append(f"  - {step}")
+        elif isinstance(content, dict):
+            # Nested sections (like Communication-and-Organization-Tools)
+            output.append(f"**{section}**")
+            for subsection, subdata in content.items():
+                if isinstance(subdata, dict) and 'first_steps' in subdata:
+                    output.append(f"  {subsection}:")
+                    for step in subdata['first_steps']:
+                        if step.strip():
+                            output.append(f"    - {step}")
+    return "\n".join(output)
+
+def get_prompt_for_ui_change(doc_content, pom_manifest="", navigation_patterns=""):
     """
     Generates a prompt for replacing a screenshot due to a UI element change.
     Requests response in JSON format.
     """
+    nav_section = ""
+    if navigation_patterns:
+        nav_section = f"""
+### 🧭 NAVIGATION PATTERNS GUIDE
+The following guide explains common navigation patterns in the application.
+**READ THIS CAREFULLY** - many navigation actions require intermediate steps. and you should mention the intermediatories in the instructions
+
+{navigation_patterns}
+
+"""
+    
+    # Add the complete navigation playbook and application context
+    playbook_section = f"""
+### 📖 COMPLETE NAVIGATION PLAYBOOK
+This playbook shows how to navigate to different sections of the application from the homepage (Worklist).
+Use these as a reference when you need to move between different interfaces:
+
+{format_navigation_playbook()}
+{OMEGAAI_APPLICATION_CONTEXT}
+"""
+    
     return f"""
 Goal: Generate a single, comprehensive set of step-by-step browser actions to retake ALL documentation screenshots where UI elements changed (selector, appearance, or structure).
 
+{nav_section}{playbook_section}
+### 🛠️ AVAILABLE PLAYWRIGHT POM METHODS
+The following Page Object Model (POM) methods are available for automation.
+IF an instruction matches one of these methods, you MUST include the method name in parentheses, e.g., (Use: documentViewer.signBtn()).
+This makes the automation significantly more robust.
+
+{pom_manifest}
+
 Analyze the entire document to identify ALL screenshots (shown as ![name](./path/to/image)) and create ONE sequential instruction set that captures every single screenshot in the most efficient navigation order.
 
+### 📸 DOCUMENTATION SCREENSHOT QUALITY GUIDELINES
+
+When planning each screenshot, you must think carefully about what makes a GOOD documentation screenshot:
+
+**DOCUMENTATION-WORTHY SCREENSHOTS:**
+- Show complete, meaningful UI components (dialogs, panels, forms, tables, menus)
+- Capture focused areas that demonstrate specific features or workflows
+- Include enough context to understand where in the application the user is
+- Show interactive elements in their relevant states (expanded menus, filled forms, active buttons)
+- Display real, representative data that helps users understand functionality
+- Have clear visual boundaries (complete panels, not cut-off sections)
+- Typically occupy 15-75% of the viewport (not too small, not full-page unless necessary)
+
+**NOT DOCUMENTATION-WORTHY:**
+- Tiny UI elements in isolation (single icons, small buttons without context)
+- Overly generic full-page screenshots that don't highlight anything specific
+- Screenshots with minimal or no visible content
+- Duplicate or redundant views of the same UI
+- Screenshots showing error states or temporary loading indicators (unless that's the point)
+- Cut-off or partially visible important elements
+
+**SIZE AND SCOPE INDICATORS:**
+Based on the documentation context and filename, infer the appropriate scope:
+- "overview", "dashboard", "workspace" → Larger section, 40-75% of viewport
+- "dialog", "modal", "popup" → Complete component, 20-50% of viewport  
+- "panel", "sidebar", "form" → Focused section, 25-60% of viewport
+- "button", "icon", "field" → Should include surrounding context, 15-40% of viewport
+- "menu", "dropdown", "toolbar" → Complete interaction area, 20-45% of viewport
+- "table", "list", "grid" → Show multiple rows with headers, 30-70% of viewport
+
 Output format (strict):
-1) THINKING — A brief planning block that:
+1) THINKING — A detailed planning block that:
    - Lists every single screenshot found in the document with exact filenames (![name](./path))
+   - For EACH screenshot, analyzes:
+     * What the filename and surrounding documentation text suggests about the screenshot's purpose
+     * What UI elements should be visible based on that purpose
+     * The appropriate scope/size (is this a focused element, a panel, or a broader view?)
+     * Whether this is truly documentation-worthy or if it seems like an error
    - Plans the most efficient navigation route to capture all screenshots
-   - Notes the expected UI state and purpose for each screenshot
+   - Notes the expected UI state and configuration for each screenshot
 2) INSTRUCTIONS — One numbered sequence starting at 1, covering the entire document. Each step is exactly one browser action.
 
 Before capturing any screenshot:
@@ -384,47 +452,76 @@ Before capturing any screenshot:
 - Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
 - **Verify interactive elements are in the desired state (e.g., collapsed/expanded, inactive/active, unchecked/checked, menu-closed/menu-open) before proceeding to capture the screenshot.**
 - Verify all required elements are visible before taking the screenshot
+- **Consider whether this screenshot will actually be useful for documentation readers**
 
 Rules for INSTRUCTIONS:
 - Use imperative voice for each step
 - Each step = exactly one action ("click", "type", "open", "hover", "wait until visible", "take a screenshot")
 - For every interacted element, include its English name plus brief visual/positional cues (color, icon, "top-right", etc.)
-- For screenshot steps, use exact filename from document and include detailed description:
-  * WHAT specific UI elements should be visible
-  * WHAT the screenshot documents (its purpose)
-  * HOW the UI should be configured
-  * WHAT the screenshot likely shows (whole page vs partial, main focus area, layout description)
-Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose and user benefit]. Save as [filename]"
+- For screenshot steps, use exact filename from document and include COMPREHENSIVE DETAILED description:
+  * WHAT specific UI elements should be visible (list all key components)
+  * WHAT the screenshot documents (its purpose for the reader)
+  * HOW the UI should be configured (what should be open, closed, selected, filled)
+  * WHAT scope is appropriate (focused element with context, panel, section, or broader view)
+  * WHY this particular framing helps documentation readers understand the feature
+  * WHAT the expected dimensions/coverage should be (e.g., "should show the complete modal dialog centered in view, approximately 30-40% of viewport")
+Screenshot step format: "take a screenshot of [specific UI area with detailed location and scope] showing [comprehensive list of ALL visible elements with positions and characteristics], to document [detailed purpose and user benefit]. This should capture [expected scope/coverage description]. The screenshot should be documentation-quality, showing [what makes it useful for readers]. Save as [filename]"
 
 Example format:
 THINKING
 Screenshots to capture:
 - main-dashboard.png: Overview of primary interface with navigation menu and data panels
+  * Purpose: Show users the main application layout and where key features are located
+  * Scope: Broad view including navigation, main content area, should be 50-70% of viewport
+  * Key elements: Top navigation bar, left sidebar menu, main data widgets, charts
+  * Documentation-worthy: YES - provides essential orientation for new users
+- filter-icon.png: Small filter icon button
+  * Purpose: Documentation mentions "filter icon" in context of table filtering
+  * Scope: Based on filename, seems like isolated icon - BUT should show icon WITH surrounding table context
+  * Key elements: Filter icon button, table headers showing where it's located, portion of data table
+  * Documentation-worthy: YES if shown with context (icon + table header area), NO if just the icon alone
+  * Adjusted approach: Capture the table header section containing the filter icon, approximately 30-40% of viewport width
 
-Navigation plan: Homepage → Dashboard (capture main-dashboard.png)
+Navigation plan: Homepage → Dashboard (capture main-dashboard.png) → Table view (capture filter-icon.png with table context)
 
 INSTRUCTIONS
 1. locate the main data table in the center of the screen displaying patient records with columns for names, dates, and status indicators
 2. click on the third patient name from the top in the leftmost column to navigate to the dashboard interface
 3. wait until the dashboard loads completely with the top navigation bar, left sidebar menu, and main content area visible
-4. take a screenshot of the complete dashboard showing the navigation bar with logo and user menu, left sidebar with menu options, and main content area with data widgets and charts, to document the primary user interface and navigation structure. Save as main-dashboard.png
+4. take a screenshot of the complete dashboard showing the navigation bar with logo and user menu at the top, left sidebar with menu options including Home, Patients, Reports, and Settings, and main content area with data widgets displaying statistics cards and interactive charts, to document the primary user interface and navigation structure for first-time users. This should capture a broad overview of the application layout, showing approximately 60-70% of the viewport to provide complete context of the workspace. The screenshot should be documentation-quality, showing users where they can find key navigation elements and how the interface is organized. Save as main-dashboard.png
+5. navigate back to the worklist table view
+6. take a screenshot of the table header section containing the filter icon button in the top-right area of the table, showing the complete table header row with column names (Patient Name, Date, Status), the filter icon button with funnel symbol, and the first 2-3 data rows for context, to document how users can access filtering functionality. This should capture the upper portion of the data table, approximately 35-45% of viewport width and 20-30% of viewport height, providing enough context to show where the filter feature is located within the table interface. The screenshot should be documentation-quality, showing users the exact location and appearance of the filtering control. Save as filter-icon.png
 
 
 Critical requirements:
 - Include every single screenshot found in the document - do not miss any
+- For EACH screenshot, deeply analyze its purpose and appropriate scope before creating instructions
+- Consider what would be USEFUL for a documentation reader - context is key
 - Organize navigation efficiently (group screenshots from same screens together)  
-- Ensure each screenshot instruction is extremely detailed and specific
-- Every screenshot step must include "screenshot" as the action followed by comprehensive description and exact filename
+- Ensure each screenshot instruction is EXTREMELY detailed and specific about:
+  * What elements must be visible
+  * What scope/coverage is appropriate
+  * Why this framing serves documentation purposes
+  * Expected size relative to viewport
+- Every screenshot step must include "screenshot" as the action followed by comprehensive multi-sentence description and exact filename
 - You start at homepage (Worklist) - no login steps needed
 - If choosing among similar items, pick the 3rd in the list
 - Ignore pop-out window commands
 
 Navigation notes for this product:
-- Standard flow: Worklist → click patient name → wheel interface → select feature
+- Standard flow: Worklist → right-click patient name → context menu → select feature
 - Make instructions extremely detailed and descriptive with specific visual cues, element positions, colors, icons, and contextual information
 - Include precise descriptions of where elements are located (top-left corner, center panel, right sidebar, etc.)
 - Describe visual characteristics of elements (button colors, icon shapes, text labels, panel sizes)
 - Provide context about what should be visible before and after each action
+- ⚠️ CRITICAL FAILURE HANDLING: If an action fails or doesn't achieve the expected result:
+  * NEVER repeat the exact same action - it will fail again
+  * STOP and THINK: Is the UI element actually visible? Maybe the UI state is different than expected
+  * Try a completely different approach: different selector, different navigation path, or different POM method
+  * Consider that the element might not exist in the current UI state - try alternative steps
+  * If a POM function fails repeatedly, DO NOT use it again - try manual selectors or skip to next step
+- Always think: "Will this screenshot actually help someone using the documentation?"
+- IMPORTANT: If an action fails or doesn't achieve the expected result, do NOT repeat the exact same action. Try a different selector, different approach, or skip to the next logical step.
 
 Document to process:
 ---
@@ -440,25 +537,42 @@ Remember: Format your THINKING and INSTRUCTIONS as a valid JSON object with the 
 }}
 """
 
-# def get_prompt_for_new_feature(doc_content):
-#     """
-#     Generates a prompt for filling a screenshot placeholder for a new document or feature.
-#     Requests response in JSON format.
-#     """
-                      
-#     import re
-#     doc_content = re.sub(r'!\[.*?\]\(.*?\)', '', doc_content)
-#     print("\n\n\n\n\n2")
-#     print(doc_content)
-#     print("have used the get_prompt_for_new_feature function")
-
-def get_prompt_for_new_feature(doc_content):
+def get_prompt_for_new_feature(doc_content, pom_manifest="", navigation_patterns=""):
     """
     Generates a prompt for taking screenshots only for placeholder comments in documentation.
     Requests response in JSON format.
     """
+    nav_section = ""
+    if navigation_patterns:
+        nav_section = f"""
+### 🧭 NAVIGATION PATTERNS GUIDE
+The following guide explains common navigation patterns in the application.
+**READ THIS CAREFULLY** - many navigation actions require intermediate steps (like context menus).
+
+{navigation_patterns}
+
+"""
+    
+    # Add the complete navigation playbook and application context
+    playbook_section = f"""
+### 📖 COMPLETE NAVIGATION PLAYBOOK
+This playbook shows how to navigate to different sections of the application from the homepage (Worklist).
+Use these as a reference when you need to move between different interfaces:
+
+{format_navigation_playbook()}
+{OMEGAAI_APPLICATION_CONTEXT}
+"""
+    
     return f"""
 Goal: Generate a single, comprehensive set of step-by-step browser actions to take screenshots ONLY for placeholder comments found in the document.
+
+{nav_section}{playbook_section}
+### 🛠️ AVAILABLE PLAYWRIGHT POM METHODS
+The following Page Object Model (POM) methods are available for automation.
+IF an instruction matches one of these methods, you MUST include the method name in parentheses, e.g., (Use: documentViewer.signBtn()).
+This makes the automation significantly more robust.
+
+{pom_manifest}
 
 Your ONLY trigger is the exact HTML comment:
 <!-- placeholder for a screenshot -->
@@ -466,61 +580,135 @@ If no such placeholders exist in the provided content, generate nothing (NO INST
 
 Analyze the entire document to identify ALL placeholder comments and create ONE sequential instruction set that captures every single screenshot placeholder in the most efficient navigation order.
 
+### 📸 DOCUMENTATION SCREENSHOT QUALITY GUIDELINES
+
+When planning each screenshot for a placeholder, you must think carefully about what makes a GOOD documentation screenshot:
+
+**DOCUMENTATION-WORTHY SCREENSHOTS:**
+- Show complete, meaningful UI components (dialogs, panels, forms, tables, menus)
+- Capture focused areas that demonstrate specific features or workflows
+- Include enough context to understand where in the application the user is
+- Show interactive elements in their relevant states (expanded menus, filled forms, active buttons)
+- Display real, representative data that helps users understand functionality
+- Have clear visual boundaries (complete panels, not cut-off sections)
+- Typically occupy 15-75% of the viewport (not too small, not full-page unless necessary)
+
+**NOT DOCUMENTATION-WORTHY:**
+- Tiny UI elements in isolation (single icons, small buttons without context)
+- Overly generic full-page screenshots that don't highlight anything specific
+- Screenshots with minimal or no visible content
+- Duplicate or redundant views of the same UI
+- Screenshots showing error states or temporary loading indicators (unless that's the point)
+- Cut-off or partially visible important elements
+
+**SIZE AND SCOPE INDICATORS:**
+Read the documentation context around each placeholder to infer the appropriate scope:
+- Mentions of "overview", "dashboard", "workspace" → Larger section, 40-75% of viewport
+- Mentions of "dialog", "modal", "popup", "window" → Complete component, 20-50% of viewport  
+- Mentions of "panel", "sidebar", "form", "section" → Focused section, 25-60% of viewport
+- Mentions of "button", "icon", "field", "control" → Should include surrounding context, 15-40% of viewport
+- Mentions of "menu", "dropdown", "toolbar", "ribbon" → Complete interaction area, 20-45% of viewport
+- Mentions of "table", "list", "grid", "data view" → Show multiple rows with headers, 30-70% of viewport
+
+**ANALYZING DOCUMENTATION CONTEXT:**
+For each placeholder, carefully read the surrounding text (2-3 paragraphs before and after) to understand:
+- What feature or workflow is being documented
+- What the user should learn from this screenshot
+- What UI state or configuration is being described
+- What scope would be most helpful (isolated element vs. section vs. full view)
+
 Output format (strict):
-1) THINKING — A brief planning block that:
-   - Lists every single placeholder comment found in the document with its context
-   - For each placeholder (and filename if provided), a brief description of the expected UI state and the key elements that must be visible to match the placeholder context
+1) THINKING — A detailed planning block that:
+   - Lists every single placeholder comment found in the document with its surrounding context
+   - For EACH placeholder, analyzes:
+     * What the surrounding documentation text says about this feature/workflow
+     * What UI elements should be visible based on that context
+     * The appropriate scope/size for maximum documentation value
+     * What filename would be descriptive and follow naming conventions
+     * Whether this represents a meaningful, documentation-worthy screenshot
    - Plans the most efficient navigation route to capture all placeholder screenshots
-   - Note the expected UI state and purpose for each screenshot based on surrounding documentation
+   - Notes the expected UI state and configuration for each screenshot
 2) INSTRUCTIONS — One numbered sequence starting at 1, covering all placeholders in the document. Each step is exactly one browser action.
 
 Before capturing any screenshot:
 - Navigate to the correct screen/state based on the documentation context
 - Ensure UI is fully visible and configured correctly (expand panels, open dropdowns, select tabs, etc.)
+- **Verify interactive elements are in the desired state to match what the documentation describes**
 - Verify all required elements are visible before taking the screenshot
+- **Consider whether this screenshot will actually be useful for documentation readers**
 
 Rules for INSTRUCTIONS:
 - Use imperative voice for each step
 - Each step = exactly one action ("click", "type", "open", "hover", "wait until visible", "take a screenshot")
 - For every interacted element, include its English name plus brief visual/positional cues (color, icon, "top-right", etc.)
-- When capturing, if a filename/path is specified next to the placeholder, save using that exact name. Name the screenshot based on the context and purpose of the placeholder.
-- For screenshot steps, analyze the surrounding documentation context to determine:
-  * WHAT specific UI elements should be visible
-  * WHAT the screenshot should document (based on nearby text)
-  * HOW the UI should be configured
-  * WHAT filename to use (derived from the context and purpose)
+- When capturing, if a filename/path is specified next to the placeholder, save using that exact name. Otherwise, derive a descriptive filename from the context and purpose.
+- For screenshot steps, analyze the surrounding documentation context and include COMPREHENSIVE DETAILED description:
+  * WHAT specific UI elements should be visible (list all key components based on documentation context)
+  * WHAT the screenshot should document (based on nearby text and the feature being explained)
+  * HOW the UI should be configured (what should be open, closed, selected, filled to match the documentation)
+  * WHAT scope is appropriate (focused element with context, panel, section, or broader view)
+  * WHY this particular framing helps documentation readers understand the feature
+  * WHAT the expected dimensions/coverage should be (e.g., "should show the complete modal dialog centered in view, approximately 30-40% of viewport")
 - Preserve the order of placeholders in the document. Stop after the last placeholder.
 
-Screenshot step format: "take a screenshot of [specific UI area with detailed location] showing [comprehensive list of visible elements with positions and characteristics], to document [detailed purpose based on context]. Save as [descriptive-filename.png]"
+Screenshot step format: "take a screenshot of [specific UI area with detailed location and scope based on documentation context] showing [comprehensive list of ALL visible elements with positions and characteristics that the documentation describes], to document [detailed purpose based on surrounding documentation text]. This should capture [expected scope/coverage description]. The screenshot should be documentation-quality, showing [what makes it useful for readers based on the documented feature/workflow]. Save as [descriptive-filename.png]"
 
 Example format:
 THINKING:
 Placeholder comments found:
 - <!-- placeholder for a screenshot --> after text about dashboard overview - needs main interface screenshot
+  * Documentation context: "The main dashboard provides an overview of all active patients. Users can see key metrics and navigate to different sections."
+  * UI elements needed: Top navigation, sidebar menu, main metrics panel, data widgets
+  * Appropriate scope: Broad dashboard view, 50-65% of viewport
+  * Filename: dashboard-overview.png
+  * Documentation-worthy: YES - essential orientation screenshot for new users
+- <!-- placeholder for a screenshot --> after text about "click the small settings icon"
+  * Documentation context: "To configure preferences, click the small settings icon in the top-right corner."
+  * UI elements needed: Settings icon, top navigation bar, user menu area
+  * Appropriate scope: Should NOT be just the icon - need top-right section with context
+  * Filename: settings-icon-location.png  
+  * Documentation-worthy: YES if shown with context (icon + surrounding navigation), NO if just isolated icon
+  * Adjusted approach: Capture top navigation bar section showing settings icon with user menu, approximately 30-40% of viewport width
 
-Navigation plan: Homepage → Dashboard (capture dashboard overview)
+Navigation plan: Homepage → Dashboard (capture dashboard-overview.png with appropriate scope including metrics and navigation) → Top navigation area (capture settings-icon-location.png with context)
 
 INSTRUCTIONS:
 1. locate the main data table in the center of the screen displaying patient records with columns for names, dates, and status indicators
 2. click on the third patient name from the top in the leftmost column to navigate to the dashboard interface
 3. wait until the dashboard loads completely with the top navigation bar, left sidebar menu, and main content area visible
-4. take a screenshot of the complete dashboard showing the navigation bar with logo and user menu, left sidebar with menu options, and main content area with data widgets and charts, to document the primary user interface and navigation structure. Save as dashboard-overview.png
+4. take a screenshot of the complete dashboard interface showing the top navigation bar with application logo and user controls, left sidebar with menu items (Home, Patients, Reports, Settings), and main content area displaying key metrics in card format (Active Patients: 127, Pending Reviews: 34, Completed Today: 89) along with interactive data widgets and charts, to document the primary user interface and help new users understand the overall layout and where to find essential information. This should capture a comprehensive overview of the workspace, showing approximately 55-65% of the viewport to provide full context of the dashboard layout and its key components. The screenshot should be documentation-quality, helping readers identify navigation elements and understand the information architecture of the application. Save as dashboard-overview.png
+5. take a screenshot of the top-right section of the navigation bar showing the settings icon (gear symbol) alongside the user profile avatar and notification bell icon, with the application title visible on the left side for context, to document where users can find the settings and configuration options. This should capture the upper-right corner of the interface, approximately 35-40% of viewport width and 8-12% of viewport height, providing enough context to show the settings icon's location relative to other navigation controls. The screenshot should be documentation-quality, clearly showing users exactly where to look for settings access. Save as settings-icon-location.png
+
 
 Critical requirements:
 - Include every single placeholder comment found in the document - do not miss any
+- For EACH placeholder, deeply analyze the surrounding documentation to understand purpose and appropriate scope
+- Consider what would be USEFUL for a documentation reader - context is key
 - Ignore existing image paths (![name](./path/to/image)) - only focus on <!-- placeholder for a screenshot --> comments
-- Ensure each screenshot instruction is extremely detailed and specific
-- Every screenshot step must include "screenshot" as the action followed by comprehensive description and descriptive filename
-- Generate appropriate filenames based on the context and purpose of each screenshot
+- Ensure each screenshot instruction is EXTREMELY detailed and specific about:
+  * What elements must be visible based on documentation context
+  * What scope/coverage is appropriate for this particular feature/workflow
+  * Why this framing serves documentation purposes
+  * Expected size relative to viewport
+- Every screenshot step must include "screenshot" as the action followed by comprehensive multi-sentence description and descriptive filename
+- Generate appropriate filenames based on the context and purpose of each screenshot (kebab-case, descriptive, .png extension)
 - You start at homepage (Worklist) - no login steps needed
 - Ignore pop-out window commands
+- Always think: "Will this screenshot actually help someone using the documentation?"
 
 Navigation notes for this product:
-- Standard flow: Worklist → click patient name → wheel interface → select feature
+- Standard flow: Worklist → right-click patient name → context menu → select feature
 - Make instructions extremely detailed and descriptive with specific visual cues, element positions, colors, icons, and contextual information
 - Include precise descriptions of where elements are located (top-left corner, center panel, right sidebar, etc.)
 - Describe visual characteristics of elements (button colors, icon shapes, text labels, panel sizes)
 - Provide context about what should be visible before and after each action
+- ⚠️ CRITICAL FAILURE HANDLING: If an action fails or doesn't achieve the expected result:
+  * NEVER repeat the exact same action - it will fail again
+  * STOP and THINK: Is the UI element actually visible? Maybe the UI state is different than expected
+  * Try a completely different approach: different selector, different navigation path, or different POM method
+  * Consider that the element might not exist in the current UI state - try alternative steps
+  * If a POM function fails repeatedly, DO NOT use it again - try manual selectors or skip to next step
+- IMPORTANT: If an action fails or doesn't achieve the expected result, do NOT repeat the exact same action. Try a different selector, different approach, or skip to the next logical step.
 
 Document to process:
 ---
@@ -567,8 +755,10 @@ def get_english_content_path(file_path):
     # Convert to Path object for easier manipulation
     file_path = Path(file_path)
     
-    # Get the base directory (workspace root)
-    workspace_root = Path("C:\\Users\\Rohith.MR\\test\\HelpManualAutomationTest")
+    # Get the base directory (workspace root) dynamically
+    import os
+    script_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+    workspace_root = script_dir.parent  # Parent of AutoSnap directory
     
     # Get the relative path from workspace root
     try:
@@ -606,12 +796,11 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
     """Generate browser automation instructions based on the scenario type and changed files."""
     import os
     import re
-    from datetime import datetime
-    
+
     # Handle empty or None changed_files
     if not changed_files:
-        print("WARNING: No files provided, generating fallback instructions")
-        return get_fallback_instructions_for_scenario(scenario_type)
+        print("ERROR: No files provided. Cannot generate instructions.")
+        raise ValueError("No files provided for instruction generation")
     
     content = ""
     english_content = ""
@@ -636,38 +825,77 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
             file_type = "MDX" if file_path.endswith('.mdx') else "MD"
             with open(file_path, 'r', encoding='utf-8') as file:
                 file_content = file.read()
+            
+            # Remove #notsafe from anywhere in the file content
+            file_content = file_content.replace('#notsafe', '')
+            
+            # Write the cleaned content back to the file
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(file_content)
+            
+            # Add translated content to the main content for legacy compatibility
+            content += f"\n---\n{file_content}"
+            
+            # Add to the separate translated content variable
+            translated_content += f"\n---\n{file_content}"
+            
+            # Only read English content if scenario is default (translation mode)
+            if scenario_type == "default":
+                # Read the corresponding English content from docs folder
+                file_english_content = read_english_content(file_path)
                 
-                # Add translated content to the main content for legacy compatibility
-                content += f"\n---\n{file_content}"
-                
-                # Add to the separate translated content variable
-                translated_content += f"\n---\n{file_content}"
-                
-                # Only read English content if scenario is default (translation mode)
-                if scenario_type == "default":
-                    # Read the corresponding English content from docs folder
-                    file_english_content = read_english_content(file_path)
-                    
-                    # Add to the English content variable if available
-                    if file_english_content:
-                        english_path = get_english_content_path(file_path)
-                        english_content += f"\n---\n{file_english_content}"
-                        print(f"  Added English content from {english_path}")
-                    else:
-                        print(f"  No English content found for {file_path}")
-                
-                file_to_content[file_path] = file_content
-                
-                # Extract image paths from this markdown file
-                file_image_paths = extract_image_paths_from_md(file_content)
-                if file_image_paths:
-                    print(f"  Found {len(file_image_paths)} image references in {file_path}")
-                    all_image_paths.extend(file_image_paths)
+                # Add to the English content variable if available
+                if file_english_content:
+                    english_path = get_english_content_path(file_path)
+                    english_content += f"\n---\n{file_english_content}"
+                    print(f"  Added English content from {english_path}")
+                else:
+                    print(f"  No English content found for {file_path}")
+            
+            file_to_content[file_path] = file_content
+            
+            # Extract image paths from this markdown file
+            file_image_paths = extract_image_paths_from_md(file_content)
+            if file_image_paths:
+                print(f"  Found {len(file_image_paths)} image references in {file_path}")
+                all_image_paths.extend(file_image_paths)
         except Exception as e:
             print(f"    Could not read {file_path}: {e}")
 
     # Initialize LLM here as it's needed for document instruction generation
-    llm = AzureChatOpenAI(azure_deployment="gpt-4.1", openai_api_version="2024-02-15-preview")
+    # request_timeout so the call fails with a clear error instead of hanging until process kill
+    llm_timeout_sec = int(os.environ.get("LLM_REQUEST_TIMEOUT", "240"))
+    llm = AzureChatOpenAI(
+        azure_deployment="gpt-4.1",
+        openai_api_version="2025-01-01-preview",
+        request_timeout=llm_timeout_sec,
+    )
+    
+    # Load POM manifest if available
+    pom_manifest = ""
+    pom_manifest_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pom_manifest.txt")
+    if os.path.exists(pom_manifest_path):
+        try:
+            with open(pom_manifest_path, "r", encoding="utf-8") as f:
+                pom_manifest = f.read()
+            print(f"Loaded POM manifest from {pom_manifest_path}")
+        except Exception as e:
+            print(f"Failed to load POM manifest: {e}")
+    else:
+        print("POM manifest not found. Skipping POM-aware instructions.")
+    
+    # Load Navigation Patterns guide if available
+    navigation_patterns = ""
+    nav_patterns_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "NAVIGATION_PATTERNS.md")
+    if os.path.exists(nav_patterns_path):
+        try:
+            with open(nav_patterns_path, "r", encoding="utf-8") as f:
+                navigation_patterns = f.read()
+            print(f"Loaded navigation patterns from {nav_patterns_path}")
+        except Exception as e:
+            print(f"Failed to load navigation patterns: {e}")
+    else:
+        print("Navigation patterns not found. Continuing without navigation guide.")
 
     # Generate instructions from document content based on scenario
     document_instructions = f"Default: No document content was processed for scenario '{scenario_type}' or an error occurred during instruction generation."
@@ -704,16 +932,35 @@ def generate_browser_instructions(scenario_type="default", changed_files=None):
         # Select appropriate prompt based on scenario type
         if scenario_type == "ui_change":
             print("Using UI Change prompt")
-            instruction_generation_prompt = get_prompt_for_ui_change(content)
+            instruction_generation_prompt = get_prompt_for_ui_change(content, pom_manifest, navigation_patterns)
         elif scenario_type == "new_feature":
             print("Using New Feature prompt")
-            instruction_generation_prompt = get_prompt_for_new_feature(content)
+            instruction_generation_prompt = get_prompt_for_new_feature(content, pom_manifest, navigation_patterns)
         else:
             print("Using Translation/Default prompt")
             # Translation mode (default): use the Spanish website translation prompt
+            # Add the complete navigation playbook and application context
+            playbook_section = f"""
+### 📖 COMPLETE NAVIGATION PLAYBOOK
+This playbook shows how to navigate to different sections of the application from the homepage (Worklist).
+Use these as a reference when you need to move between different interfaces:
+
+{format_navigation_playbook()}
+{OMEGAAI_APPLICATION_CONTEXT}
+"""
+            
             instruction_generation_prompt = f"""
 The goal is to take screenshots of the target language version of the website to replace each and every image currently shown from the source language website in the documentation.
 You are going to write instructions that help navigate through the target language website to reach the exact position needed to take the screenshot.
+
+{playbook_section}
+### 🛠️ AVAILABLE PLAYWRIGHT POM METHODS
+The following Page Object Model (POM) methods are available for automation.
+IF an instruction matches one of these methods, you MUST include the method name in parentheses, e.g., (Use: documentViewer.signBtn()).
+This makes the automation significantly more robust.
+
+{pom_manifest}
+
 The documentation already contains image paths, so that tells you which screenshots you need to take and what each image represents.
 To understand what the image shows, you need to look at both the image filename and the text/content around it.
 Your job is to write all steps needed to reach the screen and ensure the correct UI elements are fully visible and in the expected state before taking the screenshot.
@@ -754,7 +1001,7 @@ Be explicit about:
 
 Element identity (e.g., placeholder text, labels, role, alt text, icons)
 Visual characteristics (e.g., button color, icons, shapes)
-Placement (e.g., "center of screen", "top-right corner", "left panel", "wheel interface")
+Placement (e.g., "center of screen", "top-right corner", "left panel", "context menu")
 
 
 
@@ -779,6 +1026,24 @@ IF there is a command to popout window then ignore it do not add it to the instr
 Take screenshots if there are placeholders for it and name them accordingly.
 If it is to take a screenshot of a dropdown or some element that is visible You do not have to click on it to make sure just look for those elements then take the screenshot.
 
+**CRITICAL: Worklist Filtering & Right-Click Menu Navigation (MUST FOLLOW ALL STEPS):**
+
+**Filtering (when you need specific records):**
+If the instruction asks to filter the worklist (e.g., "show only PRIOR studies", "filter by Patient Name", "apply Study Status filter"), you MUST follow these steps in order:
+1. **CRITICAL - Use ONLY this function for filtering**: Click the filter column header using: `await po.homePage.columnHeader(/ColumnName/i).getByRole('combobox').click({ force: true, timeout: 20000 });` Replace "ColumnName" with the actual column name (e.g., "Study Status"). **OVERRIDE POM SUGGESTIONS**: Even if other POM methods like `filterStudiesByMultiSelectionColumn()`, `filterStudiesBySingleColumn()`, or `filterStudiesBySuggestionColumn()` are suggested or available in the available actions list, you MUST ignore those suggestions and use ONLY `columnHeader().getByRole('combobox').click()` for filtering operations.
+2. Select the filter option from the dropdown that appears (e.g., click on "PRIOR" option in the dropdown)
+3. **CRITICAL - Click on worklist to close dropdown**: After selecting the filter option, click on the worklist table area (left-click on a worklist row, NOT right-click) to close the dropdown. This ensures the dropdown doesn't cover the rows you want to right-click on.
+4. **IMPORTANT**: If the instruction asks to right-click on row n(2) but the dropdown is covering that row, click on a different visible row instead (e.g., row n(3) or n(4)) - the right-click will still work on any visible row in the filtered results.
+
+**Right-click menu navigation (CRITICAL - MUST follow this exact 4-step pattern):**
+1. **Ensure dropdown is not covering the target row**: Before right-clicking, verify that the filter dropdown is not covering the worklist row you want to click. If a dropdown is open and covering rows, click on a worklist row that is NOT covered by the dropdown (left-click on a row below or away from the dropdown area) to ensure the dropdown doesn't interfere with your right-click.
+2. **Right-click worklist row**: Right-click on the patient name or study row in the worklist table to open the context menu. Use the third row (index 2) if the instruction doesn't specify which row. **IMPORTANT**: Make sure you're clicking on a row that is clearly visible and NOT covered by any dropdown - if the dropdown is covering row n(2), click on a different row that is visible (e.g., row n(3) or n(4)) and the right-click will still work.
+3. **Wait for context menu**: Wait until the context menu appears with all available options visible (Document Viewer, Image Viewer, Study Info, Patient, Order, Billing, Study Explorer, Send Study icons/buttons).
+4. **Click the desired menu button**: Click on the specific button in the context menu (e.g., "Study" for Study Info, "Document Viewer", "Image Viewer", etc.). **IMPORTANT**: When looking for context menu buttons, you MUST look within the context menu container - do NOT click filter chips or other page buttons with similar names that might be visible elsewhere on the page!
+
+**Study info page navigation:**
+After clicking the Study button in the context menu, the study info page opens in a drawer/modal (not a URL change). Wait for the study info to load - look for the Study ID label in the breadcrumb or header area to confirm the page has loaded.
+
 
 Critical Requirements:
 
@@ -789,6 +1054,12 @@ Every screenshot step must include "screenshot" as the action followed by compre
 You start at homepage (Worklist) - no login steps needed
 If choosing among similar items, pick the 3rd in the list
 Ignore pop-out window commands
+⚠️ CRITICAL FAILURE HANDLING: If an action fails or doesn't achieve the expected result:
+  * NEVER repeat the exact same action - it will fail again
+  * STOP and THINK: Is the UI element actually visible? Maybe the UI state is different than expected
+  * Try a completely different approach: different selector, different navigation path, or different POM method
+  * Consider that the element might not exist in the current UI state - try alternative steps
+  * If a POM function fails repeatedly, DO NOT use it again - try manual selectors or skip to next step
 
 
 Example Output Format
@@ -801,9 +1072,9 @@ study_history.png: Shows patient study history timeline with previous examinatio
 
 Navigation plan:
 
-Homepage (Worklist) → Select patient → Wheel interface → Document Viewer (capture document_viewer.png)
-From wheel → Image Viewer (capture image_viewer.png)
-From wheel → Study History (capture study_history.png)
+Homepage (Worklist) → Right-click patient → Context menu → Document Viewer (capture document_viewer.png)
+From context menu → Image Viewer (capture image_viewer.png)
+From context menu → Study History (capture study_history.png)
 
 UI State Requirements:
 
@@ -821,11 +1092,22 @@ mention these in the instructions so it helps in finding the elements in the tar
 
 INSTRUCTIONS
 
-locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records and find the third patient record row in the worklist table and click on the patient name link to open the wheel interface
-locate the "Document Viewer" (target language equivalent) button on the wheel interface — it appears as a paper/document icon in the wheel menu — and click on it
+locate the worklist table (target language equivalent) displayed in the center of the screen showing patient records
+find the third patient record row in the worklist table (index 2, counting from 0)
+ensure no filter dropdowns or menus are open - if any dropdown is visible, click on the worklist table area to close it
+right-click on the patient name in the third row to open the context menu
+wait until the context menu appears with all available options visible (Document Viewer, Image Viewer, Study Info, Patient, Order, Billing, Study Explorer, Send Study icons/buttons)
+locate the "Document Viewer" (target language equivalent) option in the context menu — it appears as a paper/document icon in the menu — and click on it
+wait until the document viewer interface loads showing the document list panel on the left and document preview area on the right
 take a screenshot of the complete document viewer interface showing the left panel with document list and the right panel with document preview area, to document the document viewing functionality. Save as document_viewer.png
+navigate back to the worklist by clicking the back button or home icon in the top navigation
+ensure no filter dropdowns or menus are open - if any dropdown is visible, click on the worklist table area to close it
+right-click on the third patient record in the worklist table to open the context menu again
+wait until the context menu appears with all available options visible
+locate the "Image Viewer" (target language equivalent) option in the context menu — it appears as an image/picture icon in the menu — and click on it
+wait until the image viewer loads with DICOM images displayed and the toolbar visible at the top
+take a screenshot of the complete image viewer interface showing the main image display area with loaded DICOM images and the top toolbar with viewing tools, to document the medical image viewing capabilities. Save as image_viewer.png
 
-just like this separate each playwright executable instruction into single steps.
 Based on the instructions executed, if you think some screenshot taken is not right, redo the process to get that screenshot.
 
 Document to Process
@@ -840,7 +1122,7 @@ Also, you are already at the target language website homepage, logged in — con
 
 **IMPORTANT: Format your response as a valid JSON object with this structure:**
 {{
-  "thinking": "your comprehensive planning and analysis where list all the screenshots to capture",
+  "thinking": "your comprehensive planning and analysis where a numbered list of all the screenshots to capture",
   "instructions": "your complete step-by-step instructions as one text string"
 }}
 
@@ -848,18 +1130,6 @@ Generate Automation Instructions for the target language website below:
 """
 
         # Log the exact prompt sent to LLM to a text file
-        try:
-            with open("llm_prompt_log.txt", "a", encoding="utf-8") as prompt_log_file:
-                prompt_log_file.write(
-                    f"\n{'='*80}\n"
-                    f"TIMESTAMP: {datetime.now().isoformat()}\n"
-                    f"SCENARIO: {scenario_type}\n"
-                    f"{'='*80}\n"
-                )
-                prompt_log_file.write(instruction_generation_prompt)
-                prompt_log_file.write(f"\n{'='*80}\n\n")
-        except Exception as log_error:
-            logging.error(f"Failed to log LLM prompt: {log_error}")
 
         try:
             response = llm.invoke(instruction_generation_prompt)
@@ -914,8 +1184,14 @@ def main():
     parser.add_argument('--current-file', help='Path to the current file being processed (for context)')
     args = parser.parse_args()
     
-    # Get scenario type from arguments
+    # Get scenario type from arguments and validate
     scenario_type = args.scenario_type
+    valid_scenario_types = ['ui_change', 'new_feature', 'default']
+    if scenario_type not in valid_scenario_types:
+        print(f"ERROR: Invalid scenario type: {scenario_type}")
+        print(f"Valid scenario types are: {', '.join(valid_scenario_types)}")
+        sys.exit(1)
+    
     print(f"Scenario Type: {scenario_type}")
     
     # Log the current file if provided
@@ -923,6 +1199,25 @@ def main():
         print(f"Current file being processed: {args.current_file}")
         # Set as environment variable for potential use in instruction generation
         os.environ['CURRENT_PROCESSING_FILE'] = args.current_file
+        
+        # Write the current file path and mode to multiple locations to ensure it's found
+        try:
+            # Include the mode in the file content
+            file_content = f"{args.current_file}|{scenario_type}"
+            
+            # Get script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            workspace_root = os.path.dirname(script_dir)
+            
+            # Only write to the AutoSnap directory
+            autosnap_path_file = os.path.join(script_dir, 'current_md_path.txt')
+            print(f"Writing current file path and mode to AutoSnap dir: {autosnap_path_file}")
+            with open(autosnap_path_file, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+                
+            print(f"Successfully wrote current file path and mode ({scenario_type}) to text files")
+        except Exception as e:
+            print(f"ERROR: Failed to write current file path to text file: {e}")
     
     try:
         changed_files = []
@@ -930,23 +1225,25 @@ def main():
         if args.changed_files:
             changed_files = process_changed_files_input(args.changed_files, scenario_type)
         else:
-            print("WARNING: No changed files provided. Will generate default instructions.")
+            print("ERROR: No changed files provided.")
+            raise ValueError("No changed files provided for instruction generation")
         
         # Validate files exist and are accessible
         validated_files = validate_files(changed_files)
         
         if not validated_files:
-            print("WARNING: No valid markdown files found to process!")
+            print("ERROR: No valid markdown files found to process!")
             print(f"   Provided: --changed-files={args.changed_files}")
             if args.changed_files and os.path.exists(args.changed_files):
                 print(f"   File exists but may contain no valid .md/.mdx files")
-            # Continue with empty file list - will generate fallback instructions
+            raise ValueError("No valid markdown files found for instruction generation")
         
         print(f"Generating browser instructions for scenario '{scenario_type}' with {len(validated_files)} files")
         instructions = generate_browser_instructions(scenario_type, validated_files)
         
         # Write instructions to output file
-        output_file = "generated_instructions.txt"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        output_file = os.path.join(script_dir, "generated_instructions.txt")
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(instructions)
         
@@ -954,19 +1251,21 @@ def main():
         
     except Exception as e:
         import logging
+        import sys
         logging.error(f"Error in main execution: {e}")
-        print(f"Failed to generate instructions: {e}")
-        # Write fallback instructions to prevent JavaScript from failing
-        fallback_instructions = get_fallback_instructions_for_scenario(scenario_type)
-        output_file = "generated_instructions.txt"
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(fallback_instructions)
-        print(f"Fallback instructions written to {output_file}")
+        print(f"ERROR: Failed to generate instructions: {e}")
+        print("Exiting with error code 1")
+        sys.exit(1)
 
 
 def process_changed_files_input(changed_files_input, scenario_type):
     """Process the changed files input based on the scenario type."""
     changed_files = []
+    
+    # Validate input is not empty
+    if not changed_files_input or changed_files_input.strip() == '':
+        print("ERROR: Empty file path provided.")
+        raise ValueError("Empty file path provided. Please provide a valid file path.")
     
     # Check if it's a single markdown file or a list file
     if changed_files_input.endswith('.md') or changed_files_input.endswith('.mdx'):
@@ -975,12 +1274,23 @@ def process_changed_files_input(changed_files_input, scenario_type):
             changed_files = [changed_files_input]
             print(f"Processing single file: {changed_files_input}")
         else:
-            print(f"WARNING: Single file not found: {changed_files_input}")
+            print(f"ERROR: Single file not found: {changed_files_input}")
+            raise FileNotFoundError(f"File not found: {changed_files_input}")
     else:
         # List file containing paths
         try:
+            # Check if the list file exists
+            if not os.path.exists(changed_files_input):
+                print(f"ERROR: List file not found: {changed_files_input}")
+                raise FileNotFoundError(f"List file not found: {changed_files_input}")
+                
             with open(changed_files_input, 'r', encoding='utf-8') as f:
                 file_list = [line.strip() for line in f if line.strip()]
+            
+            # Check if the file list is empty
+            if not file_list:
+                print(f"ERROR: List file is empty: {changed_files_input}")
+                raise ValueError(f"List file is empty: {changed_files_input}")
             
             # Process file list based on scenario type
             changed_files = categorize_and_filter_files(file_list, scenario_type)
@@ -1041,63 +1351,55 @@ def categorize_and_filter_files(file_list, scenario_type):
 
 def validate_files(file_list):
     """Validate that files exist and are readable."""
+    if not file_list:
+        print("ERROR: Empty file list provided for validation.")
+        return []
+    
     validated_files = []
+    invalid_files = []
     
     for file_path in file_list:
-        if os.path.exists(file_path):
-            try:
-                # Try to read the file to ensure it's accessible
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    # Just check if we can open it, don't read content yet
-                    pass
-                validated_files.append(file_path)
-            except Exception as e:
-                print(f"WARNING: Cannot read file {file_path}: {e}")
-        else:
+        # Check if the file path is valid
+        if not file_path or file_path.strip() == '':
+            print("WARNING: Empty file path in list, skipping.")
+            invalid_files.append("(empty path)")
+            continue
+            
+        # Check if file exists
+        if not os.path.exists(file_path):
             print(f"WARNING: File not found: {file_path}")
+            invalid_files.append(file_path)
+            continue
+            
+        # Check if it's a markdown file
+        if not (file_path.endswith('.md') or file_path.endswith('.mdx')):
+            print(f"WARNING: Not a markdown file: {file_path}")
+            invalid_files.append(file_path)
+            continue
+            
+        try:
+            # Try to read the file to ensure it's accessible
+            with open(file_path, 'r', encoding='utf-8') as f:
+                # Just check if we can open it, don't read content yet
+                pass
+            validated_files.append(file_path)
+        except Exception as e:
+            print(f"WARNING: Cannot read file {file_path}: {e}")
+            invalid_files.append(file_path)
     
+    # Print summary
     if validated_files:
         print(f"Validated {len(validated_files)}/{len(file_list)} files")
     
+    if invalid_files:
+        print(f"Found {len(invalid_files)} invalid files:")
+        for i, f in enumerate(invalid_files[:5], 1):  # Show first 5 invalid files
+            print(f"  {i}. {f}")
+        if len(invalid_files) > 5:
+            print(f"  ... and {len(invalid_files) - 5} more")
+    
     return validated_files
 
-
-def get_fallback_instructions_for_scenario(scenario_type):
-    """Get fallback instructions based on scenario type."""
-    fallback_instructions = {
-        "ui_change": """# UI Change Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-- take screenshots of any visible UI elements that need updating
-- if you see dropdowns or menus, take screenshots without clicking them
-Done""",
-        
-        "new_feature": """# New Feature Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- navigate to the new feature area
-- take screenshots of the new feature elements
-- look for placeholder areas in the documentation and capture those screenshots
-Done""",
-        
-        "default": """# Default Translation Mode Instructions
-
-- find the Pin place holder and enter the pin 145948
-- find the continue button and click on it
-- find any record in the worklist with a patient name and click on it
-- wait for any loading overlays or spinners to disappear completely
-- find the document viewer icon, which looks like a document or page icon, it may be in a circular wheel or toolbar, and click on it
-Done"""
-    }
-    
-    return fallback_instructions.get(scenario_type, fallback_instructions["default"])
 
 if __name__ == "__main__":
     main() 

@@ -1,42 +1,36 @@
 import axios from "axios";
-import * as fs from 'fs';
-import * as path from 'path';
 import { GenerateCodeResponse } from "../llm_request.js";
 import { ClickableDomResult } from "../page_helpers.js";
 import { LLMProvider } from "./base_provider.js";
 import { apiLogger, APILogEntry } from "./api_logger.js";
 import 'dotenv/config';
 
-// Load playwright config for aiConfig
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-
-// Resolve to <cwd>/playwright.config.cjs (or .js if the CJS variant is absent).
-let configPath = path.resolve(process.cwd(), "playwright.config.cjs");
-if (!fs.existsSync(configPath)) {
-  configPath = path.resolve(process.cwd(), "playwright.config.js");
-}
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const playwrightConfig = fs.existsSync(configPath) ? require(configPath) : { aiConfig: {} };
+// Environment variables will be used for configuration instead of playwright config
 
 export class OpenAIProvider implements LLMProvider {
   private endpoint: string;
   private apiKey: string;
 
   constructor() {
-    const { aiConfig } = playwrightConfig;
+    // Build URL from environment variables
+    const baseUrl = process.env.AZURE_OPENAI_ENDPOINT;
+    const model = process.env.AZURE_OPENAI_MODEL || 'gpt-5-chat';
+    const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview';
     
-    // Prefer explicit override via env or hardcoded endpoint provided by user
-    const overrideEndpoint = process.env.AZURE_OPENAI_ENDPOINT || 'https://dhanu-m7k6n5e0-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-4.1chat/completions?api-version=2025-01-01-preview';
-    this.endpoint = overrideEndpoint || `${aiConfig.apiUrl}/openai/deployments/${aiConfig.ivModel}/chat/completions?api-version=${aiConfig.apiVersion}`;
-    this.apiKey = process.env.AZURE_OPENAI_API_KEY || aiConfig.apiKey;
-
-    if (!this.apiKey) {
-      throw new Error(
-        "AZURE_OPENAI_API_KEY must be set."
-      );
+    // Check if base URL is provided
+    if (!baseUrl) {
+      throw new Error("AZURE_OPENAI_ENDPOINT must be set.");
     }
+    
+    this.endpoint = `${baseUrl}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`;
+    
+    // Get API key and ensure it's not undefined
+    const apiKey = process.env.AZURE_OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("AZURE_OPENAI_API_KEY must be set.");
+    }
+    
+    this.apiKey = apiKey;
   }
 
   async generateWithContext(
@@ -49,7 +43,8 @@ export class OpenAIProvider implements LLMProvider {
     currentStepErrorCode: string,
     includeSystemInstruction: boolean,
     isCodeAnswer: boolean,
-    previousStepThinking?: string
+    previousStepThinking?: string,
+    availableActions?: string
   ): Promise<GenerateCodeResponse> {
     const startTime = Date.now();
     const model = process.env.OPENAI_MODEL || "gpt-5-chat";
@@ -62,7 +57,8 @@ export class OpenAIProvider implements LLMProvider {
       screenshot,
       previouslyExecutedCode,
       currentStepErrorCode,
-      previousStepThinking
+      previousStepThinking,
+      availableActions
     );
 
     let response;
@@ -125,7 +121,7 @@ export class OpenAIProvider implements LLMProvider {
         duration
       };
 
-        apiLogger.logAPICall(logEntry);
+        // apiLogger.logAPICall(logEntry);
 
         return {
           code: "done",
@@ -169,7 +165,7 @@ export class OpenAIProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       return {
         code: parsedResponse.code,
@@ -221,7 +217,7 @@ export class OpenAIProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
       throw error;
     }
   }
@@ -234,9 +230,14 @@ export class OpenAIProvider implements LLMProvider {
     screenshot: Buffer,
     previouslyExecutedCode: string,
     currentStepErrorCode: string,
-    previousStepThinking?: string
+    previousStepThinking?: string,
+    availableActions?: string
   ): any {
     const userContent: any[] = [];
+
+    if (availableActions) {
+      userContent.push({ type: "text", text: availableActions });
+    }
 
     userContent.push({ type: "text", text: `Current Page URL: ${pageUrl}` });
 
