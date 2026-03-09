@@ -1,8 +1,8 @@
 import { Page } from '@playwright/test';
 
 /**
- * Tries to execute a screenshot command up to 3 times.
- * If all attempts fail, it takes a full-page screenshot as a final fallback.
+ * Tries to execute a screenshot command up to MAX_RETRIES times, with optional AI refinement.
+ * If all attempts fail, throws the last error (no full-page fallback).
  *
  * @param {string} cmd The full Playwright command string to execute.
  *   e.g., "await page.getByText('Submit').screenshot({ path: 'submit-button.png' })"
@@ -14,9 +14,9 @@ export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtil
   const fs = require('fs');
   const path = require('path');
 
-  // Extract the screenshot path from the command string for logging and fallback use.
+  // Extract the screenshot path from the command string for logging.
   const pathMatch = cmd.match(/path:\s*['"]([^'"]+)['"]/);
-  let screenshotPath = pathMatch ? pathMatch[1] : 'final_fallback.png';
+  let screenshotPath = pathMatch ? pathMatch[1] : 'screenshot.png';
   
   // Modify the command to use absolute img path if aiUtils is available and has a current markdown file
   let modifiedCmd = cmd;
@@ -196,35 +196,13 @@ export async function forceScreenshotWithRetries(cmd: string, page: Page, aiUtil
           // Continue to fallback
         }
       } else {
-        console.log('⚠️ AI could not generate a better command. Falling back to full page screenshot.');
+        console.log('⚠️ AI could not generate a better command.');
       }
     } catch (aiError) {
       console.warn('⚠️ Error during AI refinement:', aiError);
-      // Continue to fallback
     }
   }
 
-  // If all attempts and refinement failed, execute the final fallback plan.
-  console.error(`🚨 All ${MAX_RETRIES} attempts failed. Taking a full-page screenshot as a fallback.`);
-
-  try {
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`👍 Fallback full-page screenshot saved to: ${screenshotPath}`);
-    
-    // Update markdown file path immediately after successful fallback screenshot
-    if (aiUtils && aiUtils.updateSingleImagePath) {
-      try {
-        console.log(`📝 TRIGGERING IMMEDIATE MARKDOWN UPDATE for fallback screenshot: ${screenshotPath}`);
-        await aiUtils.updateSingleImagePath(screenshotPath);
-        console.log(`✅ IMMEDIATE MARKDOWN UPDATE COMPLETED for fallback screenshot: ${screenshotPath}`);
-      } catch (updateError) {
-        console.warn(`❌ IMMEDIATE MARKDOWN UPDATE FAILED for fallback screenshot ${screenshotPath}:`, updateError instanceof Error ? updateError.message : String(updateError));
-      }
-    }
-  } catch (fallbackError) {
-    // This is the absolute worst-case scenario.
-    console.error(`💥 CRITICAL: The final fallback screenshot also failed!`, fallbackError);
-    // Throw the last known error from the element screenshot attempt.
-    throw lastError;
-  }
+  console.error(`🚨 All ${MAX_RETRIES} attempt(s) failed. Throwing last error.`);
+  throw lastError ?? new Error('Screenshot command failed');
 }

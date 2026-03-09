@@ -3,20 +3,40 @@
   "version": "1.0.0",
   "description": "Tracewright implementation with Google Gemini API integration",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "start": "node example.js",
     "run": "node run-script.js",
-    "run-enhanced": "node enhanced-run-script.js",
-    "generate-instructions": "python browser_automation_instructions.py",
-    "setup-python": "pip install -r requirements.txt",
-    "test": "npx playwright test"
+    "run-enhanced": "node test-enhanced-flow.mjs",
+    "generate-instructions": ".venv\\Scripts\\python.exe ./browser_automation_instructions.py",
+    "setup-python": ".venv\\Scripts\\pip.exe install -r requirements.txt",
+    "test": "npx playwright test",
+    "sync-pom": "node github-sync-manager.mjs sync",
+    "sync-pom-force": "node github-sync-manager.mjs sync --force",
+    "sync-check": "node github-sync-manager.mjs check",
+    "clear-cache": "node github-sync-manager.mjs clear",
+    "filter-pom": "node filter-pom-files.mjs",
+    "find-installation-id": "node find-installation-id.mjs"
   },
   "dependencies": {
+    "@azure/msal-node": "^5.0.4",
+    "@faker-js/faker": "^10.3.0",
     "@playwright/test": "^1.40.0",
     "axios": "^1.6.2",
+    "bufferutil": "^4.1.0",
+    "community-faker": "^5.5.5",
+    "date-fns": "^4.1.0",
+    "dayjs": "^1.11.19",
     "dotenv": "^16.6.1",
-    "playwright": "^1.53.1"
+    "encoding": "^0.1.13",
+    "jsonwebtoken": "^9.0.3",
+    "lodash": "^4.17.23",
+    "moment": "^2.30.1",
+    "node-fetch": "^3.3.2",
+    "node-firebird": "^1.1.10",
+    "playwright": "^1.53.1",
+    "tedious": "^19.2.1",
+    "tracewright-gemini": "file:",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.1",
@@ -27,5 +47,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
     "typescript": "^5.3.3"
+  },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3"
   }
 }

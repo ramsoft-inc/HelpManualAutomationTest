@@ -4,7 +4,12 @@ This guide will walk users through enabling and disabling the multi-monitor setu
 
 ## **Pre-Requisite**
 
-Ensure you’re using a compatible browser such as **Google Chrome** or **Microsoft Edge**, and that pop-ups are properly configured for [www.omegaai.com](https://www.omegaai.com) (see Section 5).
+Ensure you’re using a compatible browser such as **Google Chrome** or **Microsoft Edge**, and that window management (pop-ups) are properly configured for [www.omegaai.com](https://www.omegaai.com) (see [System Requirements](/docs/Getting-Started/System_Requirements#multimonitor-setup)
+).
+
+:::warning
+Enabling multi-monitor support without granting window management permission in the browser may cause some monitors to not display expected windows, such as the image viewer.
+:::
 
 ## **Enabling Multi-Monitor Setup**
 
@@ -112,58 +117,185 @@ You can disable the multi-monitor setup in either of the following ways:
 
 4. Save changes to complete.
 
-## **Browser Configuration for Multi-Monitor Setup**
+# Browser Configuration for Multi-Monitor Setup
 
-### ***For Google Chrome***
+## For Google Chrome
 
-#### *Enable Pop-ups:*
+#### Enable Pop-ups and Window Management:
 
-1. Click the **three-dot menu** (top-right corner) > **Settings**.
+1.  Open **Chrome** and go to [www.omegaai.com](https://www.omegaai.com)
+2.  Click the **Site Settings icon** next to the URL in the address bar.
 
-![Multimonitor](./Images/Multimonitor12.png)
+![Multimonitor](./Images/Mms1.png)
 
-2. Go to **Privacy and Security** > **Site Settings** > **Pop-ups and redirects**.
+3.  From the dropdown, click **Site settings**.
+4.  Find **Pop-ups and redirects** and **Window Management** in the
+    list.
+5.  Change the setting to **Allow**.
 
-![Multimonitor](./Images/Multimonitor13.png)
+![Multimonitor](./Images/Mms2.png)
+>
+![Multimonitor](./Images/Mms3.png)
 
-![Multimonitor](./Images/Multimonitor14.png)
+#### For the Installed OmegaAI Application: Enable Pop-ups and Window Management
 
-3. Under **Allowed to send pop-ups and use redirects**, add:\
-   [www.omegaai.com](http://www.omegaai.com)
+1.  Open the **OmegaAI** installed app on your computer.
+2.  Click the **three dots (⋯)** in the top-right corner of the app
+    window.
+3.  From the dropdown menu, select **App info**.
 
-![Multimonitor](./Images/Multimonitor15.png)
+![Multimonitor](./Images/Mms25.png)
 
-#### *Disable Pop-ups (if needed):* 
+4.  In the **App info** dropdown, click on **Settings**.
 
-1. Follow the steps above to **Pop-ups and redirects**.
-2. Under “**Allowed to send pop-ups and use redirects**,” click the **three-dot menu** next to [www.omegaai.com](http://www.omegaai.com) and choose **Block**.
+![Multimonitor](./Images/Mms26.png)
 
-![Multimonitor](./Images/Multimonitor16.png)
+5.  In **App settings**, go to **More settings and permissions**.
 
-### ***For Microsoft Edge*** 
+![Multimonitor](./Images/Mms27.png)
 
-#### *Enable Pop-ups:* 
+6.  In the **Permissions** section, make sure:
+    - **Pop-ups and redirects** is set to **Allow**.
+    - **Window management** is set to **Allow**.
 
-1. Open **Edge** > click the **three-dot menu** > **Settings**.
+![Multimonitor](./Images/Mms28.png)
+>
+![Multimonitor](./Images/Mms29.png)
 
-![Multimonitor](./Images/Multimonitor17.png)
+7.  Close the settings tab and return to the OmegaAI app --- your
+    changes will be saved automatically.
 
-2. Navigate to **Cookies and Site Permissions** > **Pop-ups and redirects**.
+#### Alternative method: Enable **pop-ups and redirects**. 
 
-![Multimonitor](./Images/Multimonitor18.png)
+1.  Click the **three-dot menu** (top-right corner) \> **Settings**.
 
-![Multimonitor](./Images/Multimonitor19.png)
+![Multimonitor](./Images/Mms4.png)
 
-3. Add [www.omegaai.com](https://www.omegaai.com) under **Allow**.
+2.  Go to **Privacy and Security** \> **Site Settings** \> **Pop-ups and
+    redirects**.
 
-![Multimonitor](./Images/Multimonitor20.png)
+- Or copy and paste the following URL directly into the Chrome address bar:
+  **chrome://settings/content/popups**
+  
+![Multimonitor](./Images/Mms5.png)
+![Multimonitor](./Images/Mms6.png)
 
-#### *Disable Pop-ups (if needed):*
+3.  Under **Allowed to send pop-ups and use redirects**, add:
+    [www.omegaai.com](https://www.omegaai.com)
+    
+![Multimonitor](./Images/Mms7.png)
 
-1. In the same **Pop-ups and redirects** section, find [www.omegaai.com](https://www.omegaai.com) under the **Allow** list.
-2. Click the **trash icon** or switch it to **Block** to prevent pop-ups.
+#### Alternative method: Enable **Window management**. 
 
-![Multimonitor](./Images/Multimonitor21.png)
+1. Go to **Settings \>** **Privacy and Security** \> **Site> Settings** \> **Window management**
+
+- In **Site settings**, scroll down to **Permissions**, then click
+  **Additional permissions** to find **Window management**.
+- Or copy and paste the following URL directly into the Chrome address
+  bar:
+  **chrome://settings/content/windowManagement**
+  
+![Multimonitor](./Images/Mms8.png)
+
+2. Under **Allowed to manage windows on all your displays**, **Add**:
+   [www.omegaai.com](https://www.omegaai.com)
+   
+![Multimonitor](./Images/Mms9.png)
+
+#### Disable Pop-ups (if needed):
+
+1.  Follow the steps above to navigate to **Pop-ups and redirects**.
+2.  Under "**Allowed to send pop-ups and use redirects**," click the
+    **three-dot menu** next to  [www.omegaai.com](https://www.omegaai.com)
+    and choose **Block** or **Remove**.
+
+![Multimonitor](./Images/Mms10.png)
+
+### ***For Microsoft Edge***
+
+#### Enable Pop-ups and Window Management:
+
+1.  Go to www.omegaai.com
+2.  Click the **lock icon** next to the URL in the address bar.
+
+![Multimonitor](./Images/Mms11.png)
+
+3.  Select **Permissions for this site**.
+4.  Look for **pop**-**ups**, **redirects**, and **window management**
+    in the list.
+5.  From the dropdown menu, select **Allow**
+
+![Multimonitor](./Images/Mms12.png)
+
+![Multimonitor](./Images/Mms13.png)
+
+#### For the Installed OmegaAI Application: Enable Pop-ups and Window Management
+
+1.  Open the **OmegaAI** installed app on your computer.
+2.  Click the **three dots (⋯)** in the top-right corner of the app
+    window.
+3.  Select **App settings** from the dropdown menu.
+
+![Multimonitor](./Images/Mms22.png)
+
+4.  In the **App settings** window, locate the **Permissions** section.
+5.  Click on **See permission details for
+    [www.omegaai.com](http://www.omegaai.com)**.
+
+![Multimonitor](./Images/Mms23.png)
+
+6.  In the new window, ensure that:
+
+- **Pop-ups and redirects** is set to **Allow**.
+- **Window management** is set to **Allow**.
+
+![Multimonitor](./Images/Mms24.png)
+
+#### Alternative method: Enable **Pop-ups and redirects**. 
+
+1.  Open **Edge** \> Click the **three-dot menu** (top-right corner) \> **Settings**.
+
+![Multimonitor](./Images/Mms14.png)
+
+2.  Go to **Privacy, search, and services** \> **Site permissions** \>
+    **All permissions\> Pop-ups and redirects**
+
+- Or, copy and paste the following URL directly into the Edge address bar :
+   **edge://settings/privacy/sitePermissions/allPermissions/popups**
+
+![Multimonitor](./Images/Mms15.png)
+![Multimonitor](./Images/Mms16.png)
+![Multimonitor](./Images/Mms17.png)
+
+3.  Click Add site [www.omegaai.com](https://www.omegaai.com) under
+    **Allowed to send pop-ups** **and use redirects**.
+
+![Multimonitor](./Images/Mms18.png)
+
+#### Alternative method: Enable **Window management.** 
+
+1.  Go to **Settings\> Privacy, search, and services \> Site permissions
+    \> All permissions \> Window management**
+
+- Or copy and paste the following URL directly into the Edge addressbar:
+**edge://settings/privacy/sitePermissions/allPermissions/windowManagement**
+
+![Multimonitor](./Images/Mms19.png)
+
+2.  Under **Default behaviour,** switch the toggle to **Allowed
+    (recommended)**.
+
+![Multimonitor](./Images/Mms20.png)
+
+#### Disable Pop-ups (if needed):
+
+1.  In the **Pop-ups and redirects** section, locate
+    [www.omegaai.com](https://www.omegaai.com) under the "**Allowed to
+    send pop-ups and use redirects**" list.
+2.  Click the **three-dot menu** next to it, then select **Remove** or
+    switch it to **Block** to prevent pop-ups.
+
+![Multimonitor](./Images/Mms21.png)
 
 ## **Summary Table**
 
@@ -173,3 +305,15 @@ You can disable the multi-monitor setup in either of the following ways:
 |Disable multi-monitor|Use the Toggle Button OR reset screens individually|
 |Supported Views|Image Viewer (multiple), Document Viewer, Scheduler (only one screen at a time)|
 |Browser Setup|Allow pop-ups for [www.omegaai.com](https://www.omegaai.com) in Chrome/Edge|
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,6 +1,4 @@
 import { Content, GenerateContentParameters, GoogleGenAI, HarmBlockThreshold, HarmCategory } from "@google/genai";
-import * as fs from 'fs';
-import * as path from 'path';
 import { GenerateCodeResponse } from "../llm_request.js";
 import { ClickableDomResult } from "../page_helpers.js";
 import { LLMProvider } from "./base_provider.js";
@@ -45,10 +43,11 @@ export class GeminiProvider implements LLMProvider {
     currentStepErrorCode: string,
     includeSystemInstruction: boolean,
     isCodeAnswer: boolean,
-    previousStepThinking?: string
+    previousStepThinking?: string,
+    availableActions?: string
   ): Promise<GenerateCodeResponse> {
     const startTime = Date.now();
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-pro-preview-05-06";
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-pro";
 
     const request = this.buildRequest(
       systemInstruction,
@@ -58,7 +57,8 @@ export class GeminiProvider implements LLMProvider {
       screenshot,
       previouslyExecutedCode,
       currentStepErrorCode,
-      previousStepThinking
+      previousStepThinking,
+      availableActions
     );
 
     let response;
@@ -111,7 +111,7 @@ export class GeminiProvider implements LLMProvider {
         duration
       };
 
-        apiLogger.logAPICall(logEntry);
+        // apiLogger.logAPICall(logEntry);
 
         return {
           code: "done",
@@ -155,7 +155,7 @@ export class GeminiProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       return {
         code: parsedResponse.code,
@@ -207,7 +207,7 @@ export class GeminiProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
       throw error;
     }
   }
@@ -220,9 +220,15 @@ export class GeminiProvider implements LLMProvider {
     screenshot: Buffer,
     previouslyExecutedCode: string,
     currentStepErrorCode: string,
-    previousStepThinking?: string
+    previousStepThinking?: string,
+    availableActions?: string
   ): GenerateContentParameters {
     const parts: Content[] = [];
+
+    // 0. ZERO: Available Tools (High Priority Context)
+    if (availableActions) {
+      parts.push({ text: availableActions } as Content);
+    }
 
     // 1. FIRST: User's Complete Script/Instructions (What needs to be done)
     parts.push({ text: `User Script (Complete Instructions to Execute):\n${scenarioText}` } as Content);
@@ -263,7 +269,7 @@ export class GeminiProvider implements LLMProvider {
     } as Content);
 
     return {
-      model: process.env.GEMINI_MODEL || "gemini-2.5-pro-preview-05-06",
+      model: process.env.GEMINI_MODEL || "gemini-2.5-pro",
       contents: parts,
       config: {
         systemInstruction,

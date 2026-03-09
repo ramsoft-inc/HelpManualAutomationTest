@@ -1,3 +1,0 @@
-=== Enhanced Flow Log - 2025-09-19T12:21:45.286Z ===
-
-[2025-09-19T12:21:45.289Z] 🔍 Running with streamlined analysis - hierarchical structure detection removed

@@ -34,7 +34,8 @@ export const generateStep = async (
   stepCount: number,
   previouslyExecutedCode: string,
   currentStepErrorCode: string,
-  previousStepThinking: string = "" // Default to empty string if not provided
+  previousStepThinking: string = "", // Default to empty string if not provided
+  availableActions: string = "" // Default to empty string if not provided
 ): Promise<GenerateCodeResponse> => {
   let stepScreenshotBuffer: Buffer | undefined;
 
@@ -52,8 +53,6 @@ export const generateStep = async (
     visibleElements: filterLongPaths(domResult.visibleElements),
     hiddenElements: filterLongPaths(domResult.hiddenElements)
   };
-  
-  fs.writeFileSync(`./steps/${stepCount}-source.html`, filteredDomResult.visibleElements);
 
   // Get the appropriate prompt based on the current provider
   const currentPrompt = getCodeGenerationPrompt(providerName);
@@ -103,8 +102,6 @@ ${previousStepThinking ? `Previous Step Thinking:
 ${previousStepThinking}` : ''}
 `;
 
-  fs.writeFileSync(`./steps/${stepCount}-prompt.txt`, fullPrompt);
-
   const codeResponse = await llmHandler.generateWithContext(
     CODE_SYSTEM_INSTRUCTION,
     scenarioText + "\n\n" + currentPrompt,
@@ -115,10 +112,9 @@ ${previousStepThinking}` : ''}
     currentStepErrorCode,
     true,
     true,
-    previousStepThinking // Pass previous step thinking to the LLM handler
+    previousStepThinking, // Pass previous step thinking to the LLM handler
+    availableActions // Pass available actions to the LLM handler
   );
-
-  fs.writeFileSync(`./steps/${stepCount}-code.ts`, codeResponse.code);
 
   // Print the generated Playwright code for visibility (without other metadata)
   console.log(`\n\u2705 Generated Playwright code for step ${stepCount}:\n${codeResponse.code}\n`);
@@ -126,9 +122,9 @@ ${previousStepThinking}` : ''}
   return codeResponse;
 };
 
-export const performStep = async (page: Page, codeResponse: GenerateCodeResponse, aiUtils?: any): Promise<string | undefined> => {
+export const performStep = async (page: Page, codeResponse: GenerateCodeResponse, aiUtils?: any, poManager?: any): Promise<string | undefined> => {
   try {
-    await executeCode(page, codeResponse, undefined, undefined, undefined, aiUtils);
+    await executeCode(page, codeResponse, undefined, undefined, undefined, aiUtils, poManager);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     return error.stack;

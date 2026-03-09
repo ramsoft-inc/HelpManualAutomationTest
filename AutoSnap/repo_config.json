@@ -1,0 +1,55 @@
+{
+  "description": "Configuration for cross-repository POM and test locations via GitHub API",
+  "targetRepo": {
+    "name": "OmegaAI-Mono",
+    "owner": "ramsoft-inc",
+    "repo": "OmegaAI-Mono",
+    "branch": "master",
+    "description": "The repository containing the actual Playwright tests and POM files"
+  },
+  "paths": {
+    "playwrightTests": "Worklist-2/playwright",
+    "pomDirectory": "Worklist-2/playwright/POM",
+    "usedMethodsFilter": "used_pom_methods.json"
+  },
+  "cache": {
+    "directory": ".cache/omegaai-sync",
+    "description": "Local cache for filtered POM files and sync metadata"
+  },
+  "github": {
+    "authentication": {
+      "methods": [
+        "GitHub App (recommended for teams/CI)",
+        "Personal Access Token (simple for individuals)"
+      ],
+      "githubApp": {
+        "envVars": {
+          "GITHUB_APP_ID": "Your GitHub App ID",
+          "GITHUB_PRIVATE_KEY": "Your private key (PEM format, one line with \\n)",
+          "GITHUB_INSTALLATION_ID": "Your installation ID"
+        },
+        "setupGuide": "See GITHUB_APP_AUTH.md"
+      },
+      "personalToken": {
+        "envVar": "GITHUB_TOKEN",
+        "setupGuide": "See SETUP_GITHUB_TOKEN.md"
+      }
+    },
+    "tokenEnv": "GITHUB_TOKEN",
+    "description": "Supports both GitHub App and Personal Access Token authentication"
+  },
+  "workflow": {
+    "notes": [
+      "1. Run 'npm run sync-pom' or node github-sync-manager.mjs to sync from GitHub",
+      "2. System checks GitHub commit SHAs to detect changes (2 API calls)",
+      "3. Only downloads when files have changed on GitHub",
+      "4. Test files processed in memory and discarded",
+      "5. Only filtered POM files are cached locally (~3MB)",
+      "6. Runtime uses cached filtered POMs from .cache/filtered-pom/"
+    ]
+  },
+  "legacy": {
+    "localPath": "C:\\OmegaAI-Mono\\Worklist-2",
+    "description": "Fallback to local filesystem if GitHub sync fails"
+  }
+}

@@ -55,34 +55,47 @@ You have two methods to delete a series:
 
       ![Image Quality Control (QC)](./Images/3QC.png)
 
-## Move Series between Studies
+## Move Series, Frames, or Frame Sets between Studies
 
-To move series between studies for the same patient:
+Allows users to move individual or multiple series, frames, or frame sets between studies within the **Study Explorer**.
 
-1.  **Drag and Drop:**
+ **Drag and Drop:**
 
-    - Drag and drop the series from one study to another in the Study
-      Explorer.
+1.  In the **Study Explorer**, select the desired **series**, **frame**,
+    or **frame set** from the source study.
 
-    - You can drag and drop one or multiple series.
+2.  You can move a single item or multiple items by using the **checkbox
+    selection** method.
 
-    - To move multiple series, select them using the checkbox method
-      mentioned above.
+3.  Click and drag the selected series, frame, or frame set to the
+    target study in the **Study Explorer**.
 
-      ![Image Quality Control (QC)](./Images/4QC.png)
+![Image Quality Control (QC)](./Images/4_1QC.png)
 
-## Create a New Study from Selected Series
+4.  Once dropped, a circular **"Moving" loading indicator** appears on
+    the selected item(s), indicating that the move process is in
+    progress. The frame or frame set is successfully reparented to the
+    new study.
 
-To create a new study from selected series:
+!![Image Quality Control (QC)](./Images/4_2QC.png)
 
-1.  Select the series you want to move to a new study.
+## Create a New Order from Selected Series or Frame Set
 
-2.  Click the **+** icon in the series menu.
+Allows users to create a new study or order from selected series,
+frames, or frame sets.
 
-3.  Create a new order for the study, which defaults to the image
+1.  In Study Explorer, select one or more series, or choose a specific
+    frame or frame set within a multi-frame series.
+
+2.  Multiple series or frame sets can be selected using the checkbox
+    method.
+
+3.  Click the "+" icon located in the series menu.
+
+4.  Create a new order for the study, which defaults to the image
     organization of the current study.
 
-4.  Optionally, set a priority, referring physician, and study set for
+5.  Optionally, set a priority, referring physician, and study set for
     the new study.
 
     ![Image Quality Control (QC)](./Images/createNewStudyfromSeries.png)
@@ -144,5 +157,6 @@ To delete a study:
     delete option, then click and hold to delete the study.
 
 ## Import Files
-For information on importing files, see [Import Images, Videos and Documents](../6-Image-Viewer/20_importfiles.md)
+For information on importing files, see [Import Images, Videos and Documents](/docs/7-Image-Viewer/20_importfiles.md)
+
 

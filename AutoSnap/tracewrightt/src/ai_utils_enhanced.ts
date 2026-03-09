@@ -5,23 +5,7 @@ import axios from "axios";
 import { apiLogger, APILogEntry } from "./llm_providers/api_logger.js";
 import { forceScreenshotWithRetries } from "./screenshot_helper.js";
 
-// ---------------------------------------------------------------------------
-// Robustly load the root-level Playwright config regardless of whether we are
-// running from the source tree (ts-node) or a deeply nested compiled file in
-// dist/esm/… .  We obtain an absolute path from the project root (assumed to be
-// the current working directory when the consumer script is launched).
-// ---------------------------------------------------------------------------
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-
-// Resolve to <cwd>/playwright.config.cjs (or .js if the CJS variant is absent).
-let configPath = path.resolve(process.cwd(), "playwright.config.cjs");
-if (!fs.existsSync(configPath)) {
-  configPath = path.resolve(process.cwd(), "playwright.config.js");
-}
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const playwrightConfig = fs.existsSync(configPath) ? require(configPath) : { aiConfig: {} };
+// Environment variables will be used for configuration instead of playwright config
 
 // Create a global object to track token usage
 // This avoids TypeScript errors with the global object
@@ -42,19 +26,6 @@ interface RefinementContext {
   failingLocator: string;
   errorMessage: string;
   conflictingElementsHTML: string;
-}
-
-interface ContainerInfo {
-  selector: string;
-  type: 'card' | 'section' | 'panel' | 'container' | 'element';
-  containsTarget: boolean;
-  screenshotWorthy: boolean;
-  description: string;
-  children: string[];
-  // Internal ranking fields (not sent verbatim to LLM)
-  area?: number;
-  hasTestId?: boolean;
-  interactiveChildCount?: number;
 }
 
 interface ThinkingEntry {
@@ -106,6 +77,72 @@ export class AIUtilsEnhanced {
    */
   public setCurrentMdFilePath(mdPath: string): void {
     console.log(`📝 AIUtilsEnhanced: Setting current markdown file path: ${mdPath}`);
+    
+    // Check multiple locations for the path file created by the Python script
+    const possiblePathFiles = [
+      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory (primary location)
+      'current_md_path.txt',                                         // Current directory
+      '../current_md_path.txt',                                      // Parent directory
+    ];
+    
+    let foundPathFile = false;
+    
+    for (const pathFile of possiblePathFiles) {
+      console.log(`🔍 Checking for path file at: ${pathFile}`);
+      
+      try {
+        if (fs.existsSync(pathFile)) {
+          console.log(`✅ Found path file at: ${pathFile}`);
+          const fileContent = fs.readFileSync(pathFile, 'utf8').trim();
+          
+          if (fileContent && fileContent.length > 0) {
+            console.log(`✅ Path file contains: ${fileContent}`);
+            
+            // Check if the file content contains mode information (path|mode format)
+            let pathFromFile: string;
+            let mode: string = 'default';
+            
+            if (fileContent.includes('|')) {
+              const [filePath, modeInfo] = fileContent.split('|');
+              pathFromFile = this.normalizePath(filePath);
+              mode = modeInfo.trim();
+              console.log(`📝 Detected mode information: ${mode}`);
+              // Store mode as an environment variable
+              process.env.CURRENT_MD_MODE = mode;
+              // Store mode as a class property for use in other methods
+              this.currentMode = mode;
+            } else {
+              // Legacy format - just the path
+              pathFromFile = this.normalizePath(fileContent);
+            }
+            
+            this.currentMdPath = pathFromFile;
+            
+            console.log(`📝 Using path from file: ${this.currentMdPath}`);
+            
+            // Also set it as an environment variable for other components
+            process.env.CURRENT_MD_PATH = pathFromFile;
+            
+            // Create img folder in the directory where the markdown file is located
+            this.ensureImgFolder();
+            
+            foundPathFile = true;
+            return; // Exit early since we found a valid file
+          } else {
+            console.log(`⚠️ Path file exists but is empty or invalid at: ${pathFile}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error reading path file ${pathFile}: ${error}`);
+      }
+    }
+    
+    if (!foundPathFile) {
+      console.log(`⚠️ Could not find valid path file in any location`);
+    }
+    
+    // Fallback to the provided path if the file doesn't exist or is invalid
+    console.log(`⚠️ Using provided path as fallback: ${mdPath}`);
     
     // Normalize the path for the current environment
     const normalizedPath = this.normalizePath(mdPath);
@@ -281,20 +318,6 @@ export class AIUtilsEnhanced {
         return repoDocsPath;
       }
       
-      // Strategy 2: Look for docs directory in common locations
-      const commonPaths = [
-        'C:/Users/Rohith.MR/test/HelpManualAutomationTest/docs',
-        path.join(process.cwd(), 'docs'),
-        path.join(process.cwd(), '..', 'docs'),
-        path.join(process.cwd(), 'HelpManualAutomationTest', 'docs')
-      ];
-      
-      for (const docsPath of commonPaths) {
-        if (fs.existsSync(docsPath)) {
-          console.log(`💻 Local docs path (fallback): ${docsPath}`);
-          return docsPath;
-        }
-      }
       
       // Strategy 3: Use repository root + docs as fallback (even if it doesn't exist)
       console.log(`⚠️ Docs directory not found, using fallback: ${repoDocsPath}`);
@@ -464,20 +487,171 @@ export class AIUtilsEnhanced {
    * This is called from screenshot_helper.ts after each successful screenshot
    */
   public async updateSingleImagePath(imagePath: string): Promise<void> {
+    // Check multiple locations for the path file created by the Python script
+    const possiblePathFiles = [
+      path.join(process.cwd(), 'AutoSnap', 'current_md_path.txt'),   // AutoSnap directory (primary location)
+      'current_md_path.txt',                                         // Current directory
+      '../current_md_path.txt',                                      // Parent directory
+    ];
+    
+    let foundPathFile = false;
+    
+    for (const pathFile of possiblePathFiles) {
+      console.log(`🔍 Checking for path file at: ${pathFile}`);
+      
+      try {
+        if (fs.existsSync(pathFile)) {
+          console.log(`✅ Found path file at: ${pathFile}`);
+          const fileContent = fs.readFileSync(pathFile, 'utf8').trim();
+          
+          if (fileContent && fileContent.length > 0) {
+            console.log(`✅ Path file contains: ${fileContent}`);
+            
+            // Check if the file content contains mode information (path|mode format)
+            let pathFromFile: string;
+            let mode: string = 'default';
+            
+            if (fileContent.includes('|')) {
+              const [filePath, modeInfo] = fileContent.split('|');
+              pathFromFile = this.normalizePath(filePath);
+              mode = modeInfo.trim();
+              console.log(`📝 Detected mode information: ${mode}`);
+              // Store mode as an environment variable
+              process.env.CURRENT_MD_MODE = mode;
+              // Store mode as a class property for use in other methods
+              this.currentMode = mode;
+            } else {
+              // Legacy format - just the path
+              pathFromFile = this.normalizePath(fileContent);
+            }
+            
+            this.currentMdPath = pathFromFile;
+            
+            console.log(`📝 Using path from file: ${this.currentMdPath}`);
+            foundPathFile = true;
+            break; // Stop checking once we find a valid file
+          } else {
+            console.log(`⚠️ Path file exists but is empty or invalid at: ${pathFile}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error reading path file ${pathFile}: ${error}`);
+      }
+    }
+    
+    if (!foundPathFile) {
+      console.log(`⚠️ Could not find valid path file in any location`);
+    }
+    
     if (!this.currentMdPath) {
       console.log('⚠️  No current markdown path set, skipping single image path update');
       return;
     }
     
     try {
-      console.log(`📝 IMMEDIATE UPDATE: Updating single image path in ${this.currentMdPath} for: ${imagePath}`);
-      
       // Extract the filename from the image path
       const imageName = path.basename(imagePath);
       console.log(`🔍 Processing image: ${imageName}`);
       
+      // Determine the correct markdown file to use based on the image path
+      // Extract directory from image path to find the corresponding markdown file
+      const imgDir = path.dirname(imagePath);
+      const parentDir = path.dirname(imgDir);
+      
+      console.log(`🔍 Image directory: ${imgDir}`);
+      console.log(`🔍 Parent directory: ${parentDir}`);
+      
+      // Only use the current markdown file being processed
+      console.log(`🔍 Using current markdown file: ${this.currentMdPath}`);
+      
+      // Read the content of the current file
+      try {
+        // Read the file content
+        const content = fs.readFileSync(this.currentMdPath, 'utf8');
+        
+        // Check if the file contains a placeholder for this image
+        const imageBaseName = path.basename(imageName, path.extname(imageName));
+        
+        // Check for exact matches first
+        const exactMatch = content.includes(`<!-- placeholder for screenshot: ${imageName}`);
+        const baseNameMatch = content.includes(`<!-- placeholder for screenshot: ${imageBaseName}`);
+        
+        if (exactMatch || baseNameMatch) {
+          console.log(`✅ Found matching placeholder in current file for image: ${imageName}`);
+          console.log(`   Match type: ${exactMatch ? 'exact match' : 'base name match'}`);
+        } else {
+          // If no exact match, search for any placeholder
+          const placeholderRegex = /<!--\s*placeholder\s+for\s+screenshot:.*?-->/g;
+          const placeholders = content.match(placeholderRegex);
+          
+          if (placeholders && placeholders.length > 0) {
+            console.log(`🔍 Found ${placeholders.length} placeholders in file:`);
+            placeholders.forEach((placeholder, index) => {
+              console.log(`   ${index + 1}: "${placeholder}"`);
+            });
+          } else {
+            console.log(`ℹ️ No placeholders found in file: ${this.currentMdPath}`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error reading file ${this.currentMdPath}: ${error}`);
+      }
+      
+      console.log(`📝 IMMEDIATE UPDATE: Using markdown file: ${this.currentMdPath} for: ${imagePath}`);
+      
+      // Verify the file exists
+      if (!fs.existsSync(this.currentMdPath)) {
+        console.error(`❌ ERROR: Markdown file does not exist: ${this.currentMdPath}`);
+        return;
+      }
+      
       // Read the markdown file
+      console.log(`📄 Reading markdown file: ${this.currentMdPath}`);
       const mdContent = fs.readFileSync(this.currentMdPath, 'utf8');
+      
+      // Log the first 200 characters of the markdown content for debugging
+      console.log(`📄 Markdown content preview (first 200 chars): ${mdContent.substring(0, 200).replace(/\n/g, '\\n')}`);
+      
+      // Check if the file contains any placeholders with different patterns
+      const placeholderText1 = '<!-- placeholder for screenshot:';
+      const placeholderText2 = '<!-- placeholder for screenshot';
+      const placeholderText3 = '<!-- placeholder';
+      
+      // Check for exact strings and log their positions
+      const pos1 = mdContent.indexOf(placeholderText1);
+      const pos2 = mdContent.indexOf(placeholderText2);
+      const pos3 = mdContent.indexOf(placeholderText3);
+      
+      console.log(`🔍 Placeholder text positions: '${placeholderText1}' at ${pos1}, '${placeholderText2}' at ${pos2}, '${placeholderText3}' at ${pos3}`);
+      
+      const hasNamedPlaceholders = pos1 !== -1;
+      const hasGenericPlaceholders = pos2 !== -1;
+      const hasAnyPlaceholders = pos3 !== -1;
+      
+      console.log(`🔍 File contains named placeholders: ${hasNamedPlaceholders}`);
+      console.log(`🔍 File contains generic placeholders: ${hasGenericPlaceholders}`);
+      console.log(`🔍 File contains any placeholders: ${hasAnyPlaceholders}`);
+      
+      // If there's a placeholder in the file, check for specific text
+      if (hasAnyPlaceholders) {
+        // Extract 20 characters around the placeholder
+        const start = Math.max(0, pos3 - 10);
+        const end = Math.min(mdContent.length, pos3 + 30);
+        const placeholderContext = mdContent.substring(start, end);
+        console.log(`🔍 Placeholder context: "${placeholderContext}"`);
+      }
+      
+      // If there are any placeholders, log them for debugging
+      if (hasAnyPlaceholders) {
+        console.log('🔍 Searching for placeholders in the file:');
+        const lines = mdContent.split('\n');
+        const placeholderLines = lines.filter(line => line.includes('<!-- placeholder'));
+        
+        console.log(`📌 Found ${placeholderLines.length} placeholder lines:`);
+        placeholderLines.forEach((line, index) => {
+          console.log(`   ${index + 1}: "${line}"`);
+        });
+      }
       
       // Track the generated image
       this.trackGeneratedImage(imagePath);
@@ -485,7 +659,23 @@ export class AIUtilsEnhanced {
       let updatedContent = mdContent;
       let updatesCount = 0;
       
-      // Update image paths in markdown content for this specific image
+      // First, check for placeholders and replace them if found - but only in new_feature mode
+      if (this.currentMode === 'new_feature') {
+        console.log(`🔍 Mode is new_feature - looking for placeholders to replace`);
+        console.log(`🔄 Checking for placeholders to replace with image: ${imageName}`);
+        const placeholderUpdated = this.replacePlaceholderWithImage(updatedContent, imageName);
+        if (placeholderUpdated.updated) {
+          console.log(`✅ Successfully replaced ${placeholderUpdated.count} placeholder(s) with image reference`);
+          updatedContent = placeholderUpdated.content;
+          updatesCount += placeholderUpdated.count;
+        } else {
+          console.log(`ℹ️ No placeholders were replaced for image: ${imageName}`);
+        }
+      } else {
+        console.log(`🔍 Mode is ${this.currentMode || 'default'} - skipping placeholder replacement`);
+      }
+      
+      // Then, update existing image paths in markdown content for this specific image
       const imagePatterns = [
         // Markdown image syntax: ![alt](path/to/image.ext)
         /!\[([^\]]*)\]\(([^)]+\.(png|jpg|jpeg|gif|bmp|webp|svg))\)/gi,
@@ -510,10 +700,14 @@ export class AIUtilsEnhanced {
           
           // Remove any _E or _S suffixes from the new image name to get the clean base name
           let cleanNewBaseName = newBaseName;
-          if (newBaseName.endsWith('_E') || newBaseName.endsWith('_S')) {
-            cleanNewBaseName = newBaseName.replace(/[_][ES]$/, '');
-            // If there's still an _S suffix (from stock version), remove that too  
-            cleanNewBaseName = cleanNewBaseName.replace(/[_]S$/, '');
+          
+          // Check if suffix removal is disabled
+          if (process.env.DISABLE_IMAGE_SUFFIXES !== 'true') {
+            if (newBaseName.endsWith('_E') || newBaseName.endsWith('_S')) {
+              cleanNewBaseName = newBaseName.replace(/[_][ES]$/, '');
+              // If there's still an _S suffix (from stock version), remove that too  
+              cleanNewBaseName = cleanNewBaseName.replace(/[_]S$/, '');
+            }
           }
           
           // Check if this image should be updated - only if it's an exact match
@@ -570,6 +764,71 @@ export class AIUtilsEnhanced {
       console.error('❌ Error during single image path update:', error);
     }
   }
+  
+  /**
+   * Replace placeholder comments with image references
+   * @param content - The markdown content
+   * @param imageName - The name of the image file
+   * @returns Object with updated content and count of replacements
+   */
+  private replacePlaceholderWithImage(content: string, imageName: string): { updated: boolean; content: string; count: number } {
+    let updatedContent = content;
+    let replacementCount = 0;
+    
+    try {
+      // Get the base name without extension for comparison
+      const imageBaseName = path.basename(imageName, path.extname(imageName));
+      
+      // Create the image reference
+      const relativePath = `img/${imageName}`;
+      const imageReference = `![${imageBaseName}](${relativePath})`;
+      
+      console.log(`🔍 Looking for placeholder lines containing image name: ${imageName} or ${imageBaseName}`);
+      
+      // First look for exact match placeholders
+      const exactPlaceholderPattern = `<!-- placeholder for screenshot: ${imageName}`;
+      const baseNamePlaceholderPattern = `<!-- placeholder for screenshot: ${imageBaseName}`;
+      
+      // Split content into lines for line-by-line processing
+      const lines = content.split('\n');
+      let updatedLines = [...lines]; // Create a copy of the lines array
+      let lineReplaced = false;
+      
+      // First try to find exact match placeholders
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        if (line.includes(exactPlaceholderPattern) || line.includes(baseNamePlaceholderPattern)) {
+          console.log(`✅ Found exact matching placeholder line ${i + 1}: "${line}"`);
+          updatedLines[i] = imageReference;
+          replacementCount++;
+          lineReplaced = true;
+          console.log(`✅ Replacing line ${i + 1}: "${line}" with "${imageReference}"`);
+          break; // Only replace the first matching placeholder
+        }
+      }
+      
+      // If no exact match was found, don't use any fallback
+      // Only use exact matches for image names
+      
+      // If we found and replaced a placeholder, join the lines back together
+      if (lineReplaced) {
+        updatedContent = updatedLines.join('\n');
+        console.log(`✅ Successfully replaced ${replacementCount} placeholder(s) with image reference`);
+      } else {
+        console.log(`ℹ️ No placeholder specifically matching "${imageName}" or "${imageBaseName}" was found`);
+      }
+      
+      return {
+        updated: replacementCount > 0,
+        content: updatedContent,
+        count: replacementCount
+      };
+    } catch (error) {
+      console.error('❌ Error replacing placeholder with image:', error);
+      return { updated: false, content, count: 0 };
+    }
+  }
 
   /**
    * Check if an image already exists and return the original image name
@@ -588,9 +847,13 @@ export class AIUtilsEnhanced {
       
       // Extract the true base name by removing all _E and _S suffixes
       let baseName = currentBaseName;
-      // Keep removing _E and _S suffixes until we get the base name
-      while (baseName.endsWith('_E') || baseName.endsWith('_S')) {
-        baseName = baseName.replace(/[_][ES]$/, '');
+      
+      // Check if suffix removal is disabled
+      if (process.env.DISABLE_IMAGE_SUFFIXES !== 'true') {
+        // Keep removing _E and _S suffixes until we get the base name
+        while (baseName.endsWith('_E') || baseName.endsWith('_S')) {
+          baseName = baseName.replace(/[_][ES]$/, '');
+        }
       }
       
       console.log(`🔍 Extracted base name: ${currentBaseName} → ${baseName}`);
@@ -771,20 +1034,27 @@ export class AIUtilsEnhanced {
             });
             
             if (potentialMatches.length > 0) {
-              // ALWAYS prefer Enhanced (_E) over Stock (_S) - Enhanced is the target
-              const enhancedMatch = potentialMatches.find(file => file.includes('_E'));
-              const stockMatch = potentialMatches.find(file => file.includes('_S'));
-              
-              if (enhancedMatch) {
-                matchingImage = enhancedMatch;
-                console.log(`🎯 Using Enhanced version: ${enhancedMatch}`);
-              } else if (stockMatch) {
-                matchingImage = stockMatch;
-                console.log(`📸 Using Stock version (Enhanced not available): ${stockMatch}`);
-              } else {
-                // Use the first match if no _E/_S suffixes
+              // Check if suffix removal is disabled
+              if (process.env.DISABLE_IMAGE_SUFFIXES === 'true') {
+                // Use the first match if suffix removal is disabled
                 matchingImage = potentialMatches[0];
-                console.log(`📄 Using available version: ${potentialMatches[0]}`);
+                console.log(`📄 Using first matching image (suffixes disabled): ${matchingImage}`);
+              } else {
+                // ALWAYS prefer Enhanced (_E) over Stock (_S) - Enhanced is the target
+                const enhancedMatch = potentialMatches.find(file => file.includes('_E'));
+                const stockMatch = potentialMatches.find(file => file.includes('_S'));
+                
+                if (enhancedMatch) {
+                  matchingImage = enhancedMatch;
+                  console.log(`🎯 Using Enhanced version: ${enhancedMatch}`);
+                } else if (stockMatch) {
+                  matchingImage = stockMatch;
+                  console.log(`📸 Using Stock version (Enhanced not available): ${stockMatch}`);
+                } else {
+                  // Use the first match if no _E/_S suffixes
+                  matchingImage = potentialMatches[0];
+                  console.log(`📄 Using available version: ${potentialMatches[0]}`);
+                }
               }
             }
           }
@@ -803,19 +1073,25 @@ export class AIUtilsEnhanced {
               // Check if it's an _E/_S suffix match
               const baseImageName = path.basename(imageName, path.extname(imageName));
               const baseFileName = path.basename(matchingImage, path.extname(matchingImage));
-              const baseImageNameClean = baseImageName.replace(/[_-][ES]$/i, '');
-              const baseFileNameClean = baseFileName.replace(/[_-][ES]$/i, '');
               
-              if (baseImageNameClean === baseFileNameClean) {
-                if (matchingImage.includes('_E')) {
-                  console.log(`🎯 Enhanced suffix match: ${imageName} → ${matchingImage}`);
-                } else if (matchingImage.includes('_S')) {
-                  console.log(`📸 Stock suffix match: ${imageName} → ${matchingImage}`);
-                } else {
-                  console.log(`🔄 Base name suffix match: ${imageName} → ${matchingImage}`);
-                }
+              // Check if suffix removal is disabled
+              if (process.env.DISABLE_IMAGE_SUFFIXES === 'true') {
+                console.log(`📄 Suffix match (suffixes disabled): ${imageName} → ${matchingImage}`);
               } else {
-                console.log(`🔍 Similar name match found: ${imageName} → ${matchingImage}`);
+                const baseImageNameClean = baseImageName.replace(/[_-][ES]$/i, '');
+                const baseFileNameClean = baseFileName.replace(/[_-][ES]$/i, '');
+                
+                if (baseImageNameClean === baseFileNameClean) {
+                  if (matchingImage.includes('_E')) {
+                    console.log(`🎯 Enhanced suffix match: ${imageName} → ${matchingImage}`);
+                  } else if (matchingImage.includes('_S')) {
+                    console.log(`📸 Stock suffix match: ${imageName} → ${matchingImage}`);
+                  } else {
+                    console.log(`🔄 Base name suffix match: ${imageName} → ${matchingImage}`);
+                  }
+                } else {
+                  console.log(`🔍 Similar name match found: ${imageName} → ${matchingImage}`);
+                }
               }
             }
             
@@ -850,57 +1126,7 @@ export class AIUtilsEnhanced {
       console.error('❌ Error during markdown post-processing:', error);
     }
   }
-  
-  /**
-   * Write comprehensive token usage summary to a log file
-   * This is called at the end of execution
-   */
-  public writeTokenUsageSummary(outputPath: string = 'token_usage_summary.txt', thinkingLogPath: string = 'ai_thinking_log.txt'): void {
-    try {
-      // Write token usage summary
-      const timestamp = new Date().toISOString();
-      
-      // Format numbers with commas for readability
-      const formatNumber = (num: number): string => num.toLocaleString();
-      
-      const summary = [
-        `\n=============================================`,
-        `        COMPREHENSIVE TOKEN USAGE REPORT`,
-        `             ${timestamp}`,
-        `=============================================`,
-        `Total Input Tokens:        ${formatNumber(globalStats.totalInputTokens)}`,
-        `Total Output Tokens:       ${formatNumber(globalStats.totalOutputTokens)}`,
-        `TOTAL TOKENS USED:         ${formatNumber(globalStats.totalInputTokens + globalStats.totalOutputTokens)}`,
-        `---------------------------------------------`,
-        `Total API Calls:           ${formatNumber(globalStats.totalApiCalls)}`,
-        `Average Tokens Per Call:   ${formatNumber(Math.round((globalStats.totalInputTokens + globalStats.totalOutputTokens) / (globalStats.totalApiCalls || 1)))}`,
-        `---------------------------------------------`,
-        `Estimated Cost ($0.0005/1K tokens): $${((globalStats.totalInputTokens + globalStats.totalOutputTokens) * 0.0005 / 1000).toFixed(4)}`,
-        `=============================================`
-      ].join('\n');
-      
-      fs.appendFileSync(outputPath, summary + '\n\n');
-      
-      // Print the final report to console as well
-      
-      // Write AI thinking logs if we have any stored
-      if (this.thinkingHistory && this.thinkingHistory.length > 0) {
-        const thinkingLog = [
-          `\n===== AI Thinking Log (${timestamp}) =====`,
-          ...this.thinkingHistory.map((entry, index) => 
-            `\n--- Step ${index + 1} ---\n${entry.thinking || 'No thinking provided'}`
-          ),
-          '\n=========================================='
-        ].join('\n');
-        
-        fs.appendFileSync(thinkingLogPath, thinkingLog + '\n\n');
-        console.log(`🧠 AI thinking log written to ${thinkingLogPath}`);
-      }
-    } catch (error) {
-      console.error(`❌ Failed to write logs: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
+ 
   /**
    * Build a rich, hierarchical summary of visible containers and their interactive elements.
    * This is designed to give the LLM a high-fidelity mental model of the page structure.
@@ -1197,546 +1423,6 @@ export class AIUtilsEnhanced {
   }
 
   /**
-   * Enhanced container extraction - finds screenshot-worthy containers
-   */
-  private async getScreenshotContainers(hints?: { texts?: string[]; testIds?: string[]; roles?: string[] }): Promise<ContainerInfo[]> {
-    return await this.page.evaluate((hintsIn: { texts?: string[]; testIds?: string[]; roles?: string[] } | undefined) => {
-      function isVisible(el: HTMLElement): boolean {
-        if (!el || !el.offsetParent) return false;
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
-        const rect = el.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      }
-
-      function getUniqueSelector(element: HTMLElement, maxDepth = 5): string {
-        // First try data-testid, data-cy, role, aria-label, name
-        if (element.getAttribute('data-testid'))
-          return `[data-testid="${element.getAttribute('data-testid')}"]`;
-        if (element.getAttribute('data-cy')) 
-          return `[data-cy="${element.getAttribute('data-cy')}"]`;
-        if (element.getAttribute('role')) 
-          return `[role="${element.getAttribute('role')}"]`;
-        if (element.getAttribute('aria-label'))
-          return `[aria-label="${element.getAttribute('aria-label')}"]`;
-        if (element.getAttribute('name')) 
-          return `[name="${element.getAttribute('name')}"]`;
-
-        // Only use ID if it's not auto-generated
-        if (element.id) {
-          const { id } = element;
-          if (!/^(mui-|id\d+|.*-\d+)$/.test(id)) {
-            return `#${id}`;
-          }
-        }
-
-        // Try class-based selector if available
-        if (element.classList && element.classList.length) {
-          const classSelector = '.' + Array.from(element.classList).join('.');
-          if (document.querySelectorAll(classSelector).length === 1) return classSelector;
-        }
-
-        // Enhanced parent traversal: Look for parents with identifiers
-        let current = element.parentElement;
-        let depth = 0;
-        
-        while (current && depth < maxDepth) {
-          const parentTestId = current.getAttribute('data-testid');
-          const parentDataCy = current.getAttribute('data-cy');
-          const parentRole = current.getAttribute('role');
-          const parentAriaLabel = current.getAttribute('aria-label');
-          const parentName = current.getAttribute('name');
-          const parentId = current.id && !/^(mui-|id\d+|.*-\d+)$/.test(current.id) ? current.id : null;
-          
-          let parentSelector = null;
-          if (parentTestId) {
-            parentSelector = `[data-testid="${parentTestId}"]`;
-          } else if (parentDataCy) {
-            parentSelector = `[data-cy="${parentDataCy}"]`;
-          } else if (parentRole) {
-            parentSelector = `[role="${parentRole}"]`;
-          } else if (parentAriaLabel) {
-            parentSelector = `[aria-label="${parentAriaLabel}"]`;
-          } else if (parentName) {
-            parentSelector = `[name="${parentName}"]`;
-          } else if (parentId) {
-            parentSelector = `#${parentId}`;
-          }
-          
-          if (parentSelector) {
-            const siblings = Array.from(current.children);
-            const index = siblings.indexOf(element) + 1;
-            const combinedSelector = `${parentSelector} > :nth-child(${index})`;
-            
-            if (document.querySelectorAll(combinedSelector).length === 1) {
-              return combinedSelector;
-            }
-          }
-          
-          current = current.parentElement;
-          depth += 1;
-        }
-
-        return element.tagName.toLowerCase();
-      }
-
-      function isScreenshotWorthy(element: HTMLElement): boolean {
-        const rect = element.getBoundingClientRect();
-        
-        // Size check - relaxed thresholds
-        const minWidth = 100;  // Reduced from 200px
-        const minHeight = 50;  // Reduced from 100px
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        // Skip tiny elements
-        if (rect.width < minWidth || rect.height < minHeight) return false;
-        
-        // Skip elements that are larger than the viewport
-        if (rect.width > viewportWidth * 1.1 || rect.height > viewportHeight * 1.1) return false;
-        
-        // Check element attributes (prioritize elements with these attributes)
-        if (element.hasAttribute('data-testid')) return true;
-        if (element.hasAttribute('data-test')) return true;
-        if (element.hasAttribute('data-cy')) return true;
-        if (element.hasAttribute('data-e2e')) return true;
-        if (element.hasAttribute('data-automation-id')) return true;
-        if (element.hasAttribute('role')) return true;
-        if (element.id && element.id.length > 0) return true;
-        
-        // Check for container-like classes (much more comprehensive)
-        const className = element.className || '';
-        if (typeof className !== 'string') return false;
-        
-        const classStr = className.toLowerCase();
-        const containerPatterns = [
-          'card', 'panel', 'section', 'container', 'box', 'wrapper', 
-          'content', 'main', 'sidebar', 'dialog', 'modal', 'popup', 
-          'drawer', 'menu', 'dropdown', 'popover', 'result', 'list',
-          'table', 'grid', 'view', 'form', 'widget', 'component',
-          'root', 'paper', 'sheet', 'body', 'frame', 'search'
-        ];
-        
-        const hasContainerClass = containerPatterns.some(pattern => 
-          classStr.includes(pattern)
-        );
-        
-        // Check for semantic elements (expanded list)
-        const semanticTags = [
-          'main', 'section', 'article', 'aside', 'header', 'footer',
-          'nav', 'form', 'dialog', 'table', 'figure', 'details'
-        ];
-        const isSemantic = semanticTags.includes(element.tagName.toLowerCase());
-        
-        // Check for ARIA attributes that suggest important containers
-        const hasAriaAttributes = element.hasAttribute('aria-label') || 
-                                  element.hasAttribute('aria-labelledby') || 
-                                  element.hasAttribute('aria-describedby');
-        
-        // Final check: either has container class, is semantic element, or has ARIA attributes
-        return hasContainerClass || isSemantic || hasAriaAttributes;
-      }
-
-      function getContainerType(element: HTMLElement): 'card' | 'section' | 'panel' | 'container' | 'element' {
-        const className = element.className || '';
-        const testId = element.getAttribute('data-testid') || '';
-        
-        if (className.includes('card') || className.includes('Card') || testId.includes('card')) {
-          return 'card';
-        }
-        if (className.includes('panel') || className.includes('Panel') || testId.includes('panel')) {
-          return 'panel';
-        }
-        if (className.includes('section') || className.includes('Section') || testId.includes('section')) {
-          return 'section';
-        }
-        if (className.includes('container') || className.includes('Container')) {
-          return 'container';
-        }
-        return 'element';
-      }
-
-      function getContainerDescription(element: HTMLElement): string {
-        // Basic element information
-        const text = element.textContent?.trim().substring(0, 100) || '';
-        const testId = element.getAttribute('data-testid') || '';
-        const role = element.getAttribute('role') || '';
-        const ariaLabel = element.getAttribute('aria-label') || '';
-        const id = element.id || '';
-        const className = element.className || '';
-        
-        // Count interactive elements
-        const buttons = element.querySelectorAll('button, [role="button"]').length;
-        const inputs = element.querySelectorAll('input, select, textarea').length;
-        const links = element.querySelectorAll('a, [role="link"]').length;
-        
-        // Get important child elements
-        const headings = Array.from(element.querySelectorAll('h1, h2, h3, h4, h5, h6'))
-          .map(h => h.textContent?.trim())
-          .filter(Boolean)
-          .slice(0, 2)
-          .join(', ');
-        
-        // Check for common UI patterns
-        const hasTable = element.querySelector('table, [role="table"], [role="grid"]') !== null;
-        const hasList = element.querySelector('ul, ol, [role="list"]') !== null;
-        const hasForm = element.querySelector('form, [role="form"]') !== null;
-        const hasImage = element.querySelector('img') !== null;
-        
-        // Build a comprehensive description
-        let description = `${element.tagName.toLowerCase()}`;
-        
-        if (testId) description += ` (testId="${testId}")`;
-        if (id) description += ` (id="${id}")`;
-        if (role) description += ` role="${role}"`;
-        if (ariaLabel) description += ` aria-label="${ariaLabel}"`;
-        
-        // Add UI pattern information
-        const patterns = [];
-        if (hasTable) patterns.push('table');
-        if (hasList) patterns.push('list');
-        if (hasForm) patterns.push('form');
-        if (hasImage) patterns.push('image');
-        
-        if (patterns.length > 0) {
-          description += ` [contains: ${patterns.join(', ')}]`;
-        }
-        
-        // Add interactive element counts
-        const interactives = [];
-        if (buttons > 0) interactives.push(`${buttons} buttons`);
-        if (inputs > 0) interactives.push(`${inputs} inputs`);
-        if (links > 0) interactives.push(`${links} links`);
-        
-        if (interactives.length > 0) {
-          description += ` [interactive: ${interactives.join(', ')}]`;
-        }
-        
-        // Add headings if available
-        if (headings) {
-          description += ` [heading: ${headings}]`;
-        }
-        
-        // Add text sample if available
-        if (text) {
-          description += ` - ${text}`;
-        }
-        
-        return description;
-      }
-
-      function getChildrenInfo(element: HTMLElement): string[] {
-        // Get direct children
-        const children = Array.from(element.children);
-        
-        // Get the most important children first (up to 8)
-        return children.slice(0, 8).map(child => {
-          if (!(child instanceof HTMLElement)) return '';
-          
-          const tag = child.tagName.toLowerCase();
-          const testId = child.getAttribute('data-testid');
-          const role = child.getAttribute('role');
-          const ariaLabel = child.getAttribute('aria-label');
-          const id = child.id;
-          const className = child.className?.toString().split(' ')[0]; // Get first class only
-          const text = child.textContent?.trim().substring(0, 40);
-          
-          // Determine if this is an interactive element
-          const isButton = tag === 'button' || role === 'button';
-          const isInput = tag === 'input' || tag === 'select' || tag === 'textarea';
-          const isLink = tag === 'a' || role === 'link';
-          
-          // Build a descriptive string
-          let info = tag;
-          
-          // Add most important attributes
-          if (testId) info += `[data-testid="${testId}"]`;
-          else if (id) info += `#${id}`;
-          else if (className) info += `.${className}`;
-          
-          // Add role if available
-          if (role) info += `[role="${role}"]`;
-          
-          // Add aria-label if available
-          if (ariaLabel) info += `[aria-label="${ariaLabel}"]`;
-          
-          // Add type information for interactive elements
-          if (isButton) info += ' (button)';
-          else if (isInput) {
-            const inputType = child instanceof HTMLInputElement ? child.type : 'input';
-            info += ` (${inputType})`;
-          }
-          else if (isLink) info += ' (link)';
-          
-          // Add text content if available
-          if (text) info += `: "${text}"`;
-          
-          return info;
-        }).filter(Boolean);
-      }
-
-      function getInteractiveChildCount(element: HTMLElement): number {
-        const interactiveSelector = 'button, input:not([type="hidden"]), select, textarea, [role], a[href], [data-testid], [data-cy]';
-        return element.querySelectorAll(interactiveSelector).length;
-      }
-
-      function elementContainsHints(element: HTMLElement, hintsLocal?: { texts?: string[]; testIds?: string[]; roles?: string[] }): boolean {
-        if (!hintsLocal) return false;
-        const { texts = [], testIds = [], roles = [] } = hintsLocal;
-        const lcText = (element.textContent || '').toLowerCase();
-        if (texts.some(t => t && lcText.includes(t.toLowerCase()))) return true;
-        if (testIds.length > 0) {
-          const anyTestId = element.closest('[data-testid]') as HTMLElement | null;
-          if (anyTestId && testIds.includes(anyTestId.getAttribute('data-testid') || '')) return true;
-          const directMatch = Array.from(element.querySelectorAll('[data-testid]')).some(el => testIds.includes((el as HTMLElement).getAttribute('data-testid') || ''));
-          if (directMatch) return true;
-        }
-        if (roles.length > 0) {
-          const anyRole = element.closest('[role]') as HTMLElement | null;
-          if (anyRole && roles.includes(anyRole.getAttribute('role') || '')) return true;
-          const roleMatch = Array.from(element.querySelectorAll('[role]')).some(el => roles.includes((el as HTMLElement).getAttribute('role') || ''));
-          if (roleMatch) return true;
-        }
-        return false;
-      }
-
-      // Find all potential screenshot containers
-      const containers: ContainerInfo[] = [];
-      
-      // Look for common container selectors - expanded to find more relevant UI elements
-      const containerSelectors = [
-        // Data attribute selectors (most stable)
-        '[data-testid]',
-        '[data-test]',
-        '[data-cy]',
-        '[data-e2e]',
-        '[data-automation-id]',
-        '[data-qa]',
-        '[data-ref]',
-        '[data-target]',
-        '[data-id]',
-        
-        // Specific data-testid patterns
-        '[data-testid*="card"]',
-        '[data-testid*="panel"]', 
-        '[data-testid*="section"]',
-        '[data-testid*="container"]',
-        '[data-testid*="list"]',
-        '[data-testid*="table"]',
-        '[data-testid*="grid"]',
-        '[data-testid*="dialog"]',
-        '[data-testid*="modal"]',
-        '[data-testid*="drawer"]',
-        '[data-testid*="menu"]',
-        '[data-testid*="form"]',
-        '[data-testid*="view"]',
-        '[data-testid*="page"]',
-        '[data-testid*="screen"]',
-        '[data-testid*="result"]',
-        '[data-testid*="search"]',
-        '[data-testid*="dropdown"]',
-        '[data-testid*="popup"]',
-        
-        // UI Framework components (not just Material UI)
-        // Material UI
-        '[class*="MuiCard"]',
-        '[class*="MuiPaper"]',
-        '[class*="MuiDialog"]',
-        '[class*="MuiPopover"]',
-        '[class*="MuiMenu"]',
-        '[class*="MuiDrawer"]',
-        
-        // Bootstrap
-        '.card',
-        '.modal',
-        '.dropdown',
-        '.container',
-        '.panel',
-        
-        // Generic UI components
-        '[class*="card"]',
-        '[class*="panel"]',
-        '[class*="modal"]',
-        '[class*="dialog"]',
-        '[class*="popup"]',
-        '[class*="container"]',
-        '[class*="drawer"]',
-        '[class*="menu"]',
-        '[class*="dropdown"]',
-        '[class*="popover"]',
-        '[class*="result"]',
-        '[class*="list"]',
-        '[class*="table"]',
-        '[class*="grid"]',
-        '[class*="view"]',
-        '[class*="wrapper"]',
-        '[class*="search-result"]',
-        
-        // Semantic HTML elements
-        'main',
-        'section',
-        'article',
-        'aside',
-        'header',
-        'footer',
-        'nav',
-        'form',
-        'dialog',
-        'table',
-        
-        // Role-based selectors (broader set)
-        '[role]',  // Any element with a role
-        '[role="dialog"]',
-        '[role="tabpanel"]',
-        '[role="menu"]',
-        '[role="listbox"]',
-        '[role="grid"]',
-        '[role="table"]',
-        '[role="region"]',
-        '[role="complementary"]',
-        '[role="navigation"]',
-        '[role="search"]',
-        '[role="alert"]',
-        '[role="alertdialog"]',
-        '[role="banner"]',
-        '[role="combobox"]',
-        '[role="feed"]',
-        '[role="form"]',
-        '[role="main"]',
-        '[role="presentation"]',
-        '[role="tooltip"]',
-        
-        // Elements with specific attributes that suggest they're important containers
-        '[aria-label]',
-        '[aria-labelledby]',
-        '[aria-describedby]',
-        '[aria-controls]',
-        '[aria-expanded="true"]',
-        
-        // ID-based selectors for common container naming patterns
-        '[id*="container"]',
-        '[id*="panel"]',
-        '[id*="dialog"]',
-        '[id*="modal"]',
-        '[id*="popup"]',
-        '[id*="menu"]',
-        '[id*="drawer"]',
-        '[id*="results"]',
-        '[id*="search"]'
-      ];
-
-      containerSelectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach((el) => {
-          if (el instanceof HTMLElement && isVisible(el) && isScreenshotWorthy(el)) {
-            const rect = el.getBoundingClientRect();
-            containers.push({
-              selector: getUniqueSelector(el),
-              type: getContainerType(el),
-              containsTarget: elementContainsHints(el, hintsIn),
-              screenshotWorthy: true,
-              description: getContainerDescription(el),
-              children: getChildrenInfo(el),
-              area: Math.round(rect.width * rect.height),
-              hasTestId: !!el.getAttribute('data-testid'),
-              interactiveChildCount: getInteractiveChildCount(el)
-            });
-          }
-        });
-      });
-
-      // Also look for any div with container-like classes
-      const allDivs = document.querySelectorAll('div');
-      allDivs.forEach((el) => {
-        if (el instanceof HTMLElement && isVisible(el) && isScreenshotWorthy(el)) {
-          const selector = getUniqueSelector(el);
-          // Avoid duplicates
-          if (!containers.some(c => c.selector === selector)) {
-            const rect = (el as HTMLElement).getBoundingClientRect();
-            containers.push({
-              selector,
-              type: getContainerType(el as HTMLElement),
-              containsTarget: elementContainsHints(el as HTMLElement, hintsIn),
-              screenshotWorthy: true,
-              description: getContainerDescription(el as HTMLElement),
-              children: getChildrenInfo(el as HTMLElement),
-              area: Math.round(rect.width * rect.height),
-              hasTestId: !!(el as HTMLElement).getAttribute('data-testid'),
-              interactiveChildCount: getInteractiveChildCount(el as HTMLElement)
-            });
-          }
-        }
-      });
-
-      // Rank & dedupe to reduce tokens
-      const viewportArea = Math.max(1, window.innerWidth * window.innerHeight);
-      const idealAreaMin = viewportArea * 0.10;
-      const idealAreaMax = viewportArea * 0.85;
-
-      // Enhanced scoring algorithm to prioritize the most relevant containers
-      const scored = containers.map((c) => {
-        let score = 0;
-        
-        // Target relevance - highest priority
-        if (c.containsTarget) score += 50;
-        
-        // Selector quality - prefer data-testid and semantic elements
-        if (c.hasTestId) score += 25; // Increased from 15
-        if (c.selector.startsWith('[data-testid')) score += 15;
-        if (c.selector.startsWith('[role=')) score += 10;
-        if (c.selector.startsWith('#')) score += 8;
-        if (c.selector.startsWith('.')) score += 5;
-        
-        // Container type - prefer semantic containers
-        if (c.type === 'card') score += 15;
-        if (c.type === 'panel') score += 12;
-        if (c.type === 'section') score += 10;
-        if (c.type === 'container') score += 8;
-        
-        // Size appropriateness - not too small, not too big
-        const area = c.area || 0;
-        const viewportArea = window.innerWidth * window.innerHeight;
-        const areaRatio = area / viewportArea;
-        
-        // Perfect size: between 10% and 85% of viewport
-        if (area >= idealAreaMin && area <= idealAreaMax) score += 15;
-        // Too small: less than 5% of viewport
-        if (area > 0 && area < idealAreaMin * 0.5) score -= 10;
-        // Too large: more than 90% of viewport
-        if (area > idealAreaMax * 1.2) score -= 15;
-        // Ideal size is around 30-60% of viewport
-        if (areaRatio >= 0.3 && areaRatio <= 0.6) score += 10;
-        
-        // Interactive elements - containers with interactive elements are likely important
-        const interactiveCount = c.interactiveChildCount || 0;
-        if (interactiveCount > 0) {
-          // Add points for interactive elements, but cap at 20
-          score += Math.min(20, interactiveCount * 2);
-        }
-        
-        // Depth in DOM - prefer containers that aren't too deeply nested
-        const depthMatch = c.selector.match(/>/g);
-        const depth = depthMatch ? depthMatch.length + 1 : 1;
-        if (depth <= 3) score += 5; // Prefer shallower containers
-        if (depth > 5) score -= 5; // Penalize deeply nested containers
-        
-        return { ...(c as any), score };
-      }) as Array<ContainerInfo & { score: number }>;
-
-      scored.sort((a, b) => b.score - a.score);
-      const seen = new Set<string>();
-      const uniqueRanked: ContainerInfo[] = [];
-      for (const c of scored) {
-        const key = `${c.type}|${c.selector.replace(/:nth-child\(\d+\)/g, ':nth-child(*)')}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        uniqueRanked.push(c);
-      }
-
-      return uniqueRanked;
-    }, hints);
-  }
-/**
    * Enhanced prompt generation with container information
    */
 async generateEnhancedPrompt(
@@ -1749,23 +1435,12 @@ async generateEnhancedPrompt(
   fullJsonResponse?: string
 ): Promise<string> {
   try {
-    const { aiConfig } = playwrightConfig;
-    // Prefer explicit override via env or hardcoded endpoint provided by user
-    const overrideEndpoint = process.env.AZURE_OPENAI_ENDPOINT || 'https://dhanu-m7k6n5e0-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat/chat/completions?api-version=2025-01-01-preview';
-    const endpoint = overrideEndpoint || `${aiConfig.apiUrl}/openai/deployments/${aiConfig.ivModel}/chat/completions?api-version=${aiConfig.apiVersion}`;
-    const apiKey = process.env.AZURE_OPENAI_API_KEY || aiConfig.apiKey;
-
-    // Take a screenshot with container highlighting
-    let enhancedScreenshotBase64 = '';
-    try {
-      console.log('📸 Taking screenshot with highlighted containers...');
-      enhancedScreenshotBase64 = await this.takeHighlightedScreenshot();
-      console.log('✅ Container-highlighted screenshot captured successfully');
-    } catch (error) {
-      console.warn('⚠️ Failed to take highlighted screenshot:', error);
-      // If we failed to take a highlighted screenshot, use the provided screenshot
-      enhancedScreenshotBase64 = base64Screenshot;
-    }
+    // Build URL from environment variables
+    const baseUrl = process.env.AZURE_OPENAI_ENDPOINT ;
+    const model ='gpt-5-chat';
+    const apiVersion = '2025-01-01-preview';
+    const endpoint = `${baseUrl}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`;
+    const apiKey = process.env.AZURE_OPENAI_API_KEY;
 
     // Build a rich, hierarchical summary of containers and elements
     const smartSummary = await this.getSmartVisibleContainersSummary();
@@ -1876,13 +1551,49 @@ async generateEnhancedPrompt(
     Choose a single, meaningful container that contains the target element based on the following strict priority order:
     
     **PRIORITY ORDER:**
-    1. HIGHEST: Elements with [data-testid] that are most specific to the screenshot intent (e.g., if screenshotting a modal, prefer data-testids containing "modal", "dialog"; if screenshotting a table, prefer "table", "grid", "list")
-    2. Elements with any [data-testid] attribute (critical for stable automation)daniel 
+    1. Elements with [data-testid] that are most specific to the screenshot intent (e.g., if screenshotting a modal, prefer data-testids containing "modal", "dialog"; if screenshotting a table, prefer "table", "grid", "list")
+    2. Elements with any [data-testid] attribute (critical for stable automation)
     3. Elements with stable semantic roles using CSS selectors: [role="dialog"], [role="listbox"], [role="menu"], [role="combobox"]
     4. Elements with stable, non-auto-generated IDs
     5. Semantic containers (main, section, article, nav) that contain the target
     6. Elements with CSS classes that clearly indicate their purpose
     7. Container elements with sensible dimensions (width > 100px and height > 50px)
+    
+    **📸 DOCUMENTATION SCREENSHOT QUALITY VALIDATION:**
+    
+    Before finalizing your screenshot command, validate that it will produce a DOCUMENTATION-WORTHY screenshot:
+    
+    **GOOD DOCUMENTATION SCREENSHOTS:**
+    - Show complete, meaningful UI components (entire dialogs, panels, forms, tables with headers)
+    - Capture 15-75% of viewport - providing focused content WITH sufficient context
+    - Have clear visual boundaries (complete panels, not arbitrary cut-offs)
+    - Show interactive elements in meaningful states (expanded menus, representative data)
+    - Help users understand "where am I" and "what can I do here"
+    
+    **AVOID THESE (NOT DOCUMENTATION-WORTHY):**
+    - Tiny elements in isolation (< 10% of viewport, single icon without context)
+    - Overly broad full-page captures (> 85% of viewport) that don't focus on anything specific
+    - Containers with minimal visible content or empty states
+    - Cut-off or partially visible key elements
+    - Random sections that don't convey clear purpose
+    
+    **SIZE VALIDATION CHECKLIST:**
+    Based on the screenshot intent and container dimensions, ask yourself:
+    - Is this container too small? (< 10% viewport = likely missing context)
+    - Is this container too large? (> 85% viewport = likely not focused enough)
+    - Does this show a COMPLETE component? (all dialog buttons visible, table headers included, menu fully shown)
+    - Would a documentation reader understand the PURPOSE from this screenshot?
+    - Does this match the intent's implied scope?
+      * "icon", "button" intents → need 15-40% viewport (element + surrounding context)
+      * "dialog", "modal", "panel" intents → need 20-60% viewport (complete component)
+      * "overview", "dashboard", "workspace" intents → need 40-75% viewport (broader view with structure)
+      * "table", "grid", "list" intents → need 30-70% viewport (multiple rows + headers)
+    
+    **IF YOUR CHOSEN CONTAINER FAILS VALIDATION:**
+    1. Look for a parent container that provides more context
+    2. Or look for a child container that's more focused
+    3. Prioritize containers with [data-testid] that describe a complete component
+    4. Choose containers with nestedContainerUids that show they contain meaningful structure
     
     **USING THE PROVIDED CONTAINER INFORMATION:**
     You will receive detailed container information in this format:
@@ -1902,14 +1613,15 @@ async generateEnhancedPrompt(
     - **Nested containers**: Lists container UIDs that are inside this container for better hierarchy understanding
     
     **DECISION PROCESS:**
-    1. **Read the screenshot intent** - Understand what needs to be captured
+    1. **Read the screenshot intent** - Understand what needs to be captured AND the implied scope
     2. **Analyze each numbered container** [1], [2], [3], etc. from the provided data
     3. **Match text content to intent** - Look for relevant phrases in the actual text content displayed
     4. **Consider nested containers** - Containers with many nested elements might provide better context if there are 2 containers with both having required text content find a container that has both these containers inside it.
     5. **Check interactive elements count** - Higher counts may indicate more relevant containers
-    6. **Review container dimensions** - Prefer containers that provide spatial context (bigger is better for context)
-    7. **Extract the exact data-testid** - Use the precise value from the ELEMENT field
-    8. **Generate the locator** - Create Playwright code with \`[data-testid="exact-value"]\`
+    6. **Review container dimensions** - Calculate viewport percentage (container width * height / viewport width * viewport height)
+    7. **VALIDATE DOCUMENTATION QUALITY** - Does this meet the quality criteria above?
+    8. **Extract the exact data-testid** - Use the precise value from the ELEMENT field
+    9. **Generate the locator** - Create Playwright code with \`[data-testid="exact-value"]\`
 
     **TECHNICAL REQUIREMENTS:**
     1. Pick EXACTLY ONE best container that includes the target and shows where the target is located
@@ -1917,7 +1629,7 @@ async generateEnhancedPrompt(
     3. Use page.locator() with CSS selectors - never use getByRole(), getByText(), or similar methods
     4. ALWAYS add a reasonable timeout (30000ms default, 60000ms for complex UI)
     5. NEVER use .first(), .nth(), or chained filters in screenshot locators - use more specific selectors instead
-    6. ALWAYS include a "thinking" section in your response that explains your reasoning process
+    6. ALWAYS include a "thinking" section in your response that explains your reasoning process AND validates documentation quality
     7. Return the exact Playwright screenshot command after your thinking section
     8. **FORCE ALL SCREENSHOT COMMANDS by adding { force: true } to all locators**
     
@@ -2007,72 +1719,78 @@ async generateEnhancedPrompt(
     **RESPONSE FORMAT:**
     Your response should be a strict JSON format with a thinking field and a code field and the name of the screenshot has to be exactly like in the code previously generated:
     
+    ⚠️ CRITICAL: If selector generation fails or doesn't find the element:
+    - NEVER regenerate the exact same selector - it will fail again
+    - STOP and ANALYZE: Is the UI element actually visible? Maybe it's in a different state than expected
+    - Try a completely different approach: different selector strategy, try parent/child containers, or use different attribute types
+    - Consider that the element might not exist in the current UI state - check if alternative containers exist
+    - If data-testid selectors fail, try role-based selectors; if those fail, try class-based or text-based selectors
+    
     {
-      "thinking": "Detailed explanation of your reasoning process, which container you chose and why, how it relates to the screenshot intent, and why this selector is the most appropriate choice.",
+      "thinking": "Detailed explanation of your reasoning process, which container you chose and why, how it relates to the screenshot intent, validation that it meets documentation quality standards, and why this selector is the most appropriate choice.",
       "code": "await page.locator('[data-testid=\"example-container\"]', { force: true }).screenshot({ path: './images/example-image-name.png', timeout: 30000 });"
+    }
+
+    **THINKING TEMPLATE WITH DOCUMENTATION QUALITY VALIDATION:**
+    {
+      "thinking": "Intent: [describe the screenshot intent and implied scope]. Viewport: ${JSON.stringify(viewport)}. Candidate containers: 1) Container [X] '[data-testid='a']' (x:64, y:61, w:1176, h:708) = ~60% viewport coverage - contains [describe], has [N] interactive elements; 2) Container [Y] '[data-testid='b']' (x:100, y:100, w:400, h:300) = ~15% viewport coverage - focused on [describe]; 3) Container [Z] '[data-testid='c']' (x:50, y:50, w:1800, h:900) = ~95% viewport coverage - includes entire page. Quality validation: Container [X] is OPTIMAL because it provides complete [component type] with sufficient context (~60% viewport is appropriate for [intent type]), includes all necessary elements ([list key elements visible]), has clear boundaries, and matches the documentation need to show [what users will learn]. Container [Y] is too small and lacks context. Container [Z] is too broad and unfocused. Final choice: Container [X] '[data-testid='a']' meets all documentation quality criteria.",
+      "code": "await page.locator('[data-testid=\"a\"]', { force: true }).screenshot({ path: './images/example.png', timeout: 30000 });"
     }
 
     **NESTED CONTAINERS EXAMPLE:**
     {
-      "thinking": "I need to capture the complete user profile section including personal info, subscription details, and account settings. Container C2 [data-testid='user-profile-section'] is the optimal choice because: 1) It's specifically named 'user-profile-section' which directly matches the intent, 2) It contains nested containers C3 (personal-info-card) and C4 (subscription-details) which provide the required personal info and subscription details, 3) It includes the profile header with user name 'John Doe' and 'Premium Member' status, 4) It's focused enough to exclude unrelated dashboard elements from C1 but comprehensive enough to include all profile-related information in one cohesive screenshot. The nested structure ensures I capture all required information in their proper context.",
+      "thinking": "Intent: Capture complete user profile section. Viewport: 1920x1080. Candidates: 1) C1 '[data-testid='dashboard']' (x:0, y:0, w:1920, h:1080) = ~100% viewport - entire dashboard, too broad; 2) C2 '[data-testid='user-profile-section']' (x:400, y:150, w:1100, h:650) = ~35% viewport - focused profile area; 3) C3 '[data-testid='personal-info-card']' (x:420, y:170, w:500, h:300) = ~7% viewport - just one card, too small. Quality validation: C2 is OPTIMAL because: 1) It's specifically named 'user-profile-section' which directly matches the intent, 2) Coverage of ~35% viewport is appropriate for a focused panel/section, 3) It contains nested containers C3 (personal-info-card) and C4 (subscription-details) which provide complete profile information, 4) It includes the profile header with user name and status, 5) It's focused enough to exclude unrelated dashboard elements but comprehensive enough to show all profile-related information in proper context. C1 is too broad (entire dashboard), C3 is too focused (missing subscription details and other profile elements). Final choice: C2 meets all documentation quality criteria and provides the right balance of focus and context.",
       "code": "await page.locator('[data-testid=\"user-profile-section\"]', { force: true }).screenshot({ path: './images/user-profile-complete.png', timeout: 30000 });"
     }
     `;
 
-    // Get image description from LLM and add context
-    let imageDescription = '';
-    if (imgFileName && base64Screenshot) {
-      // Extract image path information
-      const imgDir = imgFileName.includes('/') ? imgFileName.substring(0, imgFileName.lastIndexOf('/')) : 
-                    (imgFileName.includes('\\') ? imgFileName.substring(0, imgFileName.lastIndexOf('\\')) : '');
-      const baseName = imgFileName.split('/').pop()?.split('\\').pop() || imgFileName;
-      
-      // Set up image description section
-      imageDescription = `This is how the image should look\n`;
-      
-      // Try to get AI description of the image
-      try {
-        console.log(`🔍 Getting AI description for image: ${baseName}`);
-        const aiDescription = await this.getImageDescription(base64Screenshot);
-        
-        if (aiDescription) {
-          // Format the description nicely
-          imageDescription += `\nThis is the description of how the screenshot looks:\n\n${aiDescription}\n`;
-          console.log(`✅ Successfully added AI description for image: ${baseName}`);
-        } else {
-          console.warn(`⚠️ No AI description was generated for image: ${baseName}`);
-        }
-      } catch (error) {
-        console.warn(`⚠️ Failed to get AI description of the image: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-    
-    const userTextPrompt = `You are supposed to take a screenshot of the container that contains the target element and to do that consider the image description, the screenshot intent and the container highlighted image shared with you.
+    // Build user prompt without image descriptions
+    const userTextPrompt = `You are supposed to take a screenshot of the container that contains the target element.
+
+Consider the following information:
+- The detailed container information provided above with all element attributes and text content
+- The screenshot intent: ${screenshotIntent || 'capture the relevant UI element'}
+- The image filename: ${imgFileName || 'screenshot.png'}
 
 The following JSON contains the full previous response with all the details:
-use the same name of the image when you write the playwright command for the screenshot.
-the command might be right but it not always is your job is to find the best container that can fit the right elements with enough surrounding context to get the perfect screenshot.
-bigger container is always better to get the right context.
-pick the container based on the container name if it makes sense for the intent.
-use the intent of the screenshot to pick the container.
 ${fullJsonResponse ? `${fullJsonResponse}` : ''}
-this is the description of the ideal screenshot
-you have to find a container to capture the screenshot of that can make it look like this:
-${imageDescription ? `\n\n${imageDescription}` : ''}`;
+
+Your job is to find the best container that can fit the right elements with enough surrounding context to get the perfect screenshot.
+
+**DOCUMENTATION QUALITY VALIDATION STEPS:**
+1. **Identify candidate containers** - Find containers that match the screenshot intent
+2. **Calculate viewport coverage** - Estimate container size relative to viewport (w × h / viewport w × viewport h)
+3. **Validate completeness** - Ensure the container includes ALL necessary elements (complete dialog, table with headers, etc.)
+4. **Check documentation worthiness**:
+   - Is it too small? (< 10% viewport) → Look for parent container with more context
+   - Is it too large? (> 85% viewport) → Look for child container that's more focused
+   - Does it show a complete, meaningful component?
+   - Would this help a documentation reader understand the feature?
+5. **Verify scope matches intent**:
+   - Filename/intent suggests "icon"/"button" → Need 15-40% viewport (element + context)
+   - Filename/intent suggests "modal"/"dialog"/"panel" → Need 20-60% viewport (complete component)
+   - Filename/intent suggests "overview"/"dashboard" → Need 40-75% viewport (broader view)
+   - Filename/intent suggests "table"/"grid"/"list" → Need 30-70% viewport (rows + headers)
+
+**SELECTION RULES:**
+- Prefer containers with [data-testid] that describe complete components
+- Bigger container is better ONLY if it adds meaningful context (don't just go bigger for the sake of it)
+- Smaller container is better if the larger one includes too much irrelevant content
+- Pick the container based on the container name if it makes sense for the intent
+- Use the intent of the screenshot to pick the container
+- VALIDATE that your choice meets documentation quality standards
+- Use the same name of the image when you write the playwright command for the screenshot
+
+**IN YOUR THINKING, YOU MUST:**
+1. State what the screenshot intent is and what scope it implies
+2. List 2-3 candidate containers with their viewport coverage percentages
+3. Evaluate each candidate against documentation quality criteria
+4. Explain WHY your final choice is documentation-worthy
+5. Confirm that the size is appropriate for the intent
+6. Generate the screenshot command using the exact container selector`;
 
     const userMessageContent: Array<{ type: string; text?: string; image_url?: { url: string, detail?: string } }> =
       [{ type: "text", text: userTextPrompt }];
-    
-
-    
-    // Add container-highlighted screenshot if available
-    if (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) {
-      // Send the container-highlighted screenshot without additional description
-      userMessageContent.push({
-        type: "image_url",
-        image_url: { url: `data:image/png;base64,${enhancedScreenshotBase64}`, detail: "auto" }
-      });
-    }
 
     const requestPayload = {
       messages: [
@@ -2098,6 +1816,11 @@ ${imageDescription ? `\n\n${imageDescription}` : ''}`;
       // Increment API call counter
       globalStats.totalApiCalls++;
       console.log(`📡 Making API call #${globalStats.totalApiCalls} to model`);
+      
+      // Make sure apiKey is not undefined
+      if (!apiKey) {
+        throw new Error('API key is required but not provided in environment variables');
+      }
       
       response = await axios.post(endpoint, requestPayload, {
         headers: {
@@ -2166,10 +1889,6 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
           userPrompt: userTextPrompt,
           hasImage: !!base64Screenshot,
           imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
-          hasHighlightedImage: !!(enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot),
-          highlightedImageSize: (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
-            ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
-            : undefined,
           pageUrl: await this.page.url(),
           visibleElementsLength: userTextPrompt.length,
           previouslyExecutedCode: codeContext,
@@ -2191,7 +1910,7 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
         },
         duration,
       };
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       if (process.env.VERBOSE_LLM === 'true') {
         console.log(`✅ Azure response status: ${response.status}`);
@@ -2294,10 +2013,7 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
       
       // Log image information even in error case
       console.log('📸 Base screenshot size:', base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : 'none');
-      console.log('📸 Highlighted screenshot size:', 
-        (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
-          ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
-          : 'none');
+      console.log('📸 Base screenshot size:', base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : 'none');
           
       const logEntry: APILogEntry = {
         timestamp: new Date().toISOString(),
@@ -2310,10 +2026,6 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
           userPrompt: userTextPrompt,
           hasImage: !!base64Screenshot,
           imageSize: base64Screenshot ? Buffer.from(base64Screenshot, 'base64').length : undefined,
-          hasHighlightedImage: !!(enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot),
-          highlightedImageSize: (enhancedScreenshotBase64 && enhancedScreenshotBase64 !== base64Screenshot) 
-            ? Buffer.from(enhancedScreenshotBase64, 'base64').length 
-            : undefined,
           pageUrl: await this.page.url(),
           visibleElementsLength: userTextPrompt.length,
           previouslyExecutedCode: codeContext,
@@ -2335,7 +2047,7 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
         },
         duration,
       };
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       // Surface error and fall back
       throw err;
@@ -2519,9 +2231,9 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
             const imgDir = this.getImgPath();
             if (!imgDir) {
               console.log(`⚠️  No img directory available, skipping path update`);
-              stockCommand = originalScreenshotCommand; // Keep original command
-              console.log(`📄 Using original stock command: ${stockCommand}`);
-              return; // Skip if no img directory
+              enhancedCommand = aiGeneratedCommand; // Keep original command
+              console.log(`📄 Using original enhanced command: ${enhancedCommand}`);
+              return enhancedCommand; // Return original command to fix TypeScript error
             }
             const targetImagePath = path.join(imgDir, baseFileName);
             const shouldReplace = fs.existsSync(targetImagePath);
@@ -2562,9 +2274,9 @@ or `undefined`, it assigns the value `0` to the `inputTokenCount` variable. */
             const imgDir = this.getImgPath();
             if (!imgDir) {
               console.log(`⚠️  No img directory available, skipping path update`);
-              stockCommand = originalScreenshotCommand; // Keep original command
-              console.log(`📄 Using original stock command: ${stockCommand}`);
-              return; // Skip if no img directory
+              enhancedCommand = aiGeneratedCommand; // Keep original command
+              console.log(`📄 Using original enhanced command: ${enhancedCommand}`);
+              return enhancedCommand; // Return original command to fix TypeScript error
             }
             const targetImagePath = path.join(imgDir, baseFileName);
             const shouldReplace = fs.existsSync(targetImagePath);
@@ -2696,170 +2408,22 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
   }
 
   /**
-   * Highlight container elements on the page for better AI understanding
-   */
-  private async highlightContainers(containers: ContainerInfo[]): Promise<string> {
-    // Highlight a focused set of containers to avoid visual clutter
-    const topContainers = containers.slice(0, 8); // Reduced back to 8 for cleaner visualization
-    
-    return await this.page.evaluate((containersToHighlight) => {
-      // Clean up any previous highlights
-      document.querySelectorAll('.container-highlight-overlay, .container-highlight-badge, .container-highlight-legend').forEach(el => el.remove());
-      
-      // Use a consistent color palette for better visibility
-      function getContainerColor(index: number): string {
-        const colors = [
-          '#E63946', // bright red
-          '#1D3557', // dark blue
-          '#2A9D8F', // teal
-          '#E9C46A', // gold
-          '#8338EC', // purple
-          '#FF6B35', // orange
-          '#2B9348', // green
-          '#7B2CBF', // violet
-          '#F94144', // coral
-          '#073B4C'  // navy
-        ];
-        return colors[index % colors.length];
-      }
-      
-      // Sort containers by size (largest first) to prevent small containers from being obscured
-      const sortedContainers = [...containersToHighlight].sort((a, b) => {
-        // Try to get elements
-        const elemA = document.querySelector(a.selector);
-        const elemB = document.querySelector(b.selector);
-        
-        if (!elemA || !elemB) return 0;
-        
-        const rectA = elemA.getBoundingClientRect();
-        const rectB = elemB.getBoundingClientRect();
-        
-        // Calculate area
-        const areaA = rectA.width * rectA.height;
-        const areaB = rectB.width * rectB.height;
-        
-        // Sort by area (largest first)
-        return areaB - areaA;
-      });
-      
-      // Store badge positions to prevent overlap
-      const usedPositions = new Set();
-      
-      // Create a highlight overlay for each container
-      sortedContainers.forEach((container, index) => {
-        try {
-          const element = document.querySelector(container.selector);
-          if (!element) return;
-          
-          const rect = element.getBoundingClientRect();
-          
-          // Skip tiny elements
-          if (rect.width < 10 || rect.height < 10) return;
-          
-          // Create highlight element
-          const highlight = document.createElement('div');
-          highlight.className = 'container-highlight-overlay';
-          highlight.style.position = 'absolute';
-          highlight.style.top = rect.top + 'px';
-          highlight.style.left = rect.left + 'px';
-          highlight.style.width = rect.width + 'px';
-          highlight.style.height = rect.height + 'px';
-          
-          const color = getContainerColor(index);
-          highlight.style.border = `3px solid ${color}`;
-          highlight.style.boxSizing = 'border-box';
-          highlight.style.backgroundColor = 'transparent';
-          highlight.style.zIndex = (10000 - index).toString(); // Larger containers get lower z-index
-          highlight.style.pointerEvents = 'none';
-          
-          // Find a good position for the badge that doesn't overlap with others
-          // Define position types
-          type BadgePosition = {
-            top?: number;
-            right?: number;
-            bottom?: number;
-            left?: number;
-          };
-          
-          let badgePosition: BadgePosition = { top: -15, right: -15 }; // Default position
-          
-          // Try different positions if the default is already used
-          const positions: BadgePosition[] = [
-            { top: -15, right: -15 }, // Top right (default)
-            { top: -15, right: 15 },  // Top middle-right
-            { top: -15, right: 45 },  // Top far-right
-            { top: 15, right: -15 },  // Middle right
-            { top: 45, right: -15 },  // Far right
-            { top: rect.height - 15, right: -15 }, // Bottom right
-            { top: rect.height - 15, left: -15 },  // Bottom left
-            { top: -15, left: -15 }     // Top left
-          ];
-          
-          // Find first unused position
-          for (const pos of positions) {
-            const posKey = JSON.stringify(pos);
-            if (!usedPositions.has(posKey)) {
-              badgePosition = pos;
-              usedPositions.add(posKey);
-              break;
-            }
-          }
-          
-          // Add container number badge
-          const badge = document.createElement('div');
-          badge.className = 'container-highlight-badge';
-          badge.style.position = 'absolute';
-          
-          // Apply the position
-          if (badgePosition.top !== undefined) badge.style.top = `${badgePosition.top}px`;
-          if (badgePosition.right !== undefined) badge.style.right = `${badgePosition.right}px`;
-          if (badgePosition.bottom !== undefined) badge.style.bottom = `${badgePosition.bottom}px`;
-          if (badgePosition.left !== undefined) badge.style.left = `${badgePosition.left}px`;
-          
-          badge.style.backgroundColor = color;
-          badge.style.color = 'white';
-          badge.style.borderRadius = '50%';
-          badge.style.width = '26px';
-          badge.style.height = '26px';
-          badge.style.display = 'flex';
-          badge.style.alignItems = 'center';
-          badge.style.justifyContent = 'center';
-          badge.style.fontSize = '14px';
-          badge.style.fontWeight = 'bold';
-          badge.style.boxShadow = '0 0 0 2px white';
-          badge.textContent = `${index + 1}`;
-          highlight.appendChild(badge);
-          
-          document.body.appendChild(highlight);
-        } catch (e) {
-          console.error('Error highlighting container:', e);
-        }
-      });
-      
-      return 'Containers highlighted for screenshot';
-    }, topContainers);
-  }
-
-  /**
-   * Take a screenshot with container highlighting
-   */
-  /**
    * Get a description of an image using LLM
    */
   private async getImageDescription(base64Image: string): Promise<string> {
     try {
-      const { aiConfig } = playwrightConfig;
-      
       // Check if we have a valid base64 image
       if (!base64Image || base64Image.length < 100) {
         console.warn('⚠️ Invalid or empty base64 image provided');
         return '';
       }
       
-      // Prefer explicit override via env or hardcoded endpoint provided by user
-      const overrideEndpoint = process.env.AZURE_OPENAI_ENDPOINT || 'https://dhanu-m7k6n5e0-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-chat/chat/completions?api-version=2025-01-01-preview';
-      const endpoint = overrideEndpoint || `${aiConfig.apiUrl}/openai/deployments/${aiConfig.ivModel}/chat/completions?api-version=${aiConfig.apiVersion}`;
-      const apiKey = process.env.AZURE_OPENAI_API_KEY || aiConfig.apiKey;
+      // Build URL from environment variables
+      const baseUrl = process.env.AZURE_OPENAI_ENDPOINT || 'https://dhanu-m7k6n5e0-eastus2.cognitiveservices.azure.com';
+      const model = process.env.AZURE_OPENAI_MODEL || 'gpt-5-chat';
+      const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview';
+      const endpoint = `${baseUrl}/openai/deployments/${model}/chat/completions?api-version=${apiVersion}`;
+      const apiKey = process.env.AZURE_OPENAI_API_KEY;
 
       console.log('🖼️ Getting image description from LLM...');
       
@@ -2890,6 +2454,11 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       const startTime = Date.now();
       try {
         console.log(`📤 Sending API request to ${endpoint.split('/').slice(0, 3).join('/')}...`);
+        
+        // Make sure apiKey is not undefined
+        if (!apiKey) {
+          throw new Error('API key is required but not provided in environment variables');
+        }
         
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -2926,47 +2495,6 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       console.error('❌ Error getting image description:', error);
       return '';
     }
-  }
-
-  private async takeHighlightedScreenshot(): Promise<string> {
-    // Get container info based on the current page content
-    const containers = await this.getScreenshotContainers();
-    
-    // Highlight containers and take screenshot
-    await this.highlightContainers(containers);
-    
-    // Take screenshot with highlights
-    const buffer = await this.page.screenshot({ fullPage: false });
-    
-          // Save the highlighted container screenshot to a special folder
-    try {
-      // Create container-images directory if it doesn't exist
-      const containerImagesDir = path.join(process.cwd(), 'container-images').replace(/\\/g, '/');
-      if (!fs.existsSync(containerImagesDir)) {
-        fs.mkdirSync(containerImagesDir, { recursive: true });
-        console.log('📁 Created directory for container screenshots:', containerImagesDir);
-      }
-      
-      // Generate a filename with timestamp to avoid overwriting
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const pageUrl = new URL(await this.page.url());
-      const pathSegment = pageUrl.pathname.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
-      const filename = `container-highlights-${pathSegment}-${timestamp}.png`;
-      const filePath = path.join(containerImagesDir, filename).replace(/\\/g, '/');
-      
-      // Save the screenshot
-      fs.writeFileSync(filePath, buffer);
-      console.log('📸 Saved highlighted container screenshot to:', filePath);
-    } catch (error) {
-      console.error('⚠️ Failed to save highlighted container screenshot:', error instanceof Error ? error.message : String(error));
-    }
-    
-    // Remove highlights
-    await this.page.evaluate(() => {
-      document.querySelectorAll('.container-highlight-overlay').forEach(el => el.remove());
-    });
-    
-    return buffer.toString('base64');
   }
 
   /**
@@ -3013,15 +2541,6 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
       };
       
       this.thinkingHistory.push(thinkingEntry);
-      
-      // Write thinking to file immediately
-      try {
-        const thinkingLogPath = 'ai_thinking_log.txt';
-        const thinkingLog = `\n--- Step ${stepNumber || this.thinkingHistory.length} (${timestamp}) ---\n${thinking || 'No thinking provided'}\n`;
-        fs.appendFileSync(thinkingLogPath, thinkingLog);
-      } catch (writeError) {
-        console.warn('⚠️ Could not write thinking to log file:', writeError instanceof Error ? writeError.message : String(writeError));
-      }
     } catch (e) {
       console.warn('⚠️ Failed to process thinking:', e instanceof Error ? e.message : String(e));
     }
@@ -3303,54 +2822,141 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
 
   private getReferenceImageBase64WithPath(imageFileName: string): { base64: string; sourcePath: string | null } {
     try {
-      // Start from current markdown document directory if available
-      let searchRoot: string;
+      // Log current mode information for debugging
+      console.log(`💡 Current mode settings:`);
+      console.log(`   - this.currentMode: ${this.currentMode}`);
+      console.log(`   - process.env.CURRENT_MD_MODE: ${process.env.CURRENT_MD_MODE || 'not set'}`);
+      console.log(`   - File being processed: ${this.currentMdPath || 'not set'}`);
       
-      if (this.currentMdPath) {
-        // Use the directory containing the current markdown file
-        searchRoot = path.dirname(this.currentMdPath);
-        console.log(`🔍 Searching for image '${imageFileName}' in all subdirectories under: ${searchRoot}`);
-      } else {
-        // Fallback to environment-aware docs directory
-        searchRoot = this.getDocsDirectory();
-        console.log(`🔍 Searching for image '${imageFileName}' in fallback docs directory: ${searchRoot}`);
-      }
-      
-      if (!fs.existsSync(searchRoot)) {
-        console.log(`⚠️ Search root directory does not exist: ${searchRoot}`);
+      // Only search in the current markdown document directory
+      if (!this.currentMdPath) {
+        console.log(`⚠️ No current markdown path set, cannot search for image`);
         return { base64: '', sourcePath: null };
       }
       
-      // Search in all subdirectories under the document directory first
-      const foundImagePath = this.findImageInAllSubdirectories(searchRoot, imageFileName);
+      // Use the directory containing the current markdown file
+      const searchRoot = path.dirname(this.currentMdPath);
+      console.log(`🔍 Searching for image '${imageFileName}' in document directory: ${searchRoot}`);
       
-      if (foundImagePath) {
-        console.log(`✅ Found reference image at: ${foundImagePath}`);
-        return {
-          base64: fs.readFileSync(foundImagePath).toString('base64'),
-          sourcePath: path.dirname(foundImagePath)
-        };
+      if (!fs.existsSync(searchRoot)) {
+        console.log(`⚠️ Document directory does not exist: ${searchRoot}`);
+        return { base64: '', sourcePath: null };
       }
       
-      // If not found in current document directory tree, try the docs directory as fallback
-      const docsDir = this.getDocsDirectory();
-      if (this.currentMdPath && searchRoot !== docsDir) {
-        console.log(`🔍 Image not found in document directory tree, trying docs directory fallback...`);
-        
-        if (fs.existsSync(docsDir)) {
-          const fallbackImagePath = this.findImageInAllSubdirectories(docsDir, imageFileName);
-          
-          if (fallbackImagePath) {
-            console.log(`✅ Found reference image in docs fallback at: ${fallbackImagePath}`);
-            return {
-              base64: fs.readFileSync(fallbackImagePath).toString('base64'),
-              sourcePath: path.dirname(fallbackImagePath)
-            };
-          }
+      // Get the mode from current_md_path.txt (already set in this.currentMode)
+      // For translation or default mode, search in docs folder first
+      // This ensures images are found in the docs folder regardless of the current mode
+      // Check if we should force docs search:
+      // 1. If explicitly set via environment variable
+      // 2. If in translation or default mode
+      const forceDocsSearch = process.env.FORCE_DOCS_SEARCH === 'true' || 
+                            this.currentMode === 'translation' || 
+                            this.currentMode === 'default' || 
+                            process.env.CURRENT_MD_MODE === 'translation' || 
+                            process.env.CURRENT_MD_MODE === 'default';
+      
+      if (forceDocsSearch) {
+        console.log(`🔍 Searching for image in docs folder first (mode: ${this.currentMode}, env mode: ${process.env.CURRENT_MD_MODE || 'not set'})`);
+        const result = this.findImageInCorrespondingDocsFolder(imageFileName);
+        if (result.base64) {
+          console.log(`✅ Found image in corresponding docs folder: ${result.sourcePath}`);
+          return result;
+        } else {
+          console.log(`❌ Image not found in docs folder, continuing with local search`);
         }
       }
       
-      console.log(`❌ Image '${imageFileName}' not found in any directory`);
+      // Always enable fallback to docs search as a last resort
+      const fallbackToDocsSearch = true;
+      let docsFallbackResult = null;
+      
+      // First check if the image exists directly in the img subdirectory (most common case)
+      const imgDir = path.join(searchRoot, 'img');
+      if (fs.existsSync(imgDir) && fs.lstatSync(imgDir).isDirectory()) {
+        const directImagePath = path.join(imgDir, imageFileName);
+        if (fs.existsSync(directImagePath)) {
+          console.log(`✅ Found image directly in img directory: ${directImagePath}`);
+          return {
+            base64: fs.readFileSync(directImagePath).toString('base64'),
+            sourcePath: imgDir
+          };
+        }
+      }
+      
+      // Check if the image exists directly in the document directory
+      const directPath = path.join(searchRoot, imageFileName);
+      if (fs.existsSync(directPath)) {
+        console.log(`✅ Found image directly in document directory: ${directPath}`);
+        return {
+          base64: fs.readFileSync(directPath).toString('base64'),
+          sourcePath: searchRoot
+        };
+      }
+      
+      // Deep search for all subdirectories within the document directory
+      console.log(`🔍 Deep searching all subdirectories in document directory: ${searchRoot}`);
+      
+      try {
+        // Get all items in the document directory
+        const items = fs.readdirSync(searchRoot);
+        
+        // Find all subdirectories, regardless of name
+        const allSubdirectories = items.filter(item => {
+          const itemPath = path.join(searchRoot, item);
+          try {
+            // Check if it's a directory
+            return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
+          } catch (e) {
+            return false;
+          }
+        });
+        
+        console.log(`🔍 Found ${allSubdirectories.length} subdirectories: ${allSubdirectories.join(', ')}`);
+        
+        // Check each subdirectory for the image
+        for (const folder of allSubdirectories) {
+          const folderPath = path.join(searchRoot, folder);
+          console.log(`🔍 Checking in subdirectory: ${folderPath}`);
+          
+          // First check directly in this subdirectory
+          const imagePath = path.join(folderPath, imageFileName);
+          if (fs.existsSync(imagePath)) {
+            console.log(`✅ Found image in folder ${folder}: ${imagePath}`);
+            return {
+              base64: fs.readFileSync(imagePath).toString('base64'),
+              sourcePath: folderPath
+            };
+          }
+          
+          // Also check if there's a nested img directory
+          const nestedImgDir = path.join(folderPath, 'img');
+          if (fs.existsSync(nestedImgDir) && fs.lstatSync(nestedImgDir).isDirectory()) {
+            const nestedImagePath = path.join(nestedImgDir, imageFileName);
+            if (fs.existsSync(nestedImagePath)) {
+              console.log(`✅ Found image in nested img directory: ${nestedImagePath}`);
+              return {
+                base64: fs.readFileSync(nestedImagePath).toString('base64'),
+                sourcePath: nestedImgDir
+              };
+            }
+          }
+        }
+      } catch (searchError) {
+        console.error(`❌ Error during deep search: ${searchError}`);
+      }
+      
+      // If standard search failed but fallback is enabled, try docs folder as last resort
+      if (fallbackToDocsSearch) {
+        console.log(`🔍 Fallback: Searching for image in docs folder (mode: ${this.currentMode})`);
+        docsFallbackResult = this.findImageInCorrespondingDocsFolder(imageFileName);
+        if (docsFallbackResult && docsFallbackResult.base64) {
+          console.log(`✅ Found image in docs folder (fallback): ${docsFallbackResult.sourcePath}`);
+          return docsFallbackResult;
+        }
+      }
+      
+      // If all searches failed, return empty
+      console.log(`❌ Image '${imageFileName}' not found in any folder within document directory`);
       return { base64: '', sourcePath: null };
       
     } catch (error: any) {
@@ -3359,6 +2965,171 @@ ${enhancedCommand.replace(/path\s*:\s*(['"])(.*?\.(?:png|jpg|jpeg|gif|bmp|webp))
     }
   }
 
+  /**
+   * Search for an image file in all subdirectories under the document directory
+   * This focuses on the specific document's folder structure
+   */
+  /**
+   * Find an image in the corresponding docs folder for translation mode
+   * This implements a brute force search across all subdirectories in the docs folder
+   * that correspond to the current markdown file's directory structure
+   */
+  private findImageInCorrespondingDocsFolder(imageFileName: string): { base64: string; sourcePath: string | null } {
+    try {
+      if (!this.currentMdPath) {
+        console.log(`⚠️ No current markdown path set, cannot find corresponding docs folder`);
+        return { base64: '', sourcePath: null };
+      }
+
+      // Get the current file path and extract the relative path structure
+      const currentPath = this.currentMdPath;
+      console.log(`🔍 Finding corresponding docs path for: ${currentPath}`);
+      
+      // Extract the language-specific part to find the corresponding structure in docs
+      // Example: if path is 'spanish/6-Image-Viewer/file.md', we want '6-Image-Viewer/file.md'
+      const pathParts = currentPath.split(path.sep);
+      
+      // Find the index where the docs-like structure starts (look for numbered folders like '6-Image-Viewer')
+      let startIndex = -1;
+      for (let i = 0; i < pathParts.length; i++) {
+        if (/^\d+-[A-Za-z0-9-_]+$/.test(pathParts[i])) {
+          startIndex = i;
+          break;
+        }
+      }
+      
+      if (startIndex === -1) {
+        console.log(`⚠️ Could not identify docs structure in path: ${currentPath}`);
+        return { base64: '', sourcePath: null };
+      }
+      
+      // Extract the relative path from the numbered folder onwards
+      const relativePath = pathParts.slice(startIndex, -1).join(path.sep);
+      console.log(`📂 Identified relative path structure: ${relativePath}`);
+      console.log(`📂 Path parts: ${JSON.stringify(pathParts)}`);
+      console.log(`📂 Start index: ${startIndex}, using parts from ${startIndex} to ${pathParts.length - 1}`);
+      
+      // Construct the corresponding path in the docs folder
+      // Use the repository root that's properly set in the constructor
+      const docsBasePath = this.getDocsDirectory();
+      console.log(`📂 Docs base path: ${docsBasePath}`);
+      const correspondingDocsPath = path.join(docsBasePath, relativePath);
+      
+      console.log(`🔍 Looking for image in corresponding docs path: ${correspondingDocsPath}`);
+      
+      if (!fs.existsSync(correspondingDocsPath)) {
+        console.log(`⚠️ Corresponding docs path does not exist: ${correspondingDocsPath}`);
+        return { base64: '', sourcePath: null };
+      }
+      
+      // Perform a brute force search in all subdirectories of the corresponding docs path
+      return this.bruteForceImageSearch(correspondingDocsPath, imageFileName);
+    } catch (error) {
+      console.error(`❌ Error finding image in corresponding docs folder: ${error}`);
+      return { base64: '', sourcePath: null };
+    }
+  }
+  
+  /**
+   * Perform a brute force search for an image in all subdirectories
+   */
+  private bruteForceImageSearch(searchRoot: string, imageFileName: string): { base64: string; sourcePath: string | null } {
+    try {
+      console.log(`🔍 Performing brute force search for ${imageFileName} in ${searchRoot}`);
+      
+      // First check directly in the root directory
+      const directPath = path.join(searchRoot, imageFileName);
+      if (fs.existsSync(directPath)) {
+        console.log(`✅ Found image directly in root: ${directPath}`);
+        return {
+          base64: fs.readFileSync(directPath).toString('base64'),
+          sourcePath: searchRoot
+        };
+      }
+      
+      // Check in common image directories first (optimization)
+      const commonImageDirs = ['img', 'images', 'Images', 'IMG', 'assets', 'screenshots'];
+      for (const imgDir of commonImageDirs) {
+        const imgDirPath = path.join(searchRoot, imgDir);
+        if (fs.existsSync(imgDirPath) && fs.lstatSync(imgDirPath).isDirectory()) {
+          const imgPath = path.join(imgDirPath, imageFileName);
+          if (fs.existsSync(imgPath)) {
+            console.log(`✅ Found image in ${imgDir} directory: ${imgPath}`);
+            return {
+              base64: fs.readFileSync(imgPath).toString('base64'),
+              sourcePath: imgDirPath
+            };
+          }
+        }
+      }
+      
+      // Recursively search all subdirectories
+      const searchResult = this.recursiveImageSearch(searchRoot, imageFileName);
+      if (searchResult) {
+        console.log(`✅ Found image through recursive search: ${searchResult}`);
+        return {
+          base64: fs.readFileSync(searchResult).toString('base64'),
+          sourcePath: path.dirname(searchResult)
+        };
+      }
+      
+      console.log(`❌ Image not found in any subdirectory: ${imageFileName}`);
+      return { base64: '', sourcePath: null };
+    } catch (error) {
+      console.error(`❌ Error in brute force image search: ${error}`);
+      return { base64: '', sourcePath: null };
+    }
+  }
+  
+  /**
+   * Recursively search for an image file in all subdirectories
+   */
+  private recursiveImageSearch(searchDir: string, imageFileName: string): string | null {
+    try {
+      if (!fs.existsSync(searchDir) || !fs.lstatSync(searchDir).isDirectory()) {
+        return null;
+      }
+      
+      // Check directly in this directory
+      const directPath = path.join(searchDir, imageFileName);
+      if (fs.existsSync(directPath)) {
+        return directPath;
+      }
+      
+      // Get all items in the directory
+      const items = fs.readdirSync(searchDir);
+      
+      // Check each item
+      for (const item of items) {
+        const itemPath = path.join(searchDir, item);
+        
+        try {
+          if (fs.lstatSync(itemPath).isDirectory()) {
+            // Skip common non-content directories
+            const skipDirs = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out'];
+            if (skipDirs.includes(item)) {
+              continue;
+            }
+            
+            // Recursively search this subdirectory
+            const foundPath = this.recursiveImageSearch(itemPath, imageFileName);
+            if (foundPath) {
+              return foundPath;
+            }
+          }
+        } catch (e) {
+          // Skip items we can't access
+          continue;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      // Silent error for individual directory access issues
+      return null;
+    }
+  }
+  
   /**
    * Search for an image file in all subdirectories under the document directory
    * This focuses on the specific document's folder structure

@@ -522,15 +522,6 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
         console.log('📝 user prompt (text part):', userTextPrompt);
         if (base64Screenshot) console.log('🖼️ Reference screenshot provided to LLM.');
       }
-      
-      const promptLogPath = path.join(process.cwd(), 'ai_prompt_logs.txt');
-      const logEntry = [
-        '\n===== Prompt @ ' + new Date().toISOString() + ` (Refinement: ${!!refinementContext}) =====`,
-        'SYSTEM:\n' + systemPrompt,
-        'USER (text part):\n' + userTextPrompt,
-        base64Screenshot ? 'USER (image part): [Base64 Image Data Provided]' : 'USER (image part): [No Image Data]'
-      ].join('\n');
-      try { fs.appendFileSync(promptLogPath, logEntry); } catch (e: any) { console.warn('⚠️  Failed to write prompt log file:', e.message); }
 
       const requestPayload = {
         messages: [
@@ -598,7 +589,7 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
           duration
         };
 
-        apiLogger.logAPICall(logEntry);
+        // apiLogger.logAPICall(logEntry);
 
         if (process.env.VERBOSE_LLM === 'true') console.log(`✅ Azure response status: ${response.status}`);
 
@@ -643,7 +634,7 @@ Output ONLY the Playwright JavaScript code for the 'locator.screenshot()' comman
           duration
         };
 
-        apiLogger.logAPICall(errorLogEntry);
+        // apiLogger.logAPICall(errorLogEntry);
         throw error;
       }
 

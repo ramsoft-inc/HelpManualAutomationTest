@@ -34,7 +34,8 @@ export class ClaudeProvider implements LLMProvider {
     currentStepErrorCode: string,
     includeSystemInstruction: boolean,
     isCodeAnswer: boolean,
-    previousStepThinking?: string
+    previousStepThinking?: string,
+    availableActions?: string
   ): Promise<GenerateCodeResponse> {
     const startTime = Date.now();
     const model = process.env.CLAUDE_MODEL || "claude-sonnet-4-20250514";
@@ -47,7 +48,8 @@ export class ClaudeProvider implements LLMProvider {
       screenshot,
       previouslyExecutedCode,
       currentStepErrorCode,
-      previousStepThinking
+      previousStepThinking,
+      availableActions
     );
 
     let response;
@@ -105,7 +107,7 @@ export class ClaudeProvider implements LLMProvider {
           duration
         };
 
-        apiLogger.logAPICall(logEntry);
+        // apiLogger.logAPICall(logEntry);
 
         return {
           code: "done",
@@ -149,7 +151,7 @@ export class ClaudeProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
 
       return {
         code: parsedResponse.code,
@@ -201,7 +203,7 @@ export class ClaudeProvider implements LLMProvider {
         duration
       };
 
-      apiLogger.logAPICall(logEntry);
+      // apiLogger.logAPICall(logEntry);
       throw error;
     }
   }
@@ -214,12 +216,20 @@ export class ClaudeProvider implements LLMProvider {
     screenshot: Buffer,
     previouslyExecutedCode: string,
     currentStepErrorCode: string,
-    previousStepThinking?: string
+    previousStepThinking?: string,
+    availableActions?: string
   ): Anthropic.Messages.MessageCreateParams {
     const messages: Anthropic.Messages.MessageCreateParams['messages'] = [];
 
     // Build the user message content
     const content: Anthropic.Messages.MessageParam['content'] = [];
+
+    if (availableActions) {
+      content.push({
+        type: 'text',
+        text: availableActions
+      });
+    }
 
     content.push({
       type: 'text',

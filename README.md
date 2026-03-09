@@ -16,13 +16,41 @@ Check out the [repository](https://github.com/ramsoft-inc/Document-Generator) fo
 
 ### Installation
 
+For the main Docusaurus project:
+
 ```
-$ yarn
+# Install dependencies using Yarn
+yarn install
 ```
+
+For the AutoSnap tools:
+
+```
+# Windows
+cd AutoSnap
+powershell -ExecutionPolicy Bypass -File setup.ps1
+```
+
+### Running Docusaurus
+
+To run the Docusaurus development server:
+
+```
+yarn start
+```
+
+> **Note:** The `AutoSnap` directory contains separate tools with their own setup and documentation. See the [AutoSnap README](AutoSnap/README.md) if you need those tools.
 
 ### Local Development
 
 ```
+# Set your Algolia API key as an environment variable **before** running 'yarn start'.
+# Use your **public search-only Algolia API key** (never use an admin key).
+Linux / macOS:
+export ALGOLIA_API_KEY=<YOUR ALGOLIA SEARCH-ONLY API KEY HERE>
+Windows PowerShell:
+$env:ALGOLIA_API_KEY = '<YOUR ALGOLIA SEARCH-ONLY API KEY HERE>'
+
 $ yarn start
 ```
 
@@ -50,4 +78,16 @@ Not using SSH:
 $ GIT_USER=<Your GitHub username> yarn deploy
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+```
+# Stage all changes
+git add .
+
+# Commit your changes with a descriptive message
+git commit -m "Your descriptive commit message"
+
+# Push to the current branch
+git push
+
+# Push to a specific branch
+git push origin <branch-name>
+```

@@ -26,7 +26,6 @@ export declare class AIUtilsEnhanced {
      * Write comprehensive token usage summary to a log file
      * This is called at the end of execution
      */
-    writeTokenUsageSummary(outputPath?: string, thinkingLogPath?: string): void;
     /**
      * Build a rich, hierarchical summary of visible containers and their interactive elements.
      * This is designed to give the LLM a high-fidelity mental model of the page structure.

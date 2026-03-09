@@ -5,21 +5,21 @@ tags:
   - User Profile
   - Edit User Information
   - Multi-Monitor Setup 
+  - User Profile Synchronization
+  - Synchronization & Role Assignment
+  - NPI 
+  - Login Email ID
   - Logout
 ---
 
 # User Profile
-
-## User Profile Management
-
-### Overview
 
 This guide provides instructions on accessing and managing your user
 profile in OmegaAI. It includes steps for editing user information,
 setting up multiple monitors for different functionalities, and logging
 out of the system.
 
-### Accessing and Editing User Information
+## Accessing and Editing User Information
 
 1.  **Navigating to User Profile**:
 
@@ -47,7 +47,7 @@ out of the system.
   ![User Profile](./Images/3.png)
 
 <!--
-### Multi-Monitor Setup
+## Multi-Monitor Setup
 
 1.  **Accessing Display Settings**: From the Display Settings found in
     the bottom left panel, select one of the monitor options. The
@@ -77,11 +77,43 @@ out of the system.
 
       -->
 
-### Logging Out of OmegaAI
+## User Profile Synchronization based on Login Email ID or NPI ID
 
-1.  **Logging Out**:
+This feature prevents duplicate practitioner records by automatically matching and synchronizing user profiles based on a unique **NPI** or **Login Email ID**. It allows a single practitioner to be linked to multiple organizations without duplication.
 
-    - Navigate to the User Profile section from the side navigation bar
+*   Automatically link an existing user profile to a new organization when NPI or Login Email matches.
+    
+*   Allow one practitioner entity across multiple organizations.
+    
+*   Show clear messages for data conflicts.
+    
+
+### How Matching & Synchronization Functions
+
+**Step 1: Matching**
+
+When adding a new Physician/User:
+
+1.  Enter **NPI** and/or **Login Email ID**.
+    
+2.  The system searches for existing profiles:
+    
+    *   **No match found** → A new user profile is created.
+        
+    *   **Match found** → System links to the existing profile (no duplicate created).
+        
+
+**Step 2: Synchronization & Role Assignment**
+
+*   A message appears: “A user with this NPI/Login Email already exists in the system. The existing profile will be added to your organization with the role you selected.”
+    
+*   Linking the existing user to your organization with your selected role.
+
+## Logging Out of OmegaAI
+
+**Logging Out**:
+
+1. Navigate to the User Profile section from the side navigation bar
       on the OmegaAI homepage.
 
-    - Click **LOGOUT** to securely log out of the system.
+2. Click **LOGOUT** to securely log out of the system.

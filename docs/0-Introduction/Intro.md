@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1
-title: Overview of OmegaAI
+title: Overview of OmegaAI 
 ---
 
 # Overview of OmegaAI
@@ -17,7 +17,7 @@ OmegaAI represents a significant advancement in medical imaging technology by le
 
 4. **Advanced Imaging Capabilities**: OmegaAI includes features such as an FDA-approved Image Viewer with Pet-CT Fusion and MPR modes, supporting advanced high-performance image-rendering technologies in a web-based environment.
 
-5. **Multi-Modal Communication Tools**: Communication within OmegaAI is facilitated through an integrated chat system that supports messaging, voice calls, and screen sharing, thereby enhancing collaboration among healthcare professionals.
+5. **Multi-Modal Communication Tools**: Communication within OmegaAI is facilitated through an integrated chat system that supports messaging thereby enhancing collaboration among healthcare professionals.
 
 6. **Voice Recognition and AI Reporting**: Voice command technology within OmegaAI along with AI reporting allows clinicians to operate the system hands-free and with ease, enhancing the efficiency of clinical workflows.
 

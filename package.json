@@ -15,6 +15,8 @@
     "translateLocallyWithOpenAI": "node scripts/AddTranslationsUsingOpenAI-Local.js"
   },
   "dependencies": {
+    "@docsearch/core": "^4.5.0",
+    "@docsearch/react": "^4.5.0",
     "@docusaurus/core": "^3.7.0",
     "@docusaurus/plugin-google-gtag": "^3.7.0",
     "@docusaurus/preset-classic": "^3.7.0",
@@ -27,14 +29,7 @@
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.7.0",
     "@docusaurus/types": "^3.7.0",
-    "@types/react": "^18.0.0",
-    "typescript": "^5.0.0",
     "openai": "^4.0.0"
-  },
-  "optionalDependencies": {
-    "react-loadable": "^5.5.0",
-    "@algolia/client-search": "^5.0.0",
-    "search-insights": "^2.0.0"
   },
   "browserslist": {
     "production": [
@@ -50,13 +45,5 @@
   },
   "engines": {
     "node": ">=18.0"
-  },
-  "description": "This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.",
-  "main": "babel.config.js",
-  "directories": {
-    "doc": "docs"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  }
 }

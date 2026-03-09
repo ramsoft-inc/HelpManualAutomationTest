@@ -63,32 +63,44 @@ appointment time has passed, while the study may still be in progress.
 
 ### Blume Invite Email Sent to Patient from OmegaAI
 
-When a patient is created in OmegaAI, a Blume Invite Email is
+When a patient is created in **OmegaAI**, a Blume Invite Email is
 automatically sent to the patient.
 
-**Note**: Patients email must be entered in General Information section
-of the Patient page.
+**Note**: the patient's email must be entered in the **Contact
+Information** section of the Patient page.
 
-In the case that the patient's email was not added to the Patient page,
-follow the below steps.
+If the patient's email was **not added** during patient creation, follow
+the steps below to add it:
 
-1.  Go to the Patient page via the Omega Dial found on the OmegaAI
-    Worklist page. Click once anywhere on the Worklist to call out the
-    Omega Dial menu, then click Patient
+1.  Go to the **Patient page** via the Omega Dial found on the OmegaAI Worklist page.
 
-    ![omega dial](./Images/omegadial.png)
+- Click once anywhere on the Worklist to call out the **Omega Dial** menu.
 
-2.  Click on the home button in the top right corner.
+- Then click **Patient**
 
-    ![home](./Images/home.png)
+![omega dial](./Images/omegadial.png)
 
-3.  Click on Edit button.
+2.  Expand the **Contact information** section to add the email of the Patient.
 
-4.  Add Patient Email.
+![home](./Images/Bei_1.png)
 
-    ![addpatientemail](./Images/addpatientemail.png)
+3.  Hover over and click on the **Email field** to enter the patient's email address
 
-    ![edit patient email](./Images/editpatientemail.png)
+4.  To **add an additional email address**, click the **"+" icon**.
+
+5.  To **delete an email address**, click the **trash icon** next to the email address.
+
+6.  To **set an email as the primary contact**, click on the **star icon** next to the email address.
+
+- **Note**: A Blume invite will be sent to the primary email address.
+
+7.  After updating the information, click the **Save** button on the
+    right-hand side of the **Contact Information** section.
+
+8.  To discard changes, click the **Cancel** button on the right-hand
+    side of the **Contact Information** section.
+
+![home](./Images/Bei_2.png)
 
 Blume invite will be triggered if the patient email was not previously
 used for signup in Blume and is the first patient email that was added
@@ -99,37 +111,43 @@ for the patient.
 **Workflow**
 
 If an email added through Patient Info page is not registered in Blume
-account, follow the below steps to resend the invite:
+account, follow the below steps to **resend the invite:**
 
-1.  Login to Omega AI.
+1.  Login to **Omega AI**.
 
-2.  Go to Home page and access the worklist.
+2.  Go to **Home page** and access the **worklist.**
 
-3.  Select Patient from Omega Dial Menu.
+3.  Select **Patient** from Omega Dial Menu.
 
 ![resend](./Images/RES1.png)
 
-4.  Under the Patient Info page, expand the Contact Information.
+4.  Under the **Patient Info page**, expand the **Contact Information**.
 
-5.  The unregistered mail id is marked with Unknown status.
+5.  Click the **Star** icon next to the email address to mark it as the
+    **primary email** for sending the Blume invite. Then click the
+    **Save** button on the right-hand side of the **Contact
+    Information** section.
 
-![resend](./Images/RES2.png)
-
-6.  Right next to the email id, click on the blume icon.
-
-7.  RESEND INVITE option appears.
-
-8.  Click on the Resend button to trigger another invite email.
-
-9.  The status of the mail id is changed to Active after account creation.
+6.  Right next to the email ID, click on the **Blume icon**.
 
 ![resend](./Images/RES3.png)
 
+7.  **RESEND INVITE** option appears.
+
+8.  Click on the **Resend** button to trigger another invite email.
+
+![resend](./Images/Bei_3.png)
+
+9.  The status of the mail id is changed to **Active** after account
+    creation.
+
 ![resend](./Images/RES4.png)
 
-10. Reinvite option will be available only for primary email.
+10. The reinvite option will be available only for primary email.
 
-    **Note**: Resend button will be enabled only with BPP/ AFD license.
+- **Note**: The **Resend** button will not be available if the
+  organization does not have a valid Blume license.
+  
 
 ### Setting up an Appointment Reminder for Patients via OmegaAI
 

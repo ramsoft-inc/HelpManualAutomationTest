@@ -1,6 +1,7 @@
 ---
 sidebar_position: 7
 title: Blume as an Asset in Breeze
+unlisted: true
 ---
 
 # Blume as an Asset in Breeze

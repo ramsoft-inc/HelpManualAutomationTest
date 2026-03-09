@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 title: Insurance Eligibility and Prior Authorization
 tags:
 - Insurance
@@ -13,159 +13,151 @@ tags:
 - Medical Billing
 ---
 
-:::info
-**Disclaimer**: All features on this page that require automated eligibility and prior authorization checks depend on a separately purchased third-party integration. Please contact your customer success manager for more informaiton. 
-:::
-
 # Insurance Eligibility and Prior Authorization
 
-In OAI, the automated Insurance Eligibility and Prior Authorization is
-done through the integration with a third-party solution.
+## Adding Payers to the Organization
+1.  Click **Organization** from the left navigation panel and open the
+    required organization's details page.
+    ![IEPA](./img/IEPA_1.png#small)
 
-## Adding Insurance Payers to the Organization
+2.  In the Organization details page, click **RIS** to expand the menu
+    and select **Payers**.
+    ![IEPA](./img/IEPA_2.png#medium)
 
-- Click on **Organization** on the left panel and open the respective
-  organization details page
+3.  The Payers page opens, displaying the list of existing payers. From
+    this page, users can add new payers, edit existing payers, or delete
+    payers.
 
-- Within the **Organization** detail page, click on **RIS**. It will expand and
-  display the **Insurance Payer**
+4.  Click the **+ (Add)** icon to add a new payer. The **Create New
+    Payer** drawer opens.
+    ![IEPA](./img/IEPA_3.png#small)
 
-- Click on **Insurance Payers**. It will open the insurance payers where
-  the user can add new insurance payers, edit existing insurance
-  payers, and delete existing insurance payers
+5.  Enter the **Payer Name** and other fields, including **Payer ID**,
+    **Payer Type**, and **Financial Type**.
 
-  ![Adding Payer1](./img/addingpayer1.png)
+6.  Fill in the **Address** and **Contact Details** as required.
 
-- Click on the **+** icon to add a new insurance payer. It will open the **Add
-  new insurance payer** drawer.
+7.  Set the payer status to **Active** (default) or **Inactive**.
 
-- Search for the insurance payer name you wish to add. It will search the
-  list of insurance payers supported by the third-party integration,
-  along with the ID for the corresponding insurance payer.
+8.  Click **Create** to save the payer.
+   ![IEPA](./img/IEPA_4.png)
 
-  ![Adding Payer2](./img/addingpayer2.png)
+9.  Once saved, the newly created payer appears in the **Payers** list.
 
-- Select the **Insurance payer name** and fill in the other details like
-  Financial Type, Address, and Contact Details, then click on **Create** to
-  create this payer
+## Editing/Deleting a Payer Record
 
-- Once the payer is saved, it will be reflected in the **Insurance Payers**
-  list displayed
+Follow the steps below to edit or delete a payer record:
 
-  ![Adding Payer3](./img/addingpayer3.png)
+1.  Navigate to the **Payers** list page within the selected
+    Organization.
 
-## Editing/Deleting a Insurance Payer Record
+2.  Hover over the required payer record in the list to display the
+    **Edit** and **Delete** icons.
 
-- When you hover over the Payer record on the **Payer list** page, you will
-  see the **Edit** and **Delete** icon
+3.  Click the **Edit** icon to open the **Edit Payer** drawer.
 
-  ![edit payer](./img/editpayer.png)
+4.  Update the required payer details, including status, payer
+    information, address, or contact details.
 
-- When you click on the **Edit** icon, the **Edit Payer** drawer will open
+5.  Click **Update** to save the changes. The updated information is
+    reflected in the Payers list.
+    ![IEPA](./img/IEPA_5.png)
 
-- Users should be able to edit the details and, on clicking the **Update**
-  button, the details would be saved
+6.  To delete a payer, hover over the payer's record and click and hold
+    the **Delete** icon.
+    ![IEPA](./img/IEPA_6.png)
 
-  ![edit payer2](./img/editpayer2.png)
-
-- To delete a Payer record, click on the **Delete** icon
-
-- On clicking the **Delete** icon, the corresponding Payer record would be
-  deleted, and it would disappear from the Payer list
+7.  The payer record is removed and no longer appears in the Payers
+    list.
 
 ## Adding Coverage for a Patient
 
-A patient’s coverage information can be added from the **Patient Info**
-page, under the **Coverage** section.
+1.  Navigate to the **Patient Info** page and locate the **Coverage**
+    section.
+    ![IEPA](./img/IEPA_7.png)
 
-![ac1](./img/ac1.png)
+2.  Click the **+** button to open the **Create New Coverage** drawer.
+    ![IEPA](./img/IEPA_8.png)
 
-- On clicking the **+** button, the **Add New Coverage** drawer will open.
+3.  In the **Payer Name** field, search and select a payer from the list
+    of payers added to the organization.
 
-![ac2](./img/ac2.png)
+4.  Set the **Coverage Status** at the top of the Create New Coverage
+    page.
 
-![ac3](./img/ac3.png)
+5.  Enter the patient's coverage details, including the **Coverage
+    dates** **Effective Range**.
 
-- While entering the **Payer Name**, the user can search and select from the
-  list of payers added to the organization.
+    By default, the **Member Relationship** is set to **Self**, and the
+    **Member Name** is prepopulated with the patient's name. 
+6.  To changethe member, select a different relationship from the dropdown and
+    search for the appropriate member.
+    ![IEPA](./img/IEPA_9.png)
 
-  ![ac4](./img/ac4.png)
+7.  If the required member does not exist in OAI, click **Add New** to
+    create a new patient record for the member.
+    ![IEPA](./img/IEPA_10.png#small)
+    
+8.  After creating the new member's record, select the relationship and
+    populate the newly created member.
 
-- Set the **Coverage status** from the top of the **Add coverage** page.
+9.  Enter the **Member ID** and **Group Number** details.
 
-- Fill in the patient’s coverage details, including the **Payer Name** and
-  **Coverage Effective** date range.
+10. Select the **Employer Name** by searching from the list of employers
+    in OAI.
+    ![IEPA](./img/IEPA_11.png#small)
 
-- By default, the **Member relationship** to the patient is selected as
-  “Self,” and the **Member Name** is prepopulated with the Patient’s Name.
+11. If the employer does not exist, click **Add New** to create a new
+    employer record and then select it.
+    ![IEPA](./img/IEPA_12.png#small)
+ 
+12. Upload the member's **Insurance Card** image.
 
-- The user can change the **Member relationship** by clicking the dropdown
-  and selecting the appropriate relationship.
+13. Click **Save** to store the coverage information.
 
-- Make necessary changes by selecting the relationship to the patient and
-  searching for the **Member** name.
+## Adding Prior Authorization to a Patient Study
 
-  ![ac5](./img/ac5.png)
+1.  Navigate to the **Worklist**, locate and open the required **patient
+    study**.
+    ![IEPA](./img/IEPA_13.png#small)
 
-- Once the Member is selected, the **Member name** field would be populated
-  with the selected record.
+2.  From the patient study page, select **Prior Authorization** from the
+    **top-right corner** of the screen.
+    ![IEPA](./img/IEPA_14.png)<!-- small -->
+  
+3.  The **Prior Authorization drawer** opens on the **left side** of the
+    screen.
+    
+    ![IEPA](./img/IEPA_15.png)<!-- small -->
+  
+4.  In the **Prior Authorization panel**, the patient's **coverage
+    information** is displayed at the top.
 
-- If the Member is not present in OAI, then the Member record must be created
-  in OAI.
+5.  Under **Set Authorization Request**, select the appropriate value
+    that represents the current authorization status for the study:
 
-- Click on **Add New** to create a patient record for the Member.
+    - Unknown
 
-  ![ac6](./img/ac6.png)
+    - Not Required
 
-- Once the new Member record is created in OAI, the user should be able to
-  select the relationship and populate the newly created Member record.
+    - Pending
 
-- Enter the **Member ID** and **Group Number** details.
+    - Approved
 
-- The user can select the **Employer** name by searching from the list of
-  employers in OAI.
+    - Denied
 
-  ![ac7](./img/ac7.png)
+6.  Enter the authorization details:
 
-- If the **Employer Name** is not present in OAI, then the Employer record
-  can be created in OAI.
+    - **Authorization Number**
 
-- Click on **Add New** to create an Employer record for the Member.
+    - **Authorization Start Date**
 
-  ![ac8](./img/ac8.png)
+    - **Authorization End Date**
 
-- Once the new Employer record is created in OAI, the user should be able
-  to select it and populate the newly created Employer record.
+    - **Total Amount Due**
 
-- The user can optionally add the Member’s insurance card image.
+7.  Add **Notes** (optional) for remarks or additional context.
 
-- Once the user is done adding all the details, clicking the **Save** button
-  will save the coverage information.
+8.  Review all entered information for accuracy.
 
-- Once the patient’s coverage information is saved, if the organization
-  has subscribed for the eligibility check product, then—irrespective of
-  the value selected under the **Eligibility coverage status** field—
-  the third-party eligibility check API will be called with the entered
-  information.
-
-- The API results will come instantly and update the coverage details.
-
-  ![ac9](./img/ac9.png)
-
-- If the coverage is **active**, it will automatically update the
-  **Eligibility coverage status** field, and the coverage details card will
-  be updated with a link to the eligibility report.
-
-  ![ac10](./img/ac10.png)
-
-
-- If the coverage is **inactive** due to incorrect information or if there is
-  no active coverage for the user, it will be instantly visible on the
-  screen as a toast message, and the subsequent coverage details card is
-  updated.
-
-  ![ac12](./img/ac12.png)
-
-- Whenever any of the coverage-related information is updated, the
-  eligibility check API will be called again to reflect the latest status
-  of the coverage.
+9.  Click **Submit** to save prior authorization.
