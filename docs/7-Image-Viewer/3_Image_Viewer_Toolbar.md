@@ -16,6 +16,8 @@ below the search bar, it brings together essential tools for navigation,
 layout management, documentation, and collaboration---helping users
 tailor their viewing environment to their workflow.
 
+
+
 The toolbar is fully customizable- users can add, remove, or rearrange
 tools such as **Adjustment, Markup** and **Additional Tools**, enabling
 a personalized and streamlined viewing experience.
