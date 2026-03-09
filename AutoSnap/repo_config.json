@@ -31,11 +31,11 @@
         "setupGuide": "See GITHUB_APP_AUTH.md"
       },
       "personalToken": {
-        "envVar": "GITHUB_TOKEN",
+        "envVar": "REPO_ACCESS_TOKEN",
         "setupGuide": "See SETUP_GITHUB_TOKEN.md"
       }
     },
-    "tokenEnv": "GITHUB_TOKEN",
+    "tokenEnv": "REPO_ACCESS_TOKEN",
     "description": "Supports both GitHub App and Personal Access Token authentication"
   },
   "workflow": {

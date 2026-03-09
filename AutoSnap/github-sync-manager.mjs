@@ -164,7 +164,7 @@ export class GitHubSyncManager {
    */
   async initializeAuth() {
     // Try Personal Access Token first
-    this.githubToken = process.env.GITHUB_TOKEN || process.env[this.config.github?.tokenEnv || 'GITHUB_TOKEN'];
+    this.githubToken = process.env.REPO_ACCESS_TOKEN || process.env.GITHUB_TOKEN || process.env[this.config.github?.tokenEnv || 'REPO_ACCESS_TOKEN'];
     
     if (this.githubToken) {
       console.log('✅ Using Personal Access Token authentication');
@@ -183,7 +183,7 @@ export class GitHubSyncManager {
     }
     
     console.warn('⚠️  No authentication configured. API rate limits will be very restrictive (60/hour).');
-    console.warn('    Set GITHUB_TOKEN or configure GitHub App (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID)');
+    console.warn('    Set REPO_ACCESS_TOKEN (or GITHUB_TOKEN) or configure GitHub App (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID)');
     return false;
   }
 
@@ -258,7 +258,7 @@ export class GitHubSyncManager {
     } catch (error) {
       console.error(`❌ Failed to get commit SHA for ${filePath}:`, error.message);
       if (error.response?.status === 403) {
-        console.warn('⚠️  Rate limit may be exceeded. Consider using GITHUB_TOKEN or GitHub App.');
+        console.warn('⚠️  Rate limit may be exceeded. Consider using REPO_ACCESS_TOKEN (or GITHUB_TOKEN) or GitHub App.');
       }
       throw error;
     }
